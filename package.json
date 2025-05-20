@@ -1,18 +1,21 @@
 {
-  "name": "bun-tsx-starter",
+  "name": "speedloaf",
   "version": "0.1.0",
   "scripts": {
     "build": "bun build ./src/client/main.ts --outdir ./dist/assets",
     "start": "bun run src/server/main.ts",
     "dev": "bun run dev:client & bun run dev:server",
     "dev:client": "bun --watch build ./src/client/main.ts --outdir ./dist/assets",
-    "dev:server": "bun --watch run src/server/main.ts"
+    "dev:server": "bun --watch run src/server/main.ts",
+    "check": "bunx @biomejs/biome@beta check src",
+    "pre-commit": "bun run check"
   },
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.0.0-beta.5",
     "@types/bun": "^1.2.13",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5"

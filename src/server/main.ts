@@ -17,7 +17,7 @@ const server = Bun.serve({
     // Handle page routes
     const elementFactory = routes[url.pathname];
     if (elementFactory) {
-      const element = elementFactory();
+      const element = elementFactory(req);
       const stream = await renderToReadableStream(element);
       return new Response(stream, {
         headers: { "Content-Type": "text/html" },

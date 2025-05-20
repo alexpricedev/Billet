@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 import { Nav } from "./nav";
 
@@ -10,7 +10,7 @@ type LayoutProps = {
 
 export function Layout({ title, scriptName, children }: LayoutProps) {
   return (
-    <html>
+    <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <title>{title}</title>
@@ -20,7 +20,7 @@ export function Layout({ title, scriptName, children }: LayoutProps) {
         <img src="/logo.png" alt="logo" />
         <Nav />
         {children}
-        <script type="module" src="/assets/main.js"></script>
+        <script type="module" src="/assets/main.js" />
       </body>
     </html>
   );

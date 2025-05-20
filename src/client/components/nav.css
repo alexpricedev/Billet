@@ -1,7 +1,7 @@
 [data-component="nav"] {
   a {
+    color: blue;
     margin-right: 1rem;
     text-decoration: none;
-    color: blue;
   }
 }

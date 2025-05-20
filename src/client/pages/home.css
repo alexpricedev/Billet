@@ -1,5 +1,6 @@
 [data-page="home"] {
   h1 {
     background-color: blue;
+    font-size: 2rem;
   }
 }
