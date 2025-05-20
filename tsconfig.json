@@ -7,7 +7,12 @@
     "moduleResolution": "Node",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": "src",
+    "paths": {
+      "@client/*": ["client/*"],
+      "@server/*": ["server/*"]
+    }
   },
   "include": ["src"]
 }

@@ -1,8 +1,8 @@
 import "./style.css";
 
-import { init as initHome } from "./pages/home";
-import { init as initAbout } from "./pages/about";
-import { init as initContact } from "./pages/contact";
+import { init as initHome } from "@client/pages/home";
+import { init as initAbout } from "@client/pages/about";
+import { init as initContact } from "@client/pages/contact";
 
 const page = document.body.dataset.page;
 
