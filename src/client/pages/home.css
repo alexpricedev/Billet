@@ -1,6 +1,6 @@
 [data-page="home"] {
   h1 {
-    background-color: blue;
-    font-size: 2rem;
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
   }
 }

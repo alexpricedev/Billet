@@ -1,5 +1,6 @@
 [data-page="about"] {
   h1 {
-    background-color: green;
+    color: var(--color-accent);
+    margin-bottom: 1.5rem;
   }
 }

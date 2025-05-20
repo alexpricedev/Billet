@@ -7,6 +7,7 @@
     "dev": "bun run dev:client & bun run dev:server",
     "dev:client": "bun --watch build ./src/client/main.ts --outdir ./dist/assets",
     "dev:server": "bun --watch run src/server/main.ts",
+    "commit": "git add --all && git commit",
     "check": "bunx @biomejs/biome@beta check src",
     "prepare": "husky"
   },

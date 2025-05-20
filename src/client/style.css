@@ -6,3 +6,108 @@
 /* Component styles */
 @import "./components/layout.css";
 @import "./components/nav.css";
+
+/*
+  Main CSS entry point
+  - CSS variables for color palette
+  - Base font and element styles
+  - Import component and page styles below
+*/
+:root {
+  --color-bg: #f7f9fb;
+  --color-surface: #fff;
+  --color-primary: #2563eb;
+  --color-primary-light: #3b82f6;
+  --color-accent: #f59e42;
+  --color-text: #222;
+  --color-muted: #6b7280;
+  --radius: 0.75rem;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --font-main: "Inter", "Segoe UI", Arial, sans-serif;
+}
+
+html {
+  background: var(--color-bg);
+  box-sizing: border-box;
+  color: var(--color-text);
+  font-size: 16px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+body {
+  font-family: var(--font-main);
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  margin: 0 0 0.5em 0;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 2.2rem;
+}
+
+p {
+  margin: 0 0 1.2em 0;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.15s;
+
+  &:hover,
+  &:focus {
+    color: var(--color-primary-light);
+    text-decoration: underline;
+  }
+}
+
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.5em 1.2em;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background 0.15s;
+
+  &:hover,
+  &:focus {
+    background: var(--color-primary-light);
+  }
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: inline-block;
+  margin-bottom: 2rem;
+  padding: 1.5rem 2rem;
+  width: 100%;
+}

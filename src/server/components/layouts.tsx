@@ -4,11 +4,11 @@ import { Nav } from "./nav";
 
 type LayoutProps = {
   title: string;
-  scriptName: string;
+  name: string;
   children: React.ReactNode;
 };
 
-export function Layout({ title, scriptName, children }: LayoutProps) {
+export function Layout({ title, name, children }: LayoutProps) {
   return (
     <html lang="en">
       <head>
@@ -16,10 +16,20 @@ export function Layout({ title, scriptName, children }: LayoutProps) {
         <title>{title}</title>
         <link rel="stylesheet" href="/assets/main.css" />
       </head>
-      <body data-page={scriptName}>
-        <img src="/logo.png" alt="logo" />
-        <Nav />
-        {children}
+      <body data-page={name} data-component="layout">
+        <header>
+          <a href="/" className="logo">
+            <img src="/logo.png" alt="logo" />
+          </a>
+          <Nav page={name} />
+        </header>
+        <main>{children}</main>
+        <footer>
+          <p>
+            Starter kit by <a href="https://github.com/yourname">yourname</a>{" "}
+            &mdash; Powered by Bun, React 19, and TSX.
+          </p>
+        </footer>
         <script type="module" src="/assets/main.js" />
       </body>
     </html>
