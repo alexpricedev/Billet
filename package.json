@@ -1,0 +1,20 @@
+{
+  "name": "bun-tsx-starter",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "bun build ./src/client/main.ts --outdir ./dist/assets",
+    "start": "bun run src/server/main.ts",
+    "dev": "bun run dev:client & bun run dev:server",
+    "dev:client": "bun --watch build ./src/client/main.ts --outdir ./dist/assets",
+    "dev:server": "bun --watch run src/server/main.ts"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.13",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5"
+  }
+}
