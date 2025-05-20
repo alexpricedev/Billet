@@ -7,14 +7,9 @@
     "dev": "bun run dev:client & bun run dev:server",
     "dev:client": "bun --watch build ./src/client/main.ts --outdir ./dist/assets",
     "dev:server": "bun --watch run src/server/main.ts",
-    "check": "bunx @biomejs/biome@beta check src"
+    "check": "bunx @biomejs/biome@beta check src",
+    "prepare": "husky"
   },
-  "pre-commit": [
-    "check"
-  ],
-  "trustedDependencies": [
-    "@biomejs/biome"
-  ],
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
@@ -23,6 +18,16 @@
     "@biomejs/biome": "2.0.0-beta.5",
     "@types/bun": "^1.2.13",
     "@types/react": "^19.1.4",
-    "@types/react-dom": "^19.1.5"
+    "@types/react-dom": "^19.1.5",
+    "gitmoji-cli": "^9.7.0",
+    "husky": "^9.1.7"
+  },
+  "gitmoji": {
+    "autoAdd": false,
+    "emojiFormat": "emoji",
+    "scopePrompt": false,
+    "messagePrompt": true,
+    "capitalizeTitle": true,
+    "gitmojisUrl": "https://gitmoji.dev/api/gitmojis"
   }
 }
