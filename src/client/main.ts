@@ -1,8 +1,7 @@
+// Page scripts
 import { init as initAbout } from "@client/pages/about";
 import { init as initContact } from "@client/pages/contact";
 import { init as initHome } from "@client/pages/home";
-
-import "./style.css";
 
 const page = document.body.dataset.page;
 
@@ -15,3 +14,9 @@ const pages: Record<string, () => void> = {
 if (page && pages[page]) {
   pages[page]();
 }
+
+// Custom component scripts
+import "@client/components/my-paragraph";
+
+// Global styles
+import "./style.css";
