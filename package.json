@@ -7,9 +7,11 @@
     "dev": "bun run dev:client & bun run dev:server",
     "dev:client": "bun --watch build ./src/client/main.ts --outdir ./dist/assets",
     "dev:server": "bun --watch run src/server/main.ts",
-    "check": "bunx @biomejs/biome@beta check src",
-    "pre-commit": "bun run check"
+    "check": "bunx @biomejs/biome@beta check src"
   },
+  "pre-commit": [
+    "check"
+  ],
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
