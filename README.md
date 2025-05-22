@@ -3,13 +3,13 @@
   <img src="public/logo.png" alt="Speedloaf Logo" width="180" />
 </p>
 
-<h1 align="center">Speedloaf</h1>
+<h1 align="center">SpeedLoaf</h1>
 
 <p align="center">
-  <b>⚡️ Ultra-fast, modern full-stack starter with Bun and familiar JSX/TSX templating ⚡️</b>
+  <b>⚡️ Ultra-fast, modern full-stack TS starter for Bun.sh based apps using familiar JSX templating ⚡️</b>
   <br />
-  <b>Note:</b> Uses JSX/TSX as a templating language for familiarity, but is <u>not</u> a React framework.<br />
-  Focused on web standards, separation of concerns, and modern frontend tooling.<br />
+  JSX is used as a templating language for familiarity, but this is <u>not</u> a React framework.<br />
+  Focusing on web standards, separation of concerns, and leveraging modern tooling to get shit built fast.<br />
   Supports web components and lets you opt-in to React for specific pages if needed.</i>
 </p>
 
