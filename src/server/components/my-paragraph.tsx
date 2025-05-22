@@ -3,7 +3,7 @@ const css = `
   p {
     color: white;
     background-color: #666;
-    padding: 5px;
+    padding: 10px 20px;
   }
 `;
 

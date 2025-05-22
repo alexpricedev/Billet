@@ -24,12 +24,6 @@ export function Layout({ title, name, children }: LayoutProps) {
           <Nav page={name} />
         </header>
         <main>{children}</main>
-        <footer>
-          <p>
-            Starter kit by <a href="https://github.com/yourname">yourname</a>{" "}
-            &mdash; Powered by Bun, React 19, and TSX.
-          </p>
-        </footer>
         <script type="module" src="/assets/main.js" />
       </body>
     </html>

@@ -1,8 +1,4 @@
 [data-component="layout"] {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-
   & > header {
     align-items: center;
     background: var(--color-surface);
@@ -32,28 +28,12 @@
     background: var(--color-surface);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    flex: 1 auto;
-    margin: 2.5rem;
+    margin: 1.5rem;
     padding: 2rem;
-    width: calc(100% - 5rem);
 
     @media (width <= 600px) {
       margin: 1rem;
       padding: 1.4rem;
-      width: calc(100% - 2rem);
-    }
-  }
-
-  & > footer {
-    background: var(--color-surface);
-    border-top: 1px solid #e5e7eb;
-    color: var(--color-muted);
-    font-size: 0.95rem;
-    padding: 1.5rem 2rem;
-    text-align: center;
-
-    @media (width <= 600px) {
-      padding: 1rem;
     }
   }
 }
