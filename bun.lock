@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "bun-tsx-starter",
+      "name": "speedloaf",
       "dependencies": {
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
