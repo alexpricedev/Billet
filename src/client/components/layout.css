@@ -25,7 +25,7 @@
   }
 
   & > main {
-    background: var(--color-surface);
+    /* background: var(--color-surface); */
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     margin: 1.5rem;
