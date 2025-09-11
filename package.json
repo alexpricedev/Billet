@@ -4,18 +4,17 @@
   "scripts": {
     "build": "bun run build:client && bun run build:css",
     "build:client": "bun build ./src/client/main.ts --outdir ./dist/assets",
-    "build:css": "tailwindcss -i ./src/server/tailwind.css -o ./dist/assets/tailwind.css --minify",
+    "build:css": "bunx @tailwindcss/cli -i ./src/client/style.css -o ./dist/assets/main.css --minify",
     "start": "bun run src/server/main.ts",
     "dev": "bun run dev:client & bun run dev:server & bun run dev:css",
     "dev:client": "bun --watch build ./src/client/main.ts --outdir ./dist/assets",
     "dev:server": "bun --watch run src/server/main.ts",
-    "dev:css": "tailwindcss -i ./src/server/tailwind.css -o ./dist/assets/tailwind.css --watch",
+    "dev:css": "bunx @tailwindcss/cli -i ./src/client/style.css -o ./dist/assets/main.css --watch",
     "commit": "git add --all && git commit",
     "check": "bunx @biomejs/biome@beta check src",
     "prepare": "husky"
   },
   "dependencies": {
-    "bun-plugin-tailwind": "^0.0.15",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.1.13"
@@ -27,8 +26,7 @@
     "@types/react-dom": "19.1.9",
     "autoprefixer": "^10.4.21",
     "gitmoji-cli": "9.7.0",
-    "husky": "9.1.7",
-    "postcss": "^8.5.6"
+    "husky": "9.1.7"
   },
   "gitmoji": {
     "autoAdd": false,

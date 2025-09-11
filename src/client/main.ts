@@ -17,6 +17,3 @@ if (page && pages[page]) {
 
 // Custom component scripts
 import "@client/components/my-paragraph";
-
-// Global styles (here for Bun dev server to pick up and rebuild)
-import "./style.css";

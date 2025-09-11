@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* Page styles */
 @import "./pages/home.css";
 @import "./pages/about.css";
@@ -6,6 +8,11 @@
 /* Component styles */
 @import "./components/layout.css";
 @import "./components/nav.css";
+
+/* Custom themes supported */
+@theme {
+  --color-mint-500: oklch(0.72 0.11 178);
+}
 
 /*
   Main CSS entry point
