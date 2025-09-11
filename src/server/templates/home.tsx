@@ -1,6 +1,7 @@
 import { Layout } from "@server/components/layouts";
+import type { VisitorStats } from "@server/services/analytics";
 
-export const Home = ({ method }: { method: string }) => (
+export const Home = (props: { method: string; stats: VisitorStats }) => (
   <Layout title="Home" name="home">
     <h1>Home Page</h1>
 
@@ -23,20 +24,16 @@ export const Home = ({ method }: { method: string }) => (
 
       <h3>Server data:</h3>
       <p>
-        Data from the server HTTP req: <strong>{method}</strong>
+        Data from the server HTTP req: <strong>{props.method}</strong>
       </p>
 
-      <h4>HTML response from a POST:</h4>
+      <h3>API data:</h3>
       <p>
-        <code>
-          <pre>
-            {`...
-  <p>
-    Data from the server HTTP req: <strong>POST</strong>
-  </p>
-...`}
-          </pre>
-        </code>
+        Visitor count: <strong>{props.stats.visitorCount}</strong>
+        <br />
+        <small>
+          Last updated: {new Date(props.stats.lastUpdated).toLocaleString()}
+        </small>
       </p>
     </section>
   </Layout>

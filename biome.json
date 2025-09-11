@@ -15,6 +15,9 @@
         "useNumberNamespace": "error",
         "noInferrableTypes": "error",
         "noUselessElse": "error"
+      },
+      "nursery": {
+        "useUniqueElementIds": "off"
       }
     }
   },

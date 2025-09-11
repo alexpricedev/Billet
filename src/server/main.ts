@@ -1,9 +1,13 @@
-import { renderToReadableStream } from "react-dom/server";
-
-import { routes } from "./routes";
+import { apiRoutes } from "./routes/api";
+import { viewRoutes } from "./routes/views";
 
 const server = Bun.serve({
   port: process.env.PORT || 3000,
+  idleTimeout: 30, // 30 second timeout
+  routes: {
+    ...viewRoutes,
+    ...apiRoutes,
+  },
   async fetch(req) {
     const url = new URL(req.url);
 
@@ -11,17 +15,7 @@ const server = Bun.serve({
     if (url.pathname.startsWith("/assets/")) {
       const file = Bun.file(`dist${url.pathname}`);
       if (await file.exists()) return new Response(file);
-      return new Response("Not found", { status: 404 });
-    }
-
-    // Handle page routes
-    const elementFactory = routes[url.pathname];
-    if (elementFactory) {
-      const element = elementFactory(req);
-      const stream = await renderToReadableStream(element);
-      return new Response(stream, {
-        headers: { "Content-Type": "text/html" },
-      });
+      return new Response("Asset not found", { status: 404 });
     }
 
     // Serve static files from the public directory
