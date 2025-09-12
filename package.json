@@ -12,6 +12,9 @@
     "dev:css": "bunx @tailwindcss/cli -i ./src/client/style.css -o ./dist/assets/main.css --watch",
     "commit": "git add --all && git commit",
     "check": "bunx @biomejs/biome@beta check src",
+    "check:write": "bunx @biomejs/biome@beta check src --write",
+    "migrate:up": "bun run src/server/database/cli.ts up",
+    "migrate:create": "bun run src/server/database/cli.ts create",
     "prepare": "husky"
   },
   "dependencies": {

@@ -1,0 +1,92 @@
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { db } from "../services/database";
+
+export type Migration = {
+  id: string;
+  name: string;
+  applied_at: Date;
+};
+
+// Ensure migrations table exists
+export const ensureMigrationsTable = async (): Promise<void> => {
+  await db`
+    CREATE TABLE IF NOT EXISTS migrations (
+      id VARCHAR(255) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+};
+
+// Get applied migrations
+export const getAppliedMigrations = async (): Promise<Migration[]> => {
+  await ensureMigrationsTable();
+  const results =
+    await db`SELECT id, name, applied_at FROM migrations ORDER BY id`;
+  return results as Migration[];
+};
+
+// Record migration as applied
+export const recordMigration = async (
+  id: string,
+  name: string,
+): Promise<void> => {
+  await db`INSERT INTO migrations (id, name) VALUES (${id}, ${name})`;
+};
+
+// Get pending migrations
+export const getPendingMigrations = async (): Promise<string[]> => {
+  const migrationsDir = join(process.cwd(), "src/server/database/migrations");
+  const migrationFiles = readdirSync(migrationsDir)
+    .filter((file) => file.endsWith(".ts"))
+    .sort();
+
+  const appliedMigrations = await getAppliedMigrations();
+  const appliedIds = new Set(appliedMigrations.map((m) => m.id));
+
+  return migrationFiles.filter((file) => {
+    const id = file.replace(".ts", "");
+    return !appliedIds.has(id);
+  });
+};
+
+// Run a single migration
+export const runMigration = async (filename: string): Promise<void> => {
+  const migrationPath = join(
+    process.cwd(),
+    "src/server/database/migrations",
+    filename,
+  );
+  const migration = await import(migrationPath);
+
+  if (typeof migration.up !== "function") {
+    throw new Error(`Migration ${filename} does not export an 'up' function`);
+  }
+
+  await migration.up(db);
+
+  const id = filename.replace(".ts", "");
+  const name = filename.replace(/^\d+_/, "").replace(".ts", "");
+  await recordMigration(id, name);
+
+  console.log(`Applied migration: ${filename}`);
+};
+
+// Run all pending migrations
+export const runMigrations = async (): Promise<void> => {
+  const pendingMigrations = await getPendingMigrations();
+
+  if (pendingMigrations.length === 0) {
+    console.log("No pending migrations");
+    return;
+  }
+
+  console.log(`Running ${pendingMigrations.length} pending migrations...`);
+
+  for (const migration of pendingMigrations) {
+    await runMigration(migration);
+  }
+
+  console.log("All migrations completed");
+};
