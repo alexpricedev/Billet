@@ -4,13 +4,40 @@ import type { Example } from "../services/example";
 
 type ExamplesProps = {
   examples: Example[];
+  success?: boolean;
 };
 
-export const Examples = ({ examples }: ExamplesProps): JSX.Element => {
+export const Examples = ({ examples, success }: ExamplesProps): JSX.Element => {
   return (
-    <Layout title="Examples">
+    <Layout title="Examples" name="examples">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Examples from Database</h1>
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded mb-6">
+            ✅ Example added successfully!
+          </div>
+        )}
+
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Add New Example</h2>
+          <form method="POST" action="/examples" className="flex gap-3">
+            <input
+              type="text"
+              name="name"
+              placeholder="Enter example name"
+              required
+              minLength={2}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Add Example
+            </button>
+          </form>
+        </div>
 
         {examples.length === 0 ? (
           <p className="text-gray-600">No examples found in the database.</p>

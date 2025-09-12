@@ -1,5 +1,5 @@
 // globals.d.ts
-import React from "react";
+import type React from "react";
 
 declare module "react" {
   namespace JSX {

@@ -1,11 +1,11 @@
 import { apiRoutes } from "./routes/api";
-import { viewRoutes } from "./routes/views";
+import { appRoutes } from "./routes/app";
 
 const server = Bun.serve({
   port: process.env.PORT || 3000,
   idleTimeout: 30, // 30 second timeout
   routes: {
-    ...viewRoutes,
+    ...appRoutes,
     ...apiRoutes,
   },
   async fetch(req) {

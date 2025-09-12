@@ -15,5 +15,16 @@ if (page && pages[page]) {
   pages[page]();
 }
 
+// If the query param has success or error, remove it on the client side
+// so we dont show it multiple times
+const url = new URL(window.location.href);
+if (url.searchParams.get("success") === "true") {
+  url.searchParams.delete("success");
+}
+if (url.searchParams.get("error") === "true") {
+  url.searchParams.delete("error");
+}
+window.history.replaceState({}, "", url.toString());
+
 // Custom component scripts
 import "@client/components/my-paragraph";
