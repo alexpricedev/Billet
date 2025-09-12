@@ -2,7 +2,11 @@
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getPendingMigrations, runMigrations } from "./migrate";
+import {
+  getPendingMigrations,
+  rollbackLastMigration,
+  runMigrations,
+} from "./migrate";
 
 const command = process.argv[2];
 
@@ -61,10 +65,15 @@ export const down = async (db: SQL): Promise<void> => {
     break;
   }
 
+  case "down":
+    await rollbackLastMigration();
+    break;
+
   default:
     console.log("Available commands:");
     console.log("  up     - Run pending migrations");
     console.log("  create - Create a new migration");
     console.log("  status - Show migration status");
+    console.log("  down   - Rollback the last migration");
     break;
 }

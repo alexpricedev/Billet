@@ -14,6 +14,8 @@ This file contains essential context and guidelines for Claude instances working
 
 **STRICT LINTING ENFORCED:**
 
+ALWAYS lint before finishing a work loop (`bun run check`)
+
 - **Zero warnings allowed** (`--max-warnings 0`)
 - **No "any" types allowed** (`@typescript-eslint/no-explicit-any: error`)
 - **No console statements allowed** (`no-console: error`)

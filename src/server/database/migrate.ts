@@ -35,6 +35,11 @@ export const recordMigration = async (
   await db`INSERT INTO migrations (id, name) VALUES (${id}, ${name})`;
 };
 
+// Remove migration record
+export const removeMigration = async (id: string): Promise<void> => {
+  await db`DELETE FROM migrations WHERE id = ${id}`;
+};
+
 // Get pending migrations
 export const getPendingMigrations = async (): Promise<string[]> => {
   const migrationsDir = join(process.cwd(), "src/server/database/migrations");
@@ -89,4 +94,40 @@ export const runMigrations = async (): Promise<void> => {
   }
 
   console.log("All migrations completed");
+};
+
+// Rollback a single migration
+export const rollbackMigration = async (filename: string): Promise<void> => {
+  const migrationPath = join(
+    process.cwd(),
+    "src/server/database/migrations",
+    filename,
+  );
+  const migration = await import(migrationPath);
+
+  if (typeof migration.down !== "function") {
+    throw new Error(`Migration ${filename} does not export a 'down' function`);
+  }
+
+  await migration.down(db);
+
+  const id = filename.replace(".ts", "");
+  await removeMigration(id);
+
+  console.log(`Rolled back migration: ${filename}`);
+};
+
+// Rollback the last applied migration
+export const rollbackLastMigration = async (): Promise<void> => {
+  const appliedMigrations = await getAppliedMigrations();
+
+  if (appliedMigrations.length === 0) {
+    console.log("No migrations to rollback");
+    return;
+  }
+
+  const lastMigration = appliedMigrations[appliedMigrations.length - 1];
+  const filename = `${lastMigration.id}.ts`;
+
+  await rollbackMigration(filename);
 };
