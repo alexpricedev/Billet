@@ -14,11 +14,12 @@ This file contains essential context and guidelines for Claude instances working
 
 **STRICT LINTING ENFORCED:**
 
-ALWAYS lint before finishing a work loop (`bun run check`)
+ALWAYS check for TS errors and linting issues before finishing a work loop (`bun run check`)
 
 - **Zero warnings allowed** (`--max-warnings 0`)
 - **No "any" types allowed** (`@typescript-eslint/no-explicit-any: error`)
 - **No console statements allowed** (`no-console: error`)
+- **No unsafe writes**
 - **Exception:** Test files may use "any" for mocking with `// eslint-disable-next-line @typescript-eslint/no-explicit-any`
 
 ### Package Management
@@ -34,9 +35,32 @@ ALWAYS lint before finishing a work loop (`bun run check`)
 - **Prettier**: Code formatting with consistent style
 - **TypeScript**: Strict mode enabled for type safety
 
+### Testing Strategies by Module Type
+
+**API Controllers** (`src/server/controllers/api/*.test.ts`):
+- Mock service layer dependencies only
+- Test actual HTTP Response objects (status codes, headers, JSON content)
+- Focus on request/response handling and error scenarios
+
+**View Controllers** (`src/server/controllers/app/*.test.ts`):
+- Mock service layer dependencies only  
+- Test actual HTML output using `renderToString()`
+- Verify specific content appears in rendered HTML
+- Test redirect responses with actual status codes and Location headers
+
+**Services** (`src/server/services/*.test.ts`):
+- Use pg-mem for real database testing against PostgreSQL behavior
+- Mock database module to use in-memory test database
+- Test complete CRUD operations with actual SQL queries
+- Use backup/restore for test isolation
+
+**Test Utilities** (`src/server/test-utils/*.ts`):
+- Unit test adapters and helper functions directly
+- Focus on input/output transformations
+- Test edge cases and error handling
+
 ### Best Practices
 
-- **Mock external dependencies**: Use MSW or other mocking strategies for all external calls
 - **Test user interactions**: Focus on user behavior rather than implementation
 - **Authenticated contexts**: Test components with guest and logged-in users
 - **Error scenarios**: Test error handling and edge cases
