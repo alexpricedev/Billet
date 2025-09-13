@@ -12,6 +12,7 @@ export interface AuthContext {
 
 /**
  * Extract authentication context from request
+ * Renews session activity for authenticated users
  */
 export const getAuthContext = async (req: Request): Promise<AuthContext> => {
   const cookieHeader = req.headers.get("cookie");
@@ -28,21 +29,20 @@ export const getAuthContext = async (req: Request): Promise<AuthContext> => {
       return { user: null, isAuthenticated: false };
     }
 
-    // Renew session activity for authenticated requests
     await renewSession(sessionId);
 
     return {
       user: sessionData.user,
       isAuthenticated: true,
     };
-  } catch (error) {
-    console.error("Error getting auth context:", error);
+  } catch {
     return { user: null, isAuthenticated: false };
   }
 };
 
 /**
  * Middleware to require authentication
+ * Returns redirect response if not authenticated, null to continue
  */
 export const requireAuth = async (req: Request): Promise<Response | null> => {
   const auth = await getAuthContext(req);
@@ -54,11 +54,12 @@ export const requireAuth = async (req: Request): Promise<Response | null> => {
     });
   }
 
-  return null; // Continue with request
+  return null;
 };
 
 /**
  * Middleware to redirect authenticated users away from auth pages
+ * Returns redirect response if authenticated, null to continue
  */
 export const redirectIfAuthenticated = async (
   req: Request,
@@ -72,5 +73,5 @@ export const redirectIfAuthenticated = async (
     });
   }
 
-  return null; // Continue with request
+  return null;
 };

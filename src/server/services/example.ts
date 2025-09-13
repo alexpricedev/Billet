@@ -1,3 +1,7 @@
+import {
+  type DatabaseMutationResult,
+  hasAffectedRows,
+} from "../utils/database";
 import { db } from "./database";
 
 export type Example = {
@@ -37,17 +41,7 @@ export const updateExample = async (
   return results.length > 0 ? (results[0] as Example) : null;
 };
 
-type DeleteResult = {
-  count?: number;
-  rowCount?: number;
-};
-
 export const deleteExample = async (id: number): Promise<boolean> => {
   const results = await db`DELETE FROM example WHERE id = ${id}`;
-  // For PostgreSQL, check if any rows were affected using count or rowCount
-  const deleteResult = results as DeleteResult;
-  return Boolean(
-    (deleteResult.count && deleteResult.count > 0) ||
-      (deleteResult.rowCount && deleteResult.rowCount > 0),
-  );
+  return hasAffectedRows(results as DatabaseMutationResult);
 };

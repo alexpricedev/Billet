@@ -17,7 +17,6 @@ export const callback = {
         return redirect(`/login?error=${encodeURIComponent(result.error)}`);
       }
 
-      // Create session cookie and redirect to home
       const sessionCookie = createSessionCookie(result.sessionId);
 
       return new Response("", {
@@ -27,8 +26,7 @@ export const callback = {
           "Set-Cookie": sessionCookie,
         },
       });
-    } catch (error) {
-      console.error("Error verifying magic link:", error);
+    } catch {
       return redirect("/login?error=Authentication failed. Please try again.");
     }
   },

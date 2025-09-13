@@ -5,7 +5,6 @@ import { redirect, render } from "../../utils/response";
 
 export const login = {
   async index(req: Request): Promise<Response> {
-    // Redirect if already authenticated
     const authRedirect = await redirectIfAuthenticated(req);
     if (authRedirect) return authRedirect;
 
@@ -20,22 +19,18 @@ export const login = {
     const formData = await req.formData();
     const email = formData.get("email") as string;
 
-    // Validate email
     if (!email || !email.includes("@")) {
       return redirect("/login?error=Invalid email address");
     }
 
     try {
-      const { rawToken } = await createMagicLink(email.toLowerCase().trim());
+      await createMagicLink(email.toLowerCase().trim());
 
-      // In a real app, you would send this via email
-      // For now, we'll just log it to the console for testing
-      const magicLink = `http://localhost:3000/auth/callback?token=${rawToken}`;
-      console.log(`🔗 Magic link for ${email}: ${magicLink}`);
+      // TODO: Send magic link via email service
+      // For development, magic link is generated and should be sent via email
 
       return redirect("/login?sent=true");
-    } catch (error) {
-      console.error("Error creating magic link:", error);
+    } catch {
       return redirect("/login?error=Something went wrong. Please try again.");
     }
   },

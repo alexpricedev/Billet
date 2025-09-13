@@ -13,7 +13,6 @@ export const createMockRequest = (
   }
 
   const request = new Request(url, init);
-  // Ensure the method property is set correctly
   Object.defineProperty(request, "method", {
     value: method,
     writable: false,

@@ -10,7 +10,6 @@ import {
 
 describe("Example Service with PostgreSQL", () => {
   beforeEach(async () => {
-    // Clean up test data before each test
     await cleanupTestData();
   });
 
@@ -21,7 +20,6 @@ describe("Example Service with PostgreSQL", () => {
     });
 
     test("returns all examples ordered by id", async () => {
-      // Seed some test data
       await seedTestData();
 
       const result = await getExamples();
@@ -30,7 +28,6 @@ describe("Example Service with PostgreSQL", () => {
       expect(result[1].name).toBe("Test Example 2");
       expect(result[2].name).toBe("Test Example 3");
 
-      // Should be ordered by id
       expect(result[0].id).toBeLessThan(result[1].id);
       expect(result[1].id).toBeLessThan(result[2].id);
     });
@@ -114,7 +111,6 @@ describe("Example Service with PostgreSQL", () => {
       const deleteResult = await deleteExample(created.id);
       expect(deleteResult).toBe(true);
 
-      // Verify it's gone
       const retrieved = await getExampleById(created.id);
       expect(retrieved).toBeNull();
     });
@@ -142,23 +138,18 @@ describe("Example Service with PostgreSQL", () => {
 
   describe("integration scenarios", () => {
     test("complete CRUD workflow", async () => {
-      // Create
       const created = await createExample("CRUD Test");
       expect(created.id).toBeDefined();
 
-      // Read
       const read = await getExampleById(created.id);
       expect(read).toEqual(created);
 
-      // Update
       const updated = await updateExample(created.id, "CRUD Test Updated");
       expect(updated?.name).toBe("CRUD Test Updated");
 
-      // Delete
       const deleted = await deleteExample(created.id);
       expect(deleted).toBe(true);
 
-      // Verify deletion
       const notFound = await getExampleById(created.id);
       expect(notFound).toBeNull();
     });

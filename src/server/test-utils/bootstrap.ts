@@ -2,7 +2,10 @@
 
 import { SQL } from "bun";
 
-// Note: Use --env-file=.env.test when running this script
+/**
+ * Test database bootstrap script
+ * Use: bun --env-file=.env.test run src/server/test-utils/bootstrap.ts
+ */
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set in .env.test");
@@ -20,7 +23,6 @@ async function bootstrapTestDatabase() {
   console.log("🧪 Bootstrapping test database...");
 
   try {
-    // Drop all tables CASCADE to ensure clean state
     console.log("  Dropping existing tables...");
     await db`DROP TABLE IF EXISTS user_tokens CASCADE`;
     await db`DROP TABLE IF EXISTS sessions CASCADE`;
@@ -29,7 +31,6 @@ async function bootstrapTestDatabase() {
     await db`DROP TABLE IF EXISTS migrations CASCADE`;
 
     console.log("  Clearing migration history...");
-    // Recreate migrations table fresh
     await db`
       CREATE TABLE IF NOT EXISTS migrations (
         id VARCHAR(255) PRIMARY KEY,
@@ -39,7 +40,6 @@ async function bootstrapTestDatabase() {
     `;
 
     console.log("  Running migrations...");
-    // Import and run the migration system
     const { runMigrations } = await import("../database/migrate");
     await runMigrations();
 
@@ -48,12 +48,10 @@ async function bootstrapTestDatabase() {
     console.error("❌ Test database bootstrap failed:", error);
     process.exit(1);
   } finally {
-    // Close database connection
     await db.end();
   }
 }
 
-// Run if called directly
 if (import.meta.main) {
   await bootstrapTestDatabase();
 }

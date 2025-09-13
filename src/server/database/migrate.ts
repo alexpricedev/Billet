@@ -8,7 +8,9 @@ export type Migration = {
   applied_at: Date;
 };
 
-// Ensure migrations table exists
+/**
+ * Ensure migrations table exists for tracking applied migrations
+ */
 export const ensureMigrationsTable = async (): Promise<void> => {
   await db`
     CREATE TABLE IF NOT EXISTS migrations (
@@ -19,7 +21,9 @@ export const ensureMigrationsTable = async (): Promise<void> => {
   `;
 };
 
-// Get applied migrations
+/**
+ * Get list of migrations already applied to database
+ */
 export const getAppliedMigrations = async (): Promise<Migration[]> => {
   await ensureMigrationsTable();
   const results =
@@ -27,7 +31,9 @@ export const getAppliedMigrations = async (): Promise<Migration[]> => {
   return results as Migration[];
 };
 
-// Record migration as applied
+/**
+ * Record migration as applied in migrations table
+ */
 export const recordMigration = async (
   id: string,
   name: string,
@@ -35,12 +41,16 @@ export const recordMigration = async (
   await db`INSERT INTO migrations (id, name) VALUES (${id}, ${name})`;
 };
 
-// Remove migration record
+/**
+ * Remove migration record from migrations table
+ */
 export const removeMigration = async (id: string): Promise<void> => {
   await db`DELETE FROM migrations WHERE id = ${id}`;
 };
 
-// Get pending migrations
+/**
+ * Get list of migration files that haven't been applied yet
+ */
 export const getPendingMigrations = async (): Promise<string[]> => {
   const migrationsDir = join(process.cwd(), "src/server/database/migrations");
   const migrationFiles = readdirSync(migrationsDir)
@@ -56,7 +66,9 @@ export const getPendingMigrations = async (): Promise<string[]> => {
   });
 };
 
-// Run a single migration
+/**
+ * Run a single migration file and record it as applied
+ */
 export const runMigration = async (filename: string): Promise<void> => {
   const migrationPath = join(
     process.cwd(),
@@ -78,7 +90,9 @@ export const runMigration = async (filename: string): Promise<void> => {
   console.log(`Applied migration: ${filename}`);
 };
 
-// Run all pending migrations
+/**
+ * Run all pending migration files in order
+ */
 export const runMigrations = async (): Promise<void> => {
   const pendingMigrations = await getPendingMigrations();
 
@@ -96,7 +110,9 @@ export const runMigrations = async (): Promise<void> => {
   console.log("All migrations completed");
 };
 
-// Rollback a single migration
+/**
+ * Rollback a single migration and remove it from applied migrations
+ */
 export const rollbackMigration = async (filename: string): Promise<void> => {
   const migrationPath = join(
     process.cwd(),
@@ -117,7 +133,9 @@ export const rollbackMigration = async (filename: string): Promise<void> => {
   console.log(`Rolled back migration: ${filename}`);
 };
 
-// Rollback the last applied migration
+/**
+ * Rollback the most recently applied migration
+ */
 export const rollbackLastMigration = async (): Promise<void> => {
   const appliedMigrations = await getAppliedMigrations();
 

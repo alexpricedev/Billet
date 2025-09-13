@@ -270,7 +270,7 @@ describe("Auth Service with PostgreSQL", () => {
     });
 
     test("returns false for non-existent session", async () => {
-      // First, let's directly test what pg-mem returns for a DELETE with no matches
+      // Test what PostgreSQL returns for a DELETE with no matches
       const _testResult = await db`
         DELETE FROM sessions WHERE id_hash = 'non-existent-hash'
       `;

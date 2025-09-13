@@ -49,10 +49,9 @@ ALWAYS check for TS errors and linting issues before finishing a work loop (`bun
 - Test redirect responses with actual status codes and Location headers
 
 **Services** (`src/server/services/*.test.ts`):
-- Use pg-mem for real database testing against PostgreSQL behavior
-- Mock database module to use in-memory test database
+- Use real PostgreSQL database for testing with .env.test configuration
 - Test complete CRUD operations with actual SQL queries
-- Use backup/restore for test isolation
+- Use table truncation and cleanup for test isolation
 
 **Test Utilities** (`src/server/test-utils/*.ts`):
 - Unit test adapters and helper functions directly

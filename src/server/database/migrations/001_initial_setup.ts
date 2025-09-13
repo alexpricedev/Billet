@@ -1,8 +1,10 @@
-// Migration: initial_setup
+/**
+ * Initial database setup migration
+ * Creates all core tables: example, users, sessions, user_tokens with indexes
+ */
 import type { SQL } from "bun";
 
 export const up = async (db: SQL): Promise<void> => {
-  // Example table
   await db`
     CREATE TABLE example (
       id SERIAL PRIMARY KEY,
@@ -10,7 +12,6 @@ export const up = async (db: SQL): Promise<void> => {
     )
   `;
 
-  // Users table
   await db`
     CREATE TABLE users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -19,7 +20,6 @@ export const up = async (db: SQL): Promise<void> => {
     )
   `;
 
-  // Sessions table (HMAC-based)
   await db`
     CREATE TABLE sessions (
       id_hash TEXT PRIMARY KEY,
@@ -30,7 +30,6 @@ export const up = async (db: SQL): Promise<void> => {
     )
   `;
 
-  // User tokens table for magic links, email verification, password reset
   await db`
     CREATE TABLE user_tokens (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,14 +42,12 @@ export const up = async (db: SQL): Promise<void> => {
     )
   `;
 
-  // Indexes for performance
   await db`CREATE INDEX idx_sessions_user_id ON sessions(user_id)`;
   await db`CREATE INDEX idx_sessions_expires_at ON sessions(expires_at)`;
   await db`CREATE INDEX idx_sessions_last_activity ON sessions(last_activity_at)`;
   await db`CREATE INDEX idx_user_tokens_user_id ON user_tokens(user_id)`;
   await db`CREATE INDEX idx_user_tokens_type ON user_tokens(type)`;
   await db`CREATE INDEX idx_user_tokens_expires_at ON user_tokens(expires_at)`;
-  // token_hash has automatic unique index, no separate index needed
 };
 
 export const down = async (db: SQL): Promise<void> => {

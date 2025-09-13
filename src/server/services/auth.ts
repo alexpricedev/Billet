@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { computeHMAC, generateSecureToken } from "../utils/crypto";
+import {
+  type DatabaseMutationResult,
+  hasAffectedRows,
+} from "../utils/database";
 import { db } from "./database";
 
 export interface User {
@@ -37,17 +41,13 @@ interface SessionQueryResult {
   user_created_at: string;
 }
 
-interface DeleteResult {
-  count?: number;
-  rowCount?: number;
-}
-
 export type AuthResult =
   | { success: true; user: User; sessionId: string }
   | { success: false; error: string };
 
 /**
  * Create or get existing user by email
+ * Normalizes email to lowercase for consistent lookups
  */
 export const findOrCreateUser = async (email: string): Promise<User> => {
   const normalizedEmail = email.toLowerCase().trim();
@@ -76,21 +76,17 @@ export const findOrCreateUser = async (email: string): Promise<User> => {
 
 /**
  * Create a magic link token for a user
+ * Generates cryptographically secure token, hashes with HMAC-SHA256, stores in database
+ * Token expires in 15 minutes for security
  */
 export const createMagicLink = async (
   email: string,
 ): Promise<{ user: User; rawToken: string }> => {
   const user = await findOrCreateUser(email);
 
-  // Generate a cryptographically secure token
   const rawToken = generateSecureToken(32);
-
-  // Set expiry to 15 minutes from now
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
   const tokenHashString = computeHMAC(rawToken);
-
-  // Store hashed token in database
   const tokenId = randomUUID();
   await db`
     INSERT INTO user_tokens (id, user_id, token_hash, type, expires_at)
@@ -108,15 +104,15 @@ export const createMagicLink = async (
 
 /**
  * Verify a magic link token and consume it
+ * Uses atomic UPDATE to prevent race conditions - only unused, valid tokens are consumed
+ * Returns user data and creates new session on success
  */
 export const verifyMagicLink = async (
   rawToken: string,
 ): Promise<AuthResult> => {
-  // Hash the provided token to compare with stored hash
   const providedTokenHash = computeHMAC(rawToken);
 
-  // Atomic verification: mark token as used ONLY if it's currently unused and valid
-  // This prevents race conditions where multiple requests could use the same token
+  // Atomic verification prevents race conditions - only unused, valid tokens are marked as used
   const tokenResults = await db`
     UPDATE user_tokens 
     SET used_at = CURRENT_TIMESTAMP 
@@ -127,7 +123,7 @@ export const verifyMagicLink = async (
     RETURNING id, user_id, token_hash, expires_at, used_at
   `;
 
-  // If no rows were updated, the token was invalid, expired, or already used
+  // No rows updated means token was invalid, expired, or already used
   if (tokenResults.length === 0) {
     return { success: false, error: "Invalid or expired token" };
   }
@@ -140,7 +136,6 @@ export const verifyMagicLink = async (
     used_at: string | null;
   };
 
-  // Get user data for the successful token verification
   const userResults = await db`
     SELECT id, email, created_at 
     FROM users 
@@ -157,7 +152,6 @@ export const verifyMagicLink = async (
     created_at: string;
   };
 
-  // Create session
   const sessionId = await createSession(tokenData.user_id);
 
   const user: User = {
@@ -171,10 +165,10 @@ export const verifyMagicLink = async (
 
 /**
  * Create a new session for a user
- * Returns the raw session ID (for cookie), while storing the HMAC in the database
+ * Returns raw session ID for cookie, stores HMAC-SHA256 hash in database for security
+ * Session expires in 30 days
  */
 export const createSession = async (userId: string): Promise<string> => {
-  // Set session to expire in 30 days
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const rawSessionId = randomUUID();
   const sessionIdHash = computeHMAC(rawSessionId);
@@ -189,7 +183,7 @@ export const createSession = async (userId: string): Promise<string> => {
 
 /**
  * Get session and user data using raw session ID
- * Computes HMAC internally for database lookup
+ * Computes HMAC internally for secure database lookup, returns null for invalid/expired sessions
  */
 export const getSession = async (
   rawSessionId: string,
@@ -229,13 +223,13 @@ export const getSession = async (
       },
     };
   } catch {
-    // If query fails, return null
     return null;
   }
 };
 
 /**
  * Delete a session (logout) using raw session ID
+ * Computes HMAC internally for secure database lookup
  */
 export const deleteSession = async (rawSessionId: string): Promise<boolean> => {
   try {
@@ -246,20 +240,15 @@ export const deleteSession = async (rawSessionId: string): Promise<boolean> => {
       WHERE id_hash = ${sessionIdHash}
     `;
 
-    // Check if any rows were affected
-    const deleteResult = result as DeleteResult;
-    return Boolean(
-      (deleteResult.count && deleteResult.count > 0) ||
-        (deleteResult.rowCount && deleteResult.rowCount > 0),
-    );
+    return hasAffectedRows(result as DatabaseMutationResult);
   } catch {
-    // If delete fails, return false
     return false;
   }
 };
 
 /**
  * Renew session activity timestamp
+ * Updates last_activity_at for valid sessions to track user activity
  */
 export const renewSession = async (rawSessionId: string): Promise<boolean> => {
   try {
@@ -272,11 +261,7 @@ export const renewSession = async (rawSessionId: string): Promise<boolean> => {
         AND expires_at > CURRENT_TIMESTAMP
     `;
 
-    const updateResult = result as DeleteResult;
-    return Boolean(
-      (updateResult.count && updateResult.count > 0) ||
-        (updateResult.rowCount && updateResult.rowCount > 0),
-    );
+    return hasAffectedRows(result as DatabaseMutationResult);
   } catch {
     return false;
   }
@@ -284,15 +269,14 @@ export const renewSession = async (rawSessionId: string): Promise<boolean> => {
 
 /**
  * Clean up expired tokens and sessions
+ * Should be run periodically to prevent database bloat
  */
 export const cleanupExpired = async (): Promise<void> => {
-  // Remove expired tokens
   await db`
     DELETE FROM user_tokens 
     WHERE expires_at < CURRENT_TIMESTAMP
   `;
 
-  // Remove expired sessions
   await db`
     DELETE FROM sessions 
     WHERE expires_at < CURRENT_TIMESTAMP
@@ -301,6 +285,7 @@ export const cleanupExpired = async (): Promise<void> => {
 
 /**
  * Cookie configuration for sessions
+ * HttpOnly prevents XSS, Secure for HTTPS, SameSite=Lax prevents CSRF
  */
 export const SESSION_COOKIE_NAME = "session_id";
 export const SESSION_COOKIE_OPTIONS = {
@@ -312,7 +297,7 @@ export const SESSION_COOKIE_OPTIONS = {
 };
 
 /**
- * Create session cookie header value
+ * Create session cookie header value with security attributes
  */
 export const createSessionCookie = (rawSessionId: string): string => {
   const options = SESSION_COOKIE_OPTIONS;
@@ -324,7 +309,6 @@ export const createSessionCookie = (rawSessionId: string): string => {
   if (options.path) cookie += `; Path=${options.path}`;
   if (options.maxAge) {
     cookie += `; Max-Age=${options.maxAge}`;
-    // Add Expires for legacy browser support
     const expires = new Date(Date.now() + options.maxAge * 1000);
     cookie += `; Expires=${expires.toUTCString()}`;
   }
@@ -334,7 +318,7 @@ export const createSessionCookie = (rawSessionId: string): string => {
 
 /**
  * Create cookie header value for clearing session
- * Mirrors all attributes to ensure proper overwriting across browsers
+ * Mirrors security attributes to ensure proper cookie deletion across browsers
  */
 export const clearSessionCookie = (): string => {
   const options = SESSION_COOKIE_OPTIONS;
@@ -342,7 +326,6 @@ export const clearSessionCookie = (): string => {
 
   if (options.sameSite) cookie += `; SameSite=${options.sameSite}`;
   if (options.secure) cookie += "; Secure";
-  // Add Expires for legacy browser support
   const expires = new Date(0);
   cookie += `; Expires=${expires.toUTCString()}`;
 
@@ -351,6 +334,7 @@ export const clearSessionCookie = (): string => {
 
 /**
  * Extract session ID from request cookies
+ * Parses Cookie header to find session_id value
  */
 export const getSessionIdFromCookies = (
   cookieHeader: string | null,
