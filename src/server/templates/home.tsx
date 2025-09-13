@@ -1,9 +1,40 @@
 import { Layout } from "@server/components/layouts";
+import type { AuthContext } from "@server/middleware/auth";
 import type { VisitorStats } from "@server/services/analytics";
 
-export const Home = (props: { method: string; stats: VisitorStats }) => (
+export const Home = (props: {
+  method: string;
+  stats: VisitorStats;
+  auth: AuthContext;
+}) => (
   <Layout title="Home" name="home">
-    <h1>Home Page</h1>
+    <div className="flex justify-between items-center mb-6">
+      <h1>Home Page</h1>
+      <div className="flex items-center gap-4">
+        {props.auth.isAuthenticated ? (
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">
+              Welcome, {props.auth.user?.email}
+            </span>
+            <form method="POST" action="/auth/logout">
+              <button
+                type="submit"
+                className="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-1 rounded"
+              >
+                Logout
+              </button>
+            </form>
+          </div>
+        ) : (
+          <a
+            href="/login"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-1 rounded"
+          >
+            Login
+          </a>
+        )}
+      </div>
+    </div>
 
     <section>
       <p>

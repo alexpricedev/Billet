@@ -10,7 +10,8 @@
     "dev:client": "bun --watch build ./src/client/main.ts --outdir ./dist/assets",
     "dev:server": "bun --watch run src/server/main.ts",
     "dev:css": "bunx @tailwindcss/cli -i ./src/client/style.css -o ./dist/assets/main.css --watch",
-    "test": "bun test src",
+    "test": "bun --env-file=.env.test run src/server/database/cli.ts up && bun --env-file=.env.test test src",
+    "test:setup": "bun --env-file=.env.test run src/server/test-utils/bootstrap.ts",
     "commit": "git add --all && git commit",
     "lint": "bunx @biomejs/biome@beta check src",
     "lint:write": "bunx @biomejs/biome@beta check src --write",
@@ -29,7 +30,6 @@
     "autoprefixer": "^10.4.21",
     "gitmoji-cli": "9.7.0",
     "husky": "9.1.7",
-    "pg-mem": "^3.0.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.1.13"

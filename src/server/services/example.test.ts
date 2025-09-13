@@ -1,6 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import type { TestDatabase } from "../test-utils/test-db";
-import { initTestDb, seedTestData } from "../test-utils/test-db";
+import { beforeEach, describe, expect, test } from "bun:test";
+import { cleanupTestData, seedTestData } from "../test-utils/test-database";
 import {
   createExample,
   deleteExample,
@@ -9,23 +8,10 @@ import {
   updateExample,
 } from "./example";
 
-describe("Example Service with pg-mem", () => {
-  let testDb: TestDatabase;
-  let backup: TestDatabase["backup"];
-
-  beforeAll(async () => {
-    testDb = await initTestDb();
-    backup = testDb.backup;
-
-    // Mock the database module to use our test database
-    mock.module("./database", () => ({
-      db: testDb.sql,
-    }));
-  });
-
-  beforeEach(() => {
-    // Restore to clean state before each test
-    backup.restore();
+describe("Example Service with PostgreSQL", () => {
+  beforeEach(async () => {
+    // Clean up test data before each test
+    await cleanupTestData();
   });
 
   describe("getExamples", () => {
@@ -36,7 +22,7 @@ describe("Example Service with pg-mem", () => {
 
     test("returns all examples ordered by id", async () => {
       // Seed some test data
-      await seedTestData(testDb.sql);
+      await seedTestData();
 
       const result = await getExamples();
       expect(result).toHaveLength(3);
@@ -52,7 +38,7 @@ describe("Example Service with pg-mem", () => {
 
   describe("getExampleById", () => {
     test("returns example when found", async () => {
-      await seedTestData(testDb.sql);
+      await seedTestData();
       const examples = await getExamples();
       const firstId = examples[0].id;
 
@@ -139,7 +125,7 @@ describe("Example Service with pg-mem", () => {
     });
 
     test("deleted example is removed from list", async () => {
-      await seedTestData(testDb.sql);
+      await seedTestData();
       const examples = await getExamples();
       const initialCount = examples.length;
 
