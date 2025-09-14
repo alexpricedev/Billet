@@ -8,6 +8,15 @@ mock.module("../../services/analytics", () => ({
   getVisitorStats: mockGetVisitorStats,
 }));
 
+// Mock the auth middleware
+const mockGetAuthContext = mock(() => ({
+  user: null,
+  isAuthenticated: false,
+}));
+mock.module("../../middleware/auth", () => ({
+  getAuthContext: mockGetAuthContext,
+}));
+
 import { home } from "./home";
 
 describe("Home Controller", () => {
@@ -20,7 +29,7 @@ describe("Home Controller", () => {
       mockGetVisitorStats.mockReturnValue(mockStats);
 
       const request = createMockRequest("http://localhost:3000/", "GET");
-      const response = home.index(request);
+      const response = await home.index(request);
       const html = await response.text();
 
       expect(mockGetVisitorStats).toHaveBeenCalled();
@@ -35,7 +44,7 @@ describe("Home Controller", () => {
     test("passes request method to template", async () => {
       // Create request directly with POST method
       const request = new Request("http://localhost:3000/", { method: "POST" });
-      const response = home.index(request);
+      const response = await home.index(request);
       const html = await response.text();
 
       // The HTML should contain the POST method somewhere

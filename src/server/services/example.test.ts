@@ -1,6 +1,15 @@
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import type { TestDatabase } from "../test-utils/test-db";
-import { initTestDb, seedTestData } from "../test-utils/test-db";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { SQL } from "bun";
+import { cleanupTestData, seedTestData } from "../test-utils/helpers";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required for tests");
+}
+const testDb = new SQL(process.env.DATABASE_URL);
+mock.module("./database", () => ({
+  db: testDb,
+}));
+
 import {
   createExample,
   deleteExample,
@@ -9,23 +18,9 @@ import {
   updateExample,
 } from "./example";
 
-describe("Example Service with pg-mem", () => {
-  let testDb: TestDatabase;
-  let backup: TestDatabase["backup"];
-
-  beforeAll(async () => {
-    testDb = await initTestDb();
-    backup = testDb.backup;
-
-    // Mock the database module to use our test database
-    mock.module("./database", () => ({
-      db: testDb.sql,
-    }));
-  });
-
-  beforeEach(() => {
-    // Restore to clean state before each test
-    backup.restore();
+describe("Example Service with PostgreSQL", () => {
+  beforeEach(async () => {
+    await cleanupTestData(testDb);
   });
 
   describe("getExamples", () => {
@@ -35,8 +30,7 @@ describe("Example Service with pg-mem", () => {
     });
 
     test("returns all examples ordered by id", async () => {
-      // Seed some test data
-      await seedTestData(testDb.sql);
+      await seedTestData(testDb);
 
       const result = await getExamples();
       expect(result).toHaveLength(3);
@@ -44,7 +38,6 @@ describe("Example Service with pg-mem", () => {
       expect(result[1].name).toBe("Test Example 2");
       expect(result[2].name).toBe("Test Example 3");
 
-      // Should be ordered by id
       expect(result[0].id).toBeLessThan(result[1].id);
       expect(result[1].id).toBeLessThan(result[2].id);
     });
@@ -52,7 +45,7 @@ describe("Example Service with pg-mem", () => {
 
   describe("getExampleById", () => {
     test("returns example when found", async () => {
-      await seedTestData(testDb.sql);
+      await seedTestData(testDb);
       const examples = await getExamples();
       const firstId = examples[0].id;
 
@@ -128,7 +121,6 @@ describe("Example Service with pg-mem", () => {
       const deleteResult = await deleteExample(created.id);
       expect(deleteResult).toBe(true);
 
-      // Verify it's gone
       const retrieved = await getExampleById(created.id);
       expect(retrieved).toBeNull();
     });
@@ -139,7 +131,7 @@ describe("Example Service with pg-mem", () => {
     });
 
     test("deleted example is removed from list", async () => {
-      await seedTestData(testDb.sql);
+      await seedTestData(testDb);
       const examples = await getExamples();
       const initialCount = examples.length;
 
@@ -156,23 +148,18 @@ describe("Example Service with pg-mem", () => {
 
   describe("integration scenarios", () => {
     test("complete CRUD workflow", async () => {
-      // Create
       const created = await createExample("CRUD Test");
       expect(created.id).toBeDefined();
 
-      // Read
       const read = await getExampleById(created.id);
       expect(read).toEqual(created);
 
-      // Update
       const updated = await updateExample(created.id, "CRUD Test Updated");
       expect(updated?.name).toBe("CRUD Test Updated");
 
-      // Delete
       const deleted = await deleteExample(created.id);
       expect(deleted).toBe(true);
 
-      // Verify deletion
       const notFound = await getExampleById(created.id);
       expect(notFound).toBeNull();
     });

@@ -1,3 +1,7 @@
+import {
+  type DatabaseMutationResult,
+  hasAffectedRows,
+} from "../utils/database";
 import { db } from "./database";
 
 export type Example = {
@@ -39,5 +43,5 @@ export const updateExample = async (
 
 export const deleteExample = async (id: number): Promise<boolean> => {
   const results = await db`DELETE FROM example WHERE id = ${id}`;
-  return results.length > 0;
+  return hasAffectedRows(results as DatabaseMutationResult);
 };

@@ -7,6 +7,8 @@ This file contains essential context and guidelines for Claude instances working
 - Never try to run the local dev server. The Human is always running it in another tab on port 3000.
 - Always test your work with BrowserMCP to confirm it works as expected.
 - This project uses JSX for it's template engine but it is NOT a React (client) project.
+- When trying different approaches for a given problem, always go back and remove or refactor.
+- Use code comments sparingly. Save them for when the extra context is really needed.
 
 ## General codebase notes
 
@@ -37,6 +39,8 @@ ALWAYS check for TS errors and linting issues before finishing a work loop (`bun
 
 ### Testing Strategies by Module Type
 
+Always run tests via the `package.json` test scripts so the env vars are correct.
+
 **API Controllers** (`src/server/controllers/api/*.test.ts`):
 - Mock service layer dependencies only
 - Test actual HTTP Response objects (status codes, headers, JSON content)
@@ -49,10 +53,9 @@ ALWAYS check for TS errors and linting issues before finishing a work loop (`bun
 - Test redirect responses with actual status codes and Location headers
 
 **Services** (`src/server/services/*.test.ts`):
-- Use pg-mem for real database testing against PostgreSQL behavior
-- Mock database module to use in-memory test database
+- Use real PostgreSQL database for testing with .env.test configuration
 - Test complete CRUD operations with actual SQL queries
-- Use backup/restore for test isolation
+- Use table truncation and cleanup for test isolation
 
 **Test Utilities** (`src/server/test-utils/*.ts`):
 - Unit test adapters and helper functions directly
