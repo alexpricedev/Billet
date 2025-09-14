@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
 import { cleanupTestData, seedTestData } from "../test-utils/helpers";
 
-// Mock the database module to use test database connection
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
 }
@@ -11,7 +10,6 @@ mock.module("./database", () => ({
   db: testDb,
 }));
 
-// Import after mocking
 import {
   createExample,
   deleteExample,

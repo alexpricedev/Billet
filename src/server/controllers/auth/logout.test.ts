@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
 import { cleanupTestData } from "../../test-utils/helpers";
 
-// Mock the database module to use test database connection
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
 }
@@ -11,11 +10,9 @@ mock.module("../../services/database", () => ({
   db: testDb,
 }));
 
-// Import after mocking
 import { createSession, findOrCreateUser } from "../../services/auth";
 import { logout } from "./logout";
 
-// Use the same db instance for direct queries in tests
 const db = testDb;
 
 describe("Logout Controller", () => {

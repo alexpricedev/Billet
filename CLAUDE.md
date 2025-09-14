@@ -8,6 +8,7 @@ This file contains essential context and guidelines for Claude instances working
 - Always test your work with BrowserMCP to confirm it works as expected.
 - This project uses JSX for it's template engine but it is NOT a React (client) project.
 - When trying different approaches for a given problem, always go back and remove or refactor.
+- Use code comments sparingly. Save them for when the extra context is really needed.
 
 ## General codebase notes
 

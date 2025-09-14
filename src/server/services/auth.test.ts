@@ -3,7 +3,6 @@ import { SQL } from "bun";
 import { cleanupTestData } from "../test-utils/helpers";
 import { computeHMAC } from "../utils/crypto";
 
-// Mock the database module to use test database connection
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
 }
@@ -12,7 +11,6 @@ mock.module("./database", () => ({
   db: testDb,
 }));
 
-// Import after mocking
 import {
   clearSessionCookie,
   createMagicLink,
@@ -26,7 +24,6 @@ import {
   verifyMagicLink,
 } from "./auth";
 
-// Use the same db instance for direct queries in tests
 const db = testDb;
 
 describe("Auth Service with PostgreSQL", () => {
