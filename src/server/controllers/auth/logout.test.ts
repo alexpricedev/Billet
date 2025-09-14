@@ -1,29 +1,16 @@
-import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
+import { createSession, findOrCreateUser } from "../../services/auth";
 import { db } from "../../services/database";
 import { cleanupTestData } from "../../test-utils/test-database";
-
-// Import after setting up mocks
-let logout: any;
-let createSession: any;
-let findOrCreateUser: any;
+import { logout } from "./logout";
 
 describe("Logout Controller", () => {
-  beforeAll(async () => {
-    // Import the modules
-    const logoutModule = await import("./logout");
-    const authModule = await import("../../services/auth");
-    logout = logoutModule.logout;
-    createSession = authModule.createSession;
-    findOrCreateUser = authModule.findOrCreateUser;
-  });
-
   beforeEach(async () => {
     await cleanupTestData();
   });
 
   describe("POST /auth/logout", () => {
     test("successfully logs out user with valid session", async () => {
-      // Create user and session
       const user = await findOrCreateUser("logout@example.com");
       const sessionId = await createSession(user.id);
 

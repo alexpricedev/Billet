@@ -1,18 +1,10 @@
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { db } from "../../services/database";
 import { createMockRequest } from "../../test-utils/setup";
 import { cleanupTestData } from "../../test-utils/test-database";
-
-// Import after setting up mocks
-let login: any;
+import { login } from "./login";
 
 describe("Login Controller", () => {
-  beforeAll(async () => {
-    // Import the login module
-    const loginModule = await import("./login");
-    login = loginModule.login;
-  });
-
   beforeEach(async () => {
     await cleanupTestData();
   });

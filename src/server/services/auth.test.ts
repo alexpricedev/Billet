@@ -17,7 +17,6 @@ import { db } from "./database";
 
 describe("Auth Service with PostgreSQL", () => {
   beforeEach(async () => {
-    // Clean up test data before each test
     await cleanupTestData();
   });
 

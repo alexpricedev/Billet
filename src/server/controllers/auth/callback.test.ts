@@ -1,18 +1,10 @@
-import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
+import { createMagicLink } from "../../services/auth";
 import { db } from "../../services/database";
 import { cleanupTestData } from "../../test-utils/test-database";
-
-let callback: any;
-let createMagicLink: any;
+import { callback } from "./callback";
 
 describe("Callback Controller", () => {
-  beforeAll(async () => {
-    const callbackModule = await import("./callback");
-    const authModule = await import("../../services/auth");
-    callback = callbackModule.callback;
-    createMagicLink = authModule.createMagicLink;
-  });
-
   beforeEach(async () => {
     await cleanupTestData();
   });
@@ -67,6 +59,9 @@ describe("Callback Controller", () => {
       const sessionId = sessionMatch?.[1];
 
       expect(sessionId).toBeDefined();
+      if (!sessionId) {
+        throw new Error("Session ID should be defined at this point");
+      }
 
       const { computeHMAC } = await import("../../utils/crypto");
       const sessionIdHash = computeHMAC(sessionId);
