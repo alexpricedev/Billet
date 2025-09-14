@@ -7,6 +7,7 @@ This file contains essential context and guidelines for Claude instances working
 - Never try to run the local dev server. The Human is always running it in another tab on port 3000.
 - Always test your work with BrowserMCP to confirm it works as expected.
 - This project uses JSX for it's template engine but it is NOT a React (client) project.
+- When trying different approaches for a given problem, always go back and remove or refactor.
 
 ## General codebase notes
 
@@ -36,6 +37,8 @@ ALWAYS check for TS errors and linting issues before finishing a work loop (`bun
 - **TypeScript**: Strict mode enabled for type safety
 
 ### Testing Strategies by Module Type
+
+Always run tests via the `package.json` test scripts so the env vars are correct.
 
 **API Controllers** (`src/server/controllers/api/*.test.ts`):
 - Mock service layer dependencies only
