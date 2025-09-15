@@ -1,3 +1,4 @@
+import { CsrfField } from "@server/components/csrf-field";
 import { Layout } from "@server/components/layouts";
 import type { AuthContext } from "@server/middleware/auth";
 import type { VisitorStats } from "@server/services/analytics";
@@ -6,6 +7,7 @@ export const Home = (props: {
   method: string;
   stats: VisitorStats;
   auth: AuthContext;
+  csrfToken: string | null;
 }) => (
   <Layout title="Home" name="home">
     <div className="flex justify-between items-center mb-6">
@@ -17,6 +19,7 @@ export const Home = (props: {
               Welcome, {props.auth.user?.email}
             </span>
             <form method="POST" action="/auth/logout">
+              <CsrfField token={props.csrfToken} />
               <button
                 type="submit"
                 className="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-1 rounded"

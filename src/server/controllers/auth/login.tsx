@@ -24,10 +24,16 @@ export const login = {
     }
 
     try {
-      await createMagicLink(email.toLowerCase().trim());
+      const { rawToken } = await createMagicLink(email.toLowerCase().trim());
 
       // TODO: Send magic link via email service
-      // For development, magic link is generated and should be sent via email
+      // For development, print magic link to console
+      if (process.env.NODE_ENV !== "production") {
+        const url = new URL(req.url);
+        const magicLinkUrl = `${url.protocol}//${url.host}/auth/callback?token=${rawToken}`;
+        // eslint-disable-next-line no-console
+        console.log(`🔗 Magic link for ${email}: ${magicLinkUrl}`);
+      }
 
       return redirect("/login?sent=true");
     } catch {

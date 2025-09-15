@@ -22,7 +22,6 @@ ALWAYS check for TS errors and linting issues before finishing a work loop (`bun
 - **No "any" types allowed** (`@typescript-eslint/no-explicit-any: error`)
 - **No console statements allowed** (`no-console: error`)
 - **No unsafe writes**
-- **Exception:** Test files may use "any" for mocking with `// eslint-disable-next-line @typescript-eslint/no-explicit-any`
 
 ### Package Management
 
