@@ -1,7 +1,11 @@
 import { redirectIfAuthenticated } from "../../middleware/auth";
 import { createMagicLink } from "../../services/auth";
+import type { LoginState } from "../../templates/login";
 import { Login } from "../../templates/login";
 import { redirect, render } from "../../utils/response";
+import { stateHelpers } from "../../utils/state";
+
+const { parseState, redirectWithState } = stateHelpers<LoginState>();
 
 export const login = {
   async index(req: Request): Promise<Response> {
@@ -9,10 +13,9 @@ export const login = {
     if (authRedirect) return authRedirect;
 
     const url = new URL(req.url);
-    const sent = url.searchParams.get("sent") === "true";
-    const error = url.searchParams.get("error");
+    const state = parseState(url);
 
-    return render(<Login sent={sent} error={error} />);
+    return render(<Login state={state} />);
   },
 
   async create(req: Request): Promise<Response> {
@@ -20,7 +23,12 @@ export const login = {
     const email = formData.get("email") as string;
 
     if (!email || !email.includes("@")) {
-      return redirect("/login?error=Invalid email address");
+      return redirect(
+        redirectWithState("/login", {
+          state: "validation-error",
+          error: "Invalid email address",
+        }),
+      );
     }
 
     try {
@@ -35,9 +43,14 @@ export const login = {
         console.log(`🔗 Magic link for ${email}: ${magicLinkUrl}`);
       }
 
-      return redirect("/login?sent=true");
+      return redirect(redirectWithState("/login", { state: "email-sent" }));
     } catch {
-      return redirect("/login?error=Something went wrong. Please try again.");
+      return redirect(
+        redirectWithState("/login", {
+          state: "validation-error",
+          error: "Something went wrong. Please try again.",
+        }),
+      );
     }
   },
 };

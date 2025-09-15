@@ -1,11 +1,15 @@
 import { BaseLayout } from "../components/layouts";
 
-interface LoginProps {
-  sent?: boolean;
-  error?: string | null;
+export interface LoginState {
+  state?: "email-sent" | "validation-error";
+  error?: string;
 }
 
-export const Login = ({ sent, error }: LoginProps) => {
+export interface LoginProps {
+  state?: LoginState;
+}
+
+export const Login = ({ state }: LoginProps) => {
   return (
     <BaseLayout title="Login - SpeedLoaf">
       <main className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -20,7 +24,7 @@ export const Login = ({ sent, error }: LoginProps) => {
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            {sent ? (
+            {state?.state === "email-sent" ? (
               <div className="rounded-md bg-green-50 p-4">
                 <div className="text-sm text-green-700">
                   <p className="font-medium">Check your email!</p>
@@ -34,9 +38,9 @@ export const Login = ({ sent, error }: LoginProps) => {
               </div>
             ) : (
               <form method="POST" action="/login" className="space-y-6">
-                {error && (
+                {state?.state === "validation-error" && state.error && (
                   <div className="rounded-md bg-red-50 p-4">
-                    <div className="text-sm text-red-700">{error}</div>
+                    <div className="text-sm text-red-700">{state.error}</div>
                   </div>
                 )}
 

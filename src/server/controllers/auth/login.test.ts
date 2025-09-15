@@ -33,9 +33,9 @@ describe("Login Controller", () => {
       expect(html).toContain("Send magic link");
     });
 
-    test("shows success message when sent=true", async () => {
+    test("shows success message when state=email-sent", async () => {
       const request = createMockRequest(
-        "http://localhost:3000/login?sent=true",
+        "http://localhost:3000/login?state=email-sent",
         "GET",
       );
       const response = await login.index(request);
@@ -47,7 +47,7 @@ describe("Login Controller", () => {
 
     test("shows error message when error is provided", async () => {
       const request = createMockRequest(
-        "http://localhost:3000/login?error=Invalid%20email",
+        "http://localhost:3000/login?state=validation-error&error=Invalid%20email",
         "GET",
       );
       const response = await login.index(request);
@@ -102,7 +102,7 @@ describe("Login Controller", () => {
       const response = await login.create(request);
 
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/login?sent=true");
+      expect(response.headers.get("location")).toBe("/login?state=email-sent");
 
       // Verify user was created
       const users =
@@ -148,7 +148,7 @@ describe("Login Controller", () => {
 
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe(
-        "/login?error=Invalid email address",
+        "/login?state=validation-error&error=Invalid+email+address",
       );
     });
 
@@ -164,7 +164,7 @@ describe("Login Controller", () => {
 
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe(
-        "/login?error=Invalid email address",
+        "/login?state=validation-error&error=Invalid+email+address",
       );
     });
 
