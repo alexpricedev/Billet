@@ -10,7 +10,12 @@ mock.module("../../services/database", () => ({
   db: testDb,
 }));
 
-import { createSession, findOrCreateUser } from "../../services/auth";
+import {
+  createSession,
+  createSessionCookie,
+  findOrCreateUser,
+} from "../../services/auth";
+import { createCsrfToken } from "../../services/csrf";
 import { logout } from "./logout";
 
 const db = testDb;
@@ -24,12 +29,23 @@ describe("Logout Controller", () => {
     test("successfully logs out user with valid session", async () => {
       const user = await findOrCreateUser("logout@example.com");
       const sessionId = await createSession(user.id);
+      const cookieHeader = createSessionCookie(sessionId);
+      const csrfToken = await createCsrfToken(
+        sessionId,
+        "POST",
+        "/auth/logout",
+      );
+
+      const formData = new FormData();
+      formData.append("_csrf", csrfToken);
 
       const request = new Request("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
-          cookie: `session_id=${sessionId}`,
+          Origin: "http://localhost:3000",
+          Cookie: cookieHeader,
         },
+        body: formData,
       });
 
       const response = await logout.create(request);
@@ -39,6 +55,7 @@ describe("Logout Controller", () => {
 
       // Should clear session cookie
       const setCookie = response.headers.get("set-cookie");
+      expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("session_id=");
       expect(setCookie).toContain("Max-Age=0");
 
@@ -63,6 +80,7 @@ describe("Logout Controller", () => {
 
       // Should still clear cookie
       const setCookie = response.headers.get("set-cookie");
+      expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("session_id=");
       expect(setCookie).toContain("Max-Age=0");
     });
@@ -82,6 +100,7 @@ describe("Logout Controller", () => {
 
       // Should clear cookie even if session doesn't exist
       const setCookie = response.headers.get("set-cookie");
+      expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("Max-Age=0");
     });
 
@@ -102,12 +121,22 @@ describe("Logout Controller", () => {
     test("multiple session cookies - uses correct session_id", async () => {
       const user = await findOrCreateUser("multi@example.com");
       const sessionId = await createSession(user.id);
+      const csrfToken = await createCsrfToken(
+        sessionId,
+        "POST",
+        "/auth/logout",
+      );
+
+      const formData = new FormData();
+      formData.append("_csrf", csrfToken);
 
       const request = new Request("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
+          Origin: "http://localhost:3000",
           cookie: `other_cookie=value; session_id=${sessionId}; another=value`,
         },
+        body: formData,
       });
 
       const response = await logout.create(request);
@@ -146,6 +175,97 @@ describe("Logout Controller", () => {
       expect(response.headers.get("location")).toBe("/login");
 
       const setCookie = response.headers.get("set-cookie");
+      expect(setCookie).toBeTruthy();
+      expect(setCookie).toContain("Max-Age=0");
+    });
+
+    test("requires authentication - redirects unauthenticated users", async () => {
+      const request = new Request("http://localhost:3000/auth/logout", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
+      });
+
+      const response = await logout.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/login");
+    });
+
+    test("requires CSRF token - rejects request without token", async () => {
+      const user = await findOrCreateUser("csrf-test@example.com");
+      const sessionId = await createSession(user.id);
+      const cookieHeader = createSessionCookie(sessionId);
+
+      const request = new Request("http://localhost:3000/auth/logout", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+          Cookie: cookieHeader,
+        },
+      });
+
+      const response = await logout.create(request);
+
+      expect(response.status).toBe(403);
+      expect(await response.text()).toBe("Invalid CSRF token");
+    });
+
+    test("requires CSRF token - rejects request with invalid token", async () => {
+      const user = await findOrCreateUser("csrf-test2@example.com");
+      const sessionId = await createSession(user.id);
+      const cookieHeader = createSessionCookie(sessionId);
+
+      const formData = new FormData();
+      formData.append("_csrf", "invalid.token");
+
+      const request = new Request("http://localhost:3000/auth/logout", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+          Cookie: cookieHeader,
+        },
+        body: formData,
+      });
+
+      const response = await logout.create(request);
+
+      expect(response.status).toBe(403);
+      expect(await response.text()).toBe("Invalid CSRF token");
+    });
+
+    test("accepts request with valid CSRF token", async () => {
+      const user = await findOrCreateUser("csrf-test3@example.com");
+      const sessionId = await createSession(user.id);
+      const cookieHeader = createSessionCookie(sessionId);
+      const csrfToken = await createCsrfToken(
+        sessionId,
+        "POST",
+        "/auth/logout",
+      );
+
+      const formData = new FormData();
+      formData.append("_csrf", csrfToken);
+
+      const request = new Request("http://localhost:3000/auth/logout", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+          Cookie: cookieHeader,
+        },
+        body: formData,
+      });
+
+      const response = await logout.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/login");
+
+      // Should clear session cookie
+      const setCookie = response.headers.get("set-cookie");
+      expect(setCookie).toBeTruthy();
+      expect(setCookie).toContain("session_id=");
       expect(setCookie).toContain("Max-Age=0");
     });
   });

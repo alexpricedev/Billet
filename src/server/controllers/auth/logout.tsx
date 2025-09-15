@@ -1,6 +1,8 @@
+import { csrfProtection } from "../../middleware/csrf";
 import {
   clearSessionCookie,
   deleteSession,
+  getSession,
   getSessionIdFromCookies,
 } from "../../services/auth";
 
@@ -9,11 +11,30 @@ export const logout = {
     const cookieHeader = req.headers.get("cookie");
     const sessionId = getSessionIdFromCookies(cookieHeader);
 
+    // Check if session actually exists and is valid
+    let hasValidSession = false;
     if (sessionId) {
-      try {
-        await deleteSession(sessionId);
-      } catch {
-        // Session deletion failed, but still clear cookie for security
+      const sessionData = await getSession(sessionId);
+      hasValidSession = sessionData !== null;
+    }
+
+    // Only require CSRF protection if user has a valid session
+    if (hasValidSession) {
+      // CSRF protection for authenticated users
+      const csrfResponse = await csrfProtection(req, {
+        method: "POST",
+        path: "/auth/logout",
+      });
+      if (csrfResponse) {
+        return csrfResponse;
+      }
+
+      if (sessionId) {
+        try {
+          await deleteSession(sessionId);
+        } catch {
+          // Session deletion failed, but still clear cookie for security
+        }
       }
     }
 

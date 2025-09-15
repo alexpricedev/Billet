@@ -19,7 +19,7 @@ const db = new SQL(process.env.DATABASE_URL);
  * - Clear migration history
  * - Run migrations fresh
  */
-async function bootstrapTestDatabase() {
+export async function bootstrap() {
   console.log("🧪 Bootstrapping test database...");
 
   try {
@@ -53,5 +53,5 @@ async function bootstrapTestDatabase() {
 }
 
 if (import.meta.main) {
-  await bootstrapTestDatabase();
+  await bootstrap();
 }

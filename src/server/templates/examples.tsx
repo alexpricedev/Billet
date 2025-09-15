@@ -1,13 +1,21 @@
 import type { JSX } from "react";
+import { CsrfField } from "../components/csrf-field";
 import { Layout } from "../components/layouts";
 import type { Example } from "../services/example";
 
 type ExamplesProps = {
   examples: Example[];
   success?: boolean;
+  csrfToken: string | null;
+  isAuthenticated?: boolean;
 };
 
-export const Examples = ({ examples, success }: ExamplesProps): JSX.Element => {
+export const Examples = ({
+  examples,
+  success,
+  csrfToken,
+  isAuthenticated,
+}: ExamplesProps): JSX.Element => {
   return (
     <Layout title="Examples" name="examples">
       <div className="container mx-auto px-4 py-8">
@@ -21,22 +29,35 @@ export const Examples = ({ examples, success }: ExamplesProps): JSX.Element => {
 
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Add New Example</h2>
-          <form method="POST" action="/examples" className="flex gap-3">
-            <input
-              type="text"
-              name="name"
-              placeholder="Enter example name"
-              required
-              minLength={2}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              Add Example
-            </button>
-          </form>
+          {isAuthenticated ? (
+            <form method="POST" action="/examples" className="flex gap-3">
+              <CsrfField token={csrfToken} />
+              <input
+                type="text"
+                name="name"
+                placeholder="Enter example name"
+                required
+                minLength={2}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Add Example
+              </button>
+            </form>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded">
+              <p>
+                Please{" "}
+                <a href="/login" className="underline">
+                  log in
+                </a>{" "}
+                to add examples.
+              </p>
+            </div>
+          )}
         </div>
 
         {examples.length === 0 ? (
