@@ -6,6 +6,8 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
 }
 const testDb = new SQL(process.env.DATABASE_URL);
+
+// Mock the database module before importing the service
 mock.module("./database", () => ({
   db: testDb,
 }));

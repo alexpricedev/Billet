@@ -10,6 +10,9 @@ export const appRoutes = {
     GET: examples.index,
     POST: examples.create,
   }),
+  "/examples/:id/delete": createRouteHandler({
+    POST: examples.destroy<"/examples/:id/delete">,
+  }),
   "/login": createRouteHandler({
     GET: login.index,
     POST: login.create,

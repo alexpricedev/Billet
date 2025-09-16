@@ -3,35 +3,45 @@ import { CsrfField } from "../components/csrf-field";
 import { Layout } from "../components/layouts";
 import type { Example } from "../services/example";
 
-type ExamplesProps = {
+export interface ExamplesState {
+  state?: "submission-success" | "deletion-success";
+}
+
+type PublicExamplesProps = {
+  isAuthenticated: false;
   examples: Example[];
-  success?: boolean;
-  csrfToken: string | null;
-  isAuthenticated?: boolean;
 };
 
-export const Examples = ({
-  examples,
-  success,
-  csrfToken,
-  isAuthenticated,
-}: ExamplesProps): JSX.Element => {
+type AuthExamplesProps = {
+  isAuthenticated: true;
+  examples: Example[];
+  state: ExamplesState;
+  createCsrfToken: string | null;
+  deleteCsrfTokens: Record<number, string>;
+};
+
+export type ExamplesProps = PublicExamplesProps | AuthExamplesProps;
+
+export const Examples = (props: ExamplesProps): JSX.Element => {
   return (
     <Layout title="Examples" name="examples">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Examples from Database</h1>
 
-        {success && (
+        {props.isAuthenticated && props.state?.state && (
           <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded mb-6">
-            ✅ Example added successfully!
+            {props.state.state === "submission-success" &&
+              "✅ Example added successfully!"}
+            {props.state.state === "deletion-success" &&
+              "🗑️ Example deleted successfully!"}
           </div>
         )}
 
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Add New Example</h2>
-          {isAuthenticated ? (
+          {props.isAuthenticated ? (
             <form method="POST" action="/examples" className="flex gap-3">
-              <CsrfField token={csrfToken} />
+              <CsrfField token={props.createCsrfToken} />
               <input
                 type="text"
                 name="name"
@@ -60,11 +70,11 @@ export const Examples = ({
           )}
         </div>
 
-        {examples.length === 0 ? (
+        {props.examples.length === 0 ? (
           <p className="text-gray-600">No examples found in the database.</p>
         ) : (
           <div className="grid gap-4">
-            {examples.map((example) => (
+            {props.examples.map((example) => (
               <div
                 key={example.id}
                 className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
@@ -76,6 +86,31 @@ export const Examples = ({
                     </span>
                     <h2 className="text-lg font-semibold">{example.name}</h2>
                   </div>
+                  {props.isAuthenticated &&
+                    props.deleteCsrfTokens[example.id] && (
+                      <form
+                        method="POST"
+                        action={`/examples/${example.id}/delete`}
+                        className="inline"
+                      >
+                        <CsrfField token={props.deleteCsrfTokens[example.id]} />
+                        <button
+                          type="submit"
+                          className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                          onClick={(e) => {
+                            if (
+                              !confirm(
+                                `Are you sure you want to delete "${example.name}"?`,
+                              )
+                            ) {
+                              e.preventDefault();
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    )}
                 </div>
               </div>
             ))}
