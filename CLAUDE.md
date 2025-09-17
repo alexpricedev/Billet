@@ -38,7 +38,8 @@ ALWAYS check for TS errors and linting issues before finishing a work loop (`bun
 
 ### Testing Strategies by Module Type
 
-Always run tests via the `package.json` test scripts so the env vars are correct.
+ALWAYS run test suites via the `package.json` *test scripts* so the env vars are correct.
+NEVER try to roll your own lint or test commands.
 
 **API Controllers** (`src/server/controllers/api/*.test.ts`):
 - Mock service layer dependencies only

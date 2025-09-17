@@ -1,5 +1,6 @@
 import { redirectIfAuthenticated } from "../../middleware/auth";
 import { createMagicLink } from "../../services/auth";
+import { getEmailService } from "../../services/email";
 import type { LoginState } from "../../templates/login";
 import { Login } from "../../templates/login";
 import { redirect, render } from "../../utils/response";
@@ -32,16 +33,19 @@ export const login = {
     }
 
     try {
-      const { rawToken } = await createMagicLink(email.toLowerCase().trim());
+      const { user, rawToken } = await createMagicLink(
+        email.toLowerCase().trim(),
+      );
 
-      // TODO: Send magic link via email service
-      // For development, print magic link to console
-      if (process.env.NODE_ENV !== "production") {
-        const url = new URL(req.url);
-        const magicLinkUrl = `${url.protocol}//${url.host}/auth/callback?token=${rawToken}`;
-        // eslint-disable-next-line no-console
-        console.log(`🔗 Magic link for ${email}: ${magicLinkUrl}`);
-      }
+      const url = new URL(req.url);
+      const magicLinkUrl = `${url.protocol}//${url.host}/auth/callback?token=${rawToken}`;
+
+      const emailService = getEmailService();
+      await emailService.sendMagicLink({
+        to: { email: user.email },
+        magicLinkUrl,
+        expiryMinutes: 15,
+      });
 
       return redirect(redirectWithState("/login", { state: "email-sent" }));
     } catch {
