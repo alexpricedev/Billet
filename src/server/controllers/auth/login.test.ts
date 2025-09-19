@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
-import { cleanupTestData, randomEmail } from "../../test-utils/helpers";
+import { cleanupTestData } from "../../test-utils/helpers";
 import { createMockRequest } from "../../test-utils/setup";
 
 if (!process.env.DATABASE_URL) {
