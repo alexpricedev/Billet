@@ -1,14 +1,17 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
-import { cleanupTestData } from "../test-utils/helpers";
+import { cleanupTestData, randomEmail } from "../test-utils/helpers";
 import { computeHMAC } from "../utils/crypto";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
 }
-const testDb = new SQL(process.env.DATABASE_URL);
+const connection = new SQL(process.env.DATABASE_URL);
+
 mock.module("./database", () => ({
-  db: testDb,
+  get db() {
+    return connection;
+  },
 }));
 
 import {
@@ -23,12 +26,15 @@ import {
   renewSession,
   verifyMagicLink,
 } from "./auth";
-
-const db = testDb;
+import { db } from "./database";
 
 describe("Auth Service with PostgreSQL", () => {
   beforeEach(async () => {
-    await cleanupTestData(testDb);
+    await cleanupTestData(db);
+  });
+
+  afterAll(async () => {
+    await connection.end();
   });
 
   describe("findOrCreateUser", () => {

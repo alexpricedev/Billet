@@ -1,17 +1,20 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
 import { cleanupTestData, seedTestData } from "../test-utils/helpers";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
 }
-const testDb = new SQL(process.env.DATABASE_URL);
+const connection = new SQL(process.env.DATABASE_URL);
 
 // Mock the database module before importing the service
 mock.module("./database", () => ({
-  db: testDb,
+  get db() {
+    return connection;
+  },
 }));
 
+import { db } from "./database";
 import {
   createExample,
   deleteExample,
@@ -22,7 +25,11 @@ import {
 
 describe("Example Service with PostgreSQL", () => {
   beforeEach(async () => {
-    await cleanupTestData(testDb);
+    await cleanupTestData(db);
+  });
+
+  afterAll(async () => {
+    await connection.end();
   });
 
   describe("getExamples", () => {
@@ -32,7 +39,7 @@ describe("Example Service with PostgreSQL", () => {
     });
 
     test("returns all examples ordered by id", async () => {
-      await seedTestData(testDb);
+      await seedTestData(db);
 
       const result = await getExamples();
       expect(result).toHaveLength(3);
@@ -47,7 +54,7 @@ describe("Example Service with PostgreSQL", () => {
 
   describe("getExampleById", () => {
     test("returns example when found", async () => {
-      await seedTestData(testDb);
+      await seedTestData(db);
       const examples = await getExamples();
       const firstId = examples[0].id;
 
@@ -133,7 +140,7 @@ describe("Example Service with PostgreSQL", () => {
     });
 
     test("deleted example is removed from list", async () => {
-      await seedTestData(testDb);
+      await seedTestData(db);
       const examples = await getExamples();
       const initialCount = examples.length;
 

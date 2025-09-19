@@ -1,13 +1,16 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
 import { cleanupTestData } from "../../test-utils/helpers";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
 }
-const testDb = new SQL(process.env.DATABASE_URL);
+const connection = new SQL(process.env.DATABASE_URL);
+
 mock.module("../../services/database", () => ({
-  db: testDb,
+  get db() {
+    return connection;
+  },
 }));
 
 import {
@@ -16,13 +19,16 @@ import {
   findOrCreateUser,
 } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
+import { db } from "../../services/database";
 import { logout } from "./logout";
-
-const db = testDb;
 
 describe("Logout Controller", () => {
   beforeEach(async () => {
-    await cleanupTestData(testDb);
+    await cleanupTestData(db);
+  });
+
+  afterAll(async () => {
+    await connection.end();
   });
 
   describe("POST /auth/logout", () => {

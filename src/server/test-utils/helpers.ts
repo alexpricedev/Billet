@@ -27,3 +27,16 @@ export const seedTestData = async (db: SQL): Promise<void> => {
   await db`INSERT INTO example (name) VALUES (${"Test Example 2"})`;
   await db`INSERT INTO example (name) VALUES (${"Test Example 3"})`;
 };
+
+/**
+ * Generate a random email address for testing
+ * Uses timestamp and random string to ensure uniqueness
+ *
+ * @param domain - Optional domain, defaults to "example.com"
+ * @returns A unique email address for testing
+ */
+export const randomEmail = (domain = "example.com"): string => {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `test-${timestamp}-${random}@${domain}`;
+};

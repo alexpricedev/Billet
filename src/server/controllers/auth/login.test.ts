@@ -1,23 +1,29 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
-import { cleanupTestData } from "../../test-utils/helpers";
+import { cleanupTestData, randomEmail } from "../../test-utils/helpers";
 import { createMockRequest } from "../../test-utils/setup";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
 }
-const testDb = new SQL(process.env.DATABASE_URL);
+const connection = new SQL(process.env.DATABASE_URL);
+
 mock.module("../../services/database", () => ({
-  db: testDb,
+  get db() {
+    return connection;
+  },
 }));
 
+import { db } from "../../services/database";
 import { login } from "./login";
-
-const db = testDb;
 
 describe("Login Controller", () => {
   beforeEach(async () => {
-    await cleanupTestData(testDb);
+    await cleanupTestData(db);
+  });
+
+  afterAll(async () => {
+    await connection.end();
   });
 
   describe("GET /login", () => {

@@ -1,15 +1,38 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { SQL } from "bun";
 import {
   createSession,
   createSessionCookie,
   findOrCreateUser,
 } from "../services/auth";
 import { createCsrfToken } from "../services/csrf";
+import { db } from "../services/database";
+import { cleanupTestData } from "../test-utils/helpers";
 import { csrfProtection } from "./csrf";
 
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required for tests");
+}
+const connection = new SQL(process.env.DATABASE_URL);
+
+mock.module("../services/database", () => ({
+  get db() {
+    return connection;
+  },
+}));
+
 describe("CSRF Middleware", () => {
-  const createTestSession = async () => {
-    const user = await findOrCreateUser("test@example.com");
+  beforeEach(async () => {
+    await cleanupTestData(db);
+  });
+
+  afterAll(async () => {
+    await connection.end();
+  });
+  const createTestSession = async (
+    email = `test-${Date.now()}-${Math.random()}@example.com`,
+  ) => {
+    const user = await findOrCreateUser(email);
     return createSession(user.id);
   };
 

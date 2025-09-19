@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { SQL } from "bun";
 import {
   createSession,
   createSessionCookie,
@@ -8,6 +9,18 @@ import { createCsrfToken } from "../../services/csrf";
 import type { Example } from "../../services/example";
 import { createBunRequest } from "../../test-utils/bun-request";
 import { createMockExample } from "../../test-utils/factories";
+import { cleanupTestData, randomEmail } from "../../test-utils/helpers";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required for tests");
+}
+const connection = new SQL(process.env.DATABASE_URL);
+
+mock.module("../../services/database", () => ({
+  get db() {
+    return connection;
+  },
+}));
 
 // Mock the example service
 const mockGetExamples = mock(async (): Promise<Example[]> => []);
@@ -22,17 +35,23 @@ mock.module("../../services/example", () => ({
   deleteExample: mockDeleteExample,
 }));
 
+import { db } from "../../services/database";
 import { examples } from "./examples";
 
 describe("Examples Controller", () => {
   beforeEach(async () => {
+    await cleanupTestData(db);
     mockGetExamples.mockClear();
     mockCreateExample.mockClear();
     mockDeleteExample.mockClear();
   });
 
+  afterAll(async () => {
+    await connection.end();
+  });
+
   const createTestSession = async () => {
-    const user = await findOrCreateUser("test@example.com");
+    const user = await findOrCreateUser(randomEmail());
     return createSession(user.id);
   };
 
