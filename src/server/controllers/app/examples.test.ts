@@ -7,9 +7,11 @@ import {
 } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
 import type { Example } from "../../services/example";
-import { createBunRequest } from "../../test-utils/bun-request";
+import type { ExamplesState } from "../../templates/examples";
+import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { createMockExample } from "../../test-utils/factories";
 import { cleanupTestData, randomEmail } from "../../test-utils/helpers";
+import { stateHelpers } from "../../utils/state";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
@@ -98,16 +100,22 @@ describe("Examples Controller", () => {
 
     test("shows success message when state is submission-success", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const sessionCookieHeader = createSessionCookie(sessionId);
 
       mockGetExamples.mockResolvedValue([]);
 
-      const request = createBunRequest(
-        "http://localhost:3000/examples?state=submission-success",
-        {
-          headers: { Cookie: cookieHeader },
+      const request = createBunRequest("http://localhost:3000/examples", {
+        headers: {
+          Cookie: sessionCookieHeader,
         },
-      );
+      });
+
+      // Set flash cookie before calling the handler
+      const { setFlash } = stateHelpers<ExamplesState>();
+      setFlash(request, {
+        state: "submission-success",
+      });
+
       const response = await examples.index(request);
       const html = await response.text();
 
@@ -116,29 +124,35 @@ describe("Examples Controller", () => {
 
     test("shows different success messages for created and deleted", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const sessionCookieHeader = createSessionCookie(sessionId);
 
       mockGetExamples.mockResolvedValue([]);
 
       // Test created message
-      const createRequest = createBunRequest(
-        "http://localhost:3000/examples?state=submission-success",
-        {
-          headers: { Cookie: cookieHeader },
+      const createRequest = createBunRequest("http://localhost:3000/examples", {
+        headers: {
+          Cookie: sessionCookieHeader,
         },
-      );
+      });
+      const { setFlash: setCreateFlash } = stateHelpers<ExamplesState>();
+      setCreateFlash(createRequest, {
+        state: "submission-success",
+      });
       const createResponse = await examples.index(createRequest);
       const createHtml = await createResponse.text();
 
       expect(createHtml).toContain("✅ Example added successfully!");
 
       // Test deleted message
-      const deleteRequest = createBunRequest(
-        "http://localhost:3000/examples?state=deletion-success",
-        {
-          headers: { Cookie: cookieHeader },
+      const deleteRequest = createBunRequest("http://localhost:3000/examples", {
+        headers: {
+          Cookie: sessionCookieHeader,
         },
-      );
+      });
+      const { setFlash: setDeleteFlash } = stateHelpers<ExamplesState>();
+      setDeleteFlash(deleteRequest, {
+        state: "deletion-success",
+      });
       const deleteResponse = await examples.index(deleteRequest);
       const deleteHtml = await deleteResponse.text();
 
@@ -309,9 +323,11 @@ describe("Examples Controller", () => {
 
       expect(mockCreateExample).toHaveBeenCalledWith("New Example");
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe(
-        "/examples?state=submission-success",
-      );
+      expect(response.headers.get("location")).toBe("/examples");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("submission-success");
     });
 
     test("trims whitespace from name before creating", async () => {
@@ -336,9 +352,11 @@ describe("Examples Controller", () => {
 
       expect(mockCreateExample).toHaveBeenCalledWith("Trimmed Example");
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe(
-        "/examples?state=submission-success",
-      );
+      expect(response.headers.get("location")).toBe("/examples");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("submission-success");
     });
 
     test("redirects without creating when name is empty", async () => {
@@ -413,9 +431,11 @@ describe("Examples Controller", () => {
 
       expect(mockCreateExample).toHaveBeenCalledWith("Header Token Example");
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe(
-        "/examples?state=submission-success",
-      );
+      expect(response.headers.get("location")).toBe("/examples");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("submission-success");
     });
   });
 
@@ -493,9 +513,11 @@ describe("Examples Controller", () => {
 
       expect(response.status).toBe(303);
       expect(mockDeleteExample).toHaveBeenCalledWith(42);
-      expect(response.headers.get("location")).toBe(
-        "/examples?state=deletion-success",
-      );
+      expect(response.headers.get("location")).toBe("/examples");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("deletion-success");
     });
 
     test("redirects without error when example not found", async () => {

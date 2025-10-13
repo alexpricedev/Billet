@@ -1,25 +1,20 @@
-if (!process.env.APP_URL) {
-  throw new Error("APP_URL is not set");
-}
+import type { BunRequest } from "bun";
+import { getFlashCookie, setFlashCookie } from "./flash";
 
 export const stateHelpers = <T>() => ({
-  parseState: (url: URL): T => {
-    const params: Record<string, string> = {};
-    for (const [key, value] of url.searchParams.entries()) {
-      params[key] = value;
-    }
-    return params as T;
+  /**
+   * Get flash state from cookie and automatically delete it
+   * Used in GET handlers to retrieve temporary state passed via redirect
+   */
+  getFlash: (req: BunRequest): T => {
+    return getFlashCookie<T>(req, "state");
   },
 
-  redirectWithState: (path: string, state: T): string => {
-    const url = new URL(path, process.env.APP_URL);
-    for (const [key, value] of Object.entries(
-      state as Record<string, unknown>,
-    )) {
-      if (value != null) {
-        url.searchParams.set(key, String(value));
-      }
-    }
-    return url.pathname + url.search;
+  /**
+   * Set flash state in cookie before redirect
+   * Used in POST handlers to pass temporary state to the next page
+   */
+  setFlash: (req: BunRequest, state: T): void => {
+    setFlashCookie<T>(req, "state", state);
   },
 });

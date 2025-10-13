@@ -1,3 +1,4 @@
+import type { BunRequest } from "bun";
 import { redirectIfAuthenticated } from "../../middleware/auth";
 import { createMagicLink } from "../../services/auth";
 import { getEmailService } from "../../services/email";
@@ -6,30 +7,28 @@ import { Login } from "../../templates/login";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 
-const { parseState, redirectWithState } = stateHelpers<LoginState>();
+const { getFlash, setFlash } = stateHelpers<LoginState>();
 
 export const login = {
-  async index(req: Request): Promise<Response> {
+  async index(req: BunRequest): Promise<Response> {
     const authRedirect = await redirectIfAuthenticated(req);
     if (authRedirect) return authRedirect;
 
-    const url = new URL(req.url);
-    const state = parseState(url);
+    const state = getFlash(req);
 
     return render(<Login state={state} />);
   },
 
-  async create(req: Request): Promise<Response> {
+  async create(req: BunRequest): Promise<Response> {
     const formData = await req.formData();
     const email = formData.get("email") as string;
 
     if (!email || !email.includes("@")) {
-      return redirect(
-        redirectWithState("/login", {
-          state: "validation-error",
-          error: "Invalid email address",
-        }),
-      );
+      setFlash(req, {
+        state: "validation-error",
+        error: "Invalid email address",
+      });
+      return redirect("/login");
     }
 
     try {
@@ -47,14 +46,14 @@ export const login = {
         expiryMinutes: 15,
       });
 
-      return redirect(redirectWithState("/login", { state: "email-sent" }));
+      setFlash(req, { state: "email-sent" });
+      return redirect("/login");
     } catch {
-      return redirect(
-        redirectWithState("/login", {
-          state: "validation-error",
-          error: "Something went wrong. Please try again.",
-        }),
-      );
+      setFlash(req, {
+        state: "validation-error",
+        error: "Something went wrong. Please try again.",
+      });
+      return redirect("/login");
     }
   },
 };

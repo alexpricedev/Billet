@@ -1,7 +1,9 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
+import type { LoginState } from "../../templates/login";
+import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { cleanupTestData } from "../../test-utils/helpers";
-import { createMockRequest } from "../../test-utils/setup";
+import { stateHelpers } from "../../utils/state";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
@@ -28,7 +30,9 @@ describe("Login Controller", () => {
 
   describe("GET /login", () => {
     test("renders login page for unauthenticated user", async () => {
-      const request = createMockRequest("http://localhost:3000/login", "GET");
+      const request = createBunRequest("http://localhost:3000/login", {
+        method: "GET",
+      });
       const response = await login.index(request);
       const html = await response.text();
 
@@ -40,10 +44,14 @@ describe("Login Controller", () => {
     });
 
     test("shows success message when state=email-sent", async () => {
-      const request = createMockRequest(
-        "http://localhost:3000/login?state=email-sent",
-        "GET",
-      );
+      const request = createBunRequest("http://localhost:3000/login", {
+        method: "GET",
+      });
+
+      // Set flash cookie before calling the handler
+      const { setFlash } = stateHelpers<LoginState>();
+      setFlash(request, { state: "email-sent" });
+
       const response = await login.index(request);
       const html = await response.text();
 
@@ -52,10 +60,17 @@ describe("Login Controller", () => {
     });
 
     test("shows error message when error is provided", async () => {
-      const request = createMockRequest(
-        "http://localhost:3000/login?state=validation-error&error=Invalid%20email",
-        "GET",
-      );
+      const request = createBunRequest("http://localhost:3000/login", {
+        method: "GET",
+      });
+
+      // Set flash cookie before calling the handler
+      const { setFlash } = stateHelpers<LoginState>();
+      setFlash(request, {
+        state: "validation-error",
+        error: "Invalid email",
+      });
+
       const response = await login.index(request);
       const html = await response.text();
 
@@ -80,7 +95,7 @@ describe("Login Controller", () => {
       // Re-import login after mocking
       const { login: mockedLogin } = await import("./login");
 
-      const request = new Request("http://localhost:3000/login", {
+      const request = createBunRequest("http://localhost:3000/login", {
         method: "GET",
         headers: {
           cookie: "session_id=valid-session-id",
@@ -100,7 +115,7 @@ describe("Login Controller", () => {
       const formData = new FormData();
       formData.append("email", "test@example.com");
 
-      const request = new Request("http://localhost:3000/login", {
+      const request = createBunRequest("http://localhost:3000/login", {
         method: "POST",
         body: formData,
       });
@@ -108,7 +123,11 @@ describe("Login Controller", () => {
       const response = await login.create(request);
 
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/login?state=email-sent");
+      expect(response.headers.get("location")).toBe("/login");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("email-sent");
 
       // Verify user was created
       const users =
@@ -117,8 +136,8 @@ describe("Login Controller", () => {
 
       // Verify magic link token was created
       const tokens = await db`
-        SELECT id, user_id, type, expires_at 
-        FROM user_tokens 
+        SELECT id, user_id, type, expires_at
+        FROM user_tokens
         WHERE user_id = ${(users[0] as any).id} AND type = 'magic_link'
       `;
       expect(tokens).toHaveLength(1);
@@ -128,7 +147,7 @@ describe("Login Controller", () => {
       const formData = new FormData();
       formData.append("email", "Test@Example.COM");
 
-      const request = new Request("http://localhost:3000/login", {
+      const request = createBunRequest("http://localhost:3000/login", {
         method: "POST",
         body: formData,
       });
@@ -145,7 +164,7 @@ describe("Login Controller", () => {
       const formData = new FormData();
       formData.append("email", "not-an-email");
 
-      const request = new Request("http://localhost:3000/login", {
+      const request = createBunRequest("http://localhost:3000/login", {
         method: "POST",
         body: formData,
       });
@@ -153,15 +172,18 @@ describe("Login Controller", () => {
       const response = await login.create(request);
 
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe(
-        "/login?state=validation-error&error=Invalid+email+address",
-      );
+      expect(response.headers.get("location")).toBe("/login");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("validation-error");
+      expect(setCookie).toContain("Invalid email address");
     });
 
     test("redirects with error for missing email", async () => {
       const formData = new FormData();
 
-      const request = new Request("http://localhost:3000/login", {
+      const request = createBunRequest("http://localhost:3000/login", {
         method: "POST",
         body: formData,
       });
@@ -169,9 +191,12 @@ describe("Login Controller", () => {
       const response = await login.create(request);
 
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe(
-        "/login?state=validation-error&error=Invalid+email+address",
-      );
+      expect(response.headers.get("location")).toBe("/login");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("validation-error");
+      expect(setCookie).toContain("Invalid email address");
     });
 
     test("reuses existing user for same email", async () => {
@@ -185,7 +210,7 @@ describe("Login Controller", () => {
       const formData = new FormData();
       formData.append("email", "existing@example.com");
 
-      const request = new Request("http://localhost:3000/login", {
+      const request = createBunRequest("http://localhost:3000/login", {
         method: "POST",
         body: formData,
       });
@@ -200,7 +225,7 @@ describe("Login Controller", () => {
 
       // But should have created a new token
       const tokens = await db`
-        SELECT id FROM user_tokens 
+        SELECT id FROM user_tokens
         WHERE user_id = ${(user[0] as any).id} AND type = 'magic_link'
       `;
       expect(tokens).toHaveLength(1);
