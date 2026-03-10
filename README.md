@@ -41,7 +41,7 @@ Billet is built for server-rendered apps with light client-side interactivity. I
 ## 🚀 Features
 
 - **Bun-powered**: Lightning-fast dev/build with Bun
-- **Familiar JSX/TSX templating**: Use the syntax you know, but not tied to any framework
+- **Familiar JSX/TSX templating**: React JSX used purely as a server-side template engine — no client-side React, no virtual DOM, no hydration
 - **Web standards first**: Embraces native HTML, CSS, and JavaScript
 - **Separation of concerns**: Encourages clean, maintainable code structure
 - **Modern frontend tooling**: Integrates with your favorite tools and workflows
