@@ -70,10 +70,12 @@ export const Examples = (props: ExamplesProps): JSX.Element => {
           )}
         </div>
 
+        <div id="examples-search" />
+
         {props.examples.length === 0 ? (
           <p className="text-gray-600">No examples found in the database.</p>
         ) : (
-          <div className="grid gap-4">
+          <div id="examples-list" className="grid gap-4">
             {props.examples.map((example) => (
               <div
                 key={example.id}
