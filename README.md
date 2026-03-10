@@ -16,7 +16,7 @@
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" /></a>
   <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals"><img src="https://img.shields.io/badge/JSX/TSX-20232a?style=for-the-badge&logo=javascript&logoColor=yellow" alt="JSX/TSX" /></a>
   <a href="https://typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
-  <a href="https://railway.app"><img src="https://img.shields.io/badge/Deploy%20on-Railway-131415?style=for-the-badge&logo=railway&logoColor=white" alt="Railway" /></a>
+  <a href="https://railway.com?referralCode=XB1wns"><img src="https://img.shields.io/badge/Deploy%20on-Railway-131415?style=for-the-badge&logo=railway&logoColor=white" alt="Railway" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -32,6 +32,10 @@ Billet takes the opposite approach. It's a single-instance server-rendered app w
 
 This isn't a limitation. It's a deliberate architectural choice that plays to AI's strengths: strong type information to reason about, functional input/output patterns, and a feedback loop (write code → run tests → see results) that works in seconds, not minutes.
 
+### When Billet isn't the right fit
+
+Billet is built for server-rendered apps with light client-side interactivity. If your project needs a highly reactive, state-driven UI — real-time collaborative editing, complex drag-and-drop interfaces, rich data visualisations — you're better off with a full client-side framework like React or Svelte from the start. Billet lets you opt in to client-side frameworks per page, but if most of your pages need one, the thin-frontend approach is working against you rather than for you.
+
 ---
 
 ## 🚀 Features
@@ -42,7 +46,7 @@ This isn't a limitation. It's a deliberate architectural choice that plays to AI
 - **Separation of concerns**: Encourages clean, maintainable code structure
 - **Modern frontend tooling**: Integrates with your favorite tools and workflows
 - **Web components support**: Use or author custom elements natively
-- **Opt-in React**: Use React only where you need it—per page
+- **Opt-in interactivity**: Sprinkle in any client-side framework where you need it
 - **Server-side rendering**: TSX-based static/server components
 - **HTML streaming**: Powered by `react-dom/server` in Bun
 - **TypeScript-first**: Everything is written in TS and wired up by Bun
@@ -80,7 +84,7 @@ Billet just wants you to separate your backend logic and view creation (HTML) fr
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please open issues or PRs. Use `bun commit` to trigger the [gitmoji](https://gitmoji.dev/) commit message builder.
+Contributions are welcome! Please open issues or PRs.
 
 ---
 
