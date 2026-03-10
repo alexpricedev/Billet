@@ -8,8 +8,8 @@
 <p align="center">
   <b>Full-stack TypeScript starter designed to be built on by AI coding agents</b>
   <br />
-  An embarrassingly simple stack: server-rendered JSX, light-touch JS, Tailwind CSS. One codebase, one deploy target.<br />
-  Strong types, clear architecture, and deterministic templates that AI agents can reason about and test with confidence.
+  Server-rendered JSX, light-touch JS, Tailwind CSS — one codebase, one deploy target.<br />
+  Deterministic templates with strong types that AI agents can reason about and test with confidence.
 </p>
 
 <p align="center">
