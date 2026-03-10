@@ -20,13 +20,15 @@
 
 ---
 
-## Why simple wins with AI
+## The default AI stack is the problem
 
-Modern web stacks are built for large teams with complex needs. SPAs, hydration, client state managers, server components, edge runtimes — layers of abstraction that exist to solve problems most apps don't have.
+Ask an AI to build you a web app from scratch. Nine times out of ten, it reaches for React and Next.js. Now you have a bifurcated application — a Node server *and* a React client, each with their own build pipeline, their own state management, their own testing strategy, and their own deployment target.
 
-When you point an AI agent at that complexity, it struggles. Not because the AI is bad, but because the architecture is ambiguous. There are multiple valid places to put logic, multiple ways state can flow, and the AI has to guess which one you intended.
+That's a lot of architecture for a todo app.
 
-Billet takes the opposite approach. **Single-instance server. JSX templates. Props in, HTML out.** The entire rendering path is a pure function. There's nothing to guess.
+You're locked into the React ecosystem. You need browser-based testing tools (Playwright, Cypress) to verify what the client actually renders. You need separate server tests for your API layer. You're deploying to edge runtimes or serverless functions you didn't ask for. And your AI is reasoning across a client/server boundary where there are multiple valid places to put any piece of logic — so it guesses, and often guesses wrong.
+
+**Billet sidesteps all of this.** Single-instance server. JSX templates. Props in, HTML out. One process, one test system, one deploy target. The entire rendering path is a pure function. There's nothing to guess.
 
 ---
 
@@ -34,15 +36,17 @@ Billet takes the opposite approach. **Single-instance server. JSX templates. Pro
 
 Server-side rendered templates are **deterministic and functional**. A template takes typed props and returns HTML. No client state to simulate. No hydration mismatches. No lifecycle hooks firing in unpredictable orders.
 
-This matters for AI-driven development because:
+This changes everything about how effectively an AI can work with your code:
 
-**One test system, not two.** With an SPA, you need server tests *and* browser-based tests (Playwright, Cypress) to simulate client state, DOM interactions, and async rendering. With SSR templates, you test the same way you render — call a function, check the output. Your AI can write and run tests in a single environment without orchestrating browsers.
+**One application, not two.** A React/Next.js app is really two applications bolted together — a server that provides data and a client that renders it. Each has its own state, its own failure modes, and its own testing requirements. Billet is one application. Data flows from service to route to template to HTML in a single process. There is no client/server split to reason across.
 
-**Every state is simulatable.** Want to test what the page looks like when there are zero results? Pass an empty array. Error state? Pass an error prop. Loading state? There is no loading state — data is fetched before the template renders. You have **full control over every possible state** in a single test runner.
+**One test system, not two.** Because templates are pure functions, you test them the same way you run them — call a function, check the output. No spinning up headless browsers. No Playwright scripts waiting for hydration. No flaky async assertions. Your AI writes a test, runs it in milliseconds, and knows immediately if the code works.
 
-**No client/server boundary to cross.** In a typical SPA, the AI has to reason about data flowing through API calls, client-side fetch logic, state managers, and re-renders. Here, data flows in one direction: service → route → template → HTML. The AI can trace any feature from URL to rendered output in seconds.
+**Every state is simulatable from a single process.** Want to test what the page looks like with zero results? Pass an empty array. Error state? Pass an error prop. Loading state? There is no loading state — data is fetched before the template renders. You have **full control over every possible UI state** without orchestrating a browser.
 
-**Inline styles and scripts stay co-located.** CSS and JS live next to the pages they belong to. No global stylesheet conflicts, no CSS-in-JS runtime, no tree-shaking mysteries. When your AI adds a page, everything that page needs goes in one obvious place.
+**Deploy one process, not a distributed system.** No edge functions. No serverless cold starts. No CDN-hosted client bundles talking to a separate API. One Bun process serves everything. It's cheaper to run, simpler to debug, and trivial for an AI to reason about in production.
+
+**Co-located styles and scripts.** CSS and JS live next to the pages they belong to. No global stylesheet conflicts, no CSS-in-JS runtime, no tree-shaking mysteries. When your AI adds a page, everything that page needs goes in one obvious place.
 
 ---
 
