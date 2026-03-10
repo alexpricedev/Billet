@@ -6,44 +6,55 @@
 <h1 align="center">Billet</h1>
 
 <p align="center">
-  <b>The full-stack TypeScript starter that AI agents actually understand.</b>
+  <b>An embarrassingly simple web stack.<br />That's the point.</b>
   <br /><br />
   <i>In steelmaking, a billet is the semi-finished form — shaped, solid, and ready to become anything.<br />
-  This is that, but for your next web app. You describe what you want. Your AI builds it.</i>
+  This is that, but for your next web app.</i>
 </p>
 
 <p align="center">
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" /></a>
   <a href="https://typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
-  <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals"><img src="https://img.shields.io/badge/JSX_Templates-20232a?style=for-the-badge&logo=javascript&logoColor=yellow" alt="JSX Templates" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
 ---
 
-## You describe it. Your AI builds it.
+## Why simple wins with AI
 
-Billet is a full-stack TypeScript starter designed from the ground up for **vibe coding** — building web apps by describing what you want to an AI coding agent (Claude Code, Cursor, Copilot, Windsurf, or whatever you use).
+Modern web stacks are built for large teams with complex needs. SPAs, hydration, client state managers, server components, edge runtimes — layers of abstraction that exist to solve problems most apps don't have.
 
-Most starter templates are built for humans to read. Billet is built for **AI agents to read, understand, and extend correctly on the first try.**
+When you point an AI agent at that complexity, it struggles. Not because the AI is bad, but because the architecture is ambiguous. There are multiple valid places to put logic, multiple ways state can flow, and the AI has to guess which one you intended.
 
-**The problem:** You fire up a starter template, point your AI at it, and ask it to add a feature. The AI guesses at conventions, puts files in the wrong places, breaks patterns, and you spend more time fixing its work than you saved.
-
-**Billet fixes this.** Every file follows a strict, documented pattern. Every convention is written down. The architecture is simple enough for an agent to hold in context, but complete enough to build real apps. Your AI doesn't guess — it knows.
+Billet takes the opposite approach. **Single-instance server. JSX templates. Props in, HTML out.** The entire rendering path is a pure function. There's nothing to guess.
 
 ---
 
-## What makes it agent-friendly
+## The thin front-end advantage
 
-**Documented patterns, not just code.** Billet ships with comprehensive agent context files (CLAUDE.md, .cursorrules, AGENTS.md) that tell your AI exactly how the codebase works — where files go, how they connect, and how to add more.
+Server-side rendered templates are **deterministic and functional**. A template takes typed props and returns HTML. No client state to simulate. No hydration mismatches. No lifecycle hooks firing in unpredictable orders.
 
-**Predictable architecture.** Server-side rendering with JSX templates, a clean service layer, typed data flow from route to template. No magic, no abstraction layers to decode. An agent can trace any request from URL to HTML in seconds.
+This matters for AI-driven development because:
 
-**Strict conventions.** File naming, folder structure, route patterns — everything follows rules that are easy for an agent to learn and replicate. When your AI adds a new page, it knows exactly which files to create and where to put them.
+**One test system, not two.** With an SPA, you need server tests *and* browser-based tests (Playwright, Cypress) to simulate client state, DOM interactions, and async rendering. With SSR templates, you test the same way you render — call a function, check the output. Your AI can write and run tests in a single environment without orchestrating browsers.
 
-**Strong types everywhere.** TypeScript strict mode with zero `any` types allowed. Your AI gets autocomplete-grade context about every function, prop, and return type. Fewer hallucinated interfaces, more working code.
+**Every state is simulatable.** Want to test what the page looks like when there are zero results? Pass an empty array. Error state? Pass an error prop. Loading state? There is no loading state — data is fetched before the template renders. You have **full control over every possible state** in a single test runner.
 
-**Built-in feedback loop.** Linting, type checking, and tests give your AI a way to verify its own work. It makes a change, runs the checks, and self-corrects if something's off.
+**No client/server boundary to cross.** In a typical SPA, the AI has to reason about data flowing through API calls, client-side fetch logic, state managers, and re-renders. Here, data flows in one direction: service → route → template → HTML. The AI can trace any feature from URL to rendered output in seconds.
+
+**Inline styles and scripts stay co-located.** CSS and JS live next to the pages they belong to. No global stylesheet conflicts, no CSS-in-JS runtime, no tree-shaking mysteries. When your AI adds a page, everything that page needs goes in one obvious place.
+
+---
+
+## How it works
+
+```
+Request → Route → Service → Template → HTML Response
+```
+
+That's the whole architecture. **Routes** handle requests. **Services** provide data. **Templates** are pure functions that take typed props and return markup. The response is fully rendered HTML.
+
+Client-side JS is minimal and optional — a light touch for interactivity where it's actually needed, auto-mounted per page.
 
 ---
 
@@ -58,33 +69,6 @@ Visit [http://localhost:3000](http://localhost:3000) — then start vibing.
 
 ---
 
-## Tell your AI to build something
-
-Once the dev server is running, open your AI coding tool and try prompts like:
-
-- *"Add a blog page that lists posts from a service"*
-- *"Create an API endpoint that returns the current server time"*
-- *"Add a dark mode toggle using a web component"*
-- *"Build a dashboard page with visitor stats and charts"*
-
-Your AI will read the agent context files, understand the patterns, and build it correctly.
-
----
-
-## How it works
-
-```
-Request → Route → Service → Template → Response
-                                ↓
-                          Client JS/CSS
-```
-
-**Routes** handle requests and fetch data from **services**. Data flows into **JSX templates** that render server-side HTML. Each page can have co-located **client-side JS and CSS** for interactivity.
-
-That's it. No framework magic. No build step mysteries. Just a clear path from request to response that any AI can follow.
-
----
-
 ## Project structure
 
 ```
@@ -94,58 +78,31 @@ src/
 │   ├── routes/
 │   │   ├── views.tsx         # Page routes (SSR → HTML)
 │   │   └── api.ts            # API routes (→ JSON)
-│   ├── services/
-│   │   └── analytics.ts      # Business logic (shared across routes)
-│   ├── templates/
-│   │   ├── home.tsx          # Page templates (receive typed props)
-│   │   ├── about.tsx
-│   │   └── contact.tsx
-│   └── components/
-│       ├── layouts.tsx        # HTML document wrapper
-│       └── nav.tsx            # Shared navigation
+│   ├── services/             # Business logic (pure functions)
+│   ├── templates/            # JSX templates (props → HTML)
+│   └── components/           # Shared layout and nav
 ├── client/
-│   ├── main.ts               # Client JS entry point
+│   ├── main.ts               # Client JS entry (auto-mounts per page)
 │   ├── style.css             # Global styles
 │   ├── pages/                # Per-page JS and CSS
-│   │   ├── home.ts + .css
-│   │   ├── about.ts + .css
-│   │   └── contact.ts + .css
-│   └── components/           # Client component JS and CSS
-└── types/                    # Shared TypeScript types
+│   └── components/           # Web components
+└── types/                    # Shared TypeScript definitions
 ```
 
-Every layer has one job. Every file has one place it belongs. Your AI never has to guess.
+Every layer has one job. Every file has one place it belongs.
 
 ---
 
 ## The stack
 
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| Runtime | [Bun](https://bun.sh) | Fast dev server, native TypeScript, built-in bundler |
-| Language | TypeScript (strict) | Type safety from service to template |
-| Templates | JSX/TSX | Familiar syntax, server-rendered (not React on the client) |
-| Styling | Plain CSS | No build complexity, co-located with pages |
-| Linting | [Biome](https://biomejs.dev) | Fast, zero-config, strict rules |
-| Client JS | Vanilla TypeScript | Auto-mounted per page, no framework overhead |
-| Web Components | Native custom elements | Encapsulated, framework-free interactivity |
-
-JSX is used as a **templating language** for familiarity — this is not a React app. Templates render server-side to HTML. Client interactivity uses vanilla TypeScript and web components.
-
----
-
-## Agent context files
-
-Billet ships with context files for every major AI coding tool:
-
-| File | Tool | Purpose |
-|------|------|---------|
-| `CLAUDE.md` | Claude Code | Full architecture docs, conventions, and how-to guides |
-| `.cursorrules` | Cursor | Project rules and patterns for Cursor's AI |
-| `AGENTS.md` | Any agent | Tool-agnostic project context |
-| `.github/copilot-instructions.md` | GitHub Copilot | Copilot-specific project instructions |
-
-These files are the secret sauce. They turn your AI from a generic code generator into a contributor that understands your project.
+| What | How | Why |
+|------|-----|-----|
+| Runtime | [Bun](https://bun.sh) | Fast, native TypeScript, built-in bundler — one tool |
+| Templates | JSX/TSX | Server-rendered. Familiar syntax, not a React app |
+| Styles | Plain CSS | Co-located per page. No build step, no runtime |
+| Client JS | Vanilla TypeScript | Light touch. Auto-mounted, no framework |
+| Types | TypeScript strict | Zero `any`. Types flow from service to template |
+| Linting | [Biome](https://biomejs.dev) | Fast, strict, zero warnings allowed |
 
 ---
 
@@ -154,33 +111,20 @@ These files are the secret sauce. They turn your AI from a generic code generato
 ```bash
 bun run dev        # Start dev server with hot reload
 bun run build      # Production build
-bun run check      # Lint + type check
-bun run test       # Run tests
-bun run validate   # Run everything (build + check + test)
+bun run check      # Lint with Biome
 ```
 
 ---
 
 ## Deploy
 
-Deploy anywhere that runs Bun. One-click deploy on [Railway](https://railway.com):
-
-1. Push to GitHub
-2. Create a new Railway project
-3. Select your repo
-4. Done
-
----
-
-## Contributing
-
-Contributions welcome! Open an issue or PR. This project uses strict linting — run `bun run check` before submitting.
+Runs anywhere Bun runs. Single process, no build orchestration.
 
 ---
 
 ## License
 
-MIT — free for personal and commercial use.
+MIT
 
 ---
 
