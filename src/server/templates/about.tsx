@@ -1,8 +1,9 @@
+import { CopyButton, CopyButtonTemplate } from "@server/components/copy-button";
 import { Layout } from "@server/components/layouts";
-import { MyParagraph } from "@server/components/my-paragraph";
 
 export const About = () => (
   <Layout title="About" name="about">
+    <CopyButtonTemplate />
     <h1>About Page</h1>
     <section className="card">
       <p>
@@ -14,12 +15,16 @@ export const About = () => (
         CSS.
       </p>
       <p>And this is a custom web component! 👇</p>
-      <MyParagraph>
-        <span slot="my-text">
-          I'm a custom web component, overriding the default text. I have scoped
-          JS and styles for when you need a little more control.
-        </span>
-      </MyParagraph>
+      <div className="flex items-center gap-3">
+        <code className="bg-gray-100 px-3 py-1 rounded text-sm">
+          bun run dev
+        </code>
+        <CopyButton value="bun run dev" />
+      </div>
+      <p className="text-sm text-gray-500 mt-2">
+        A <code>&lt;copy-button&gt;</code> web component with shadow DOM, scoped
+        styles, and attribute observation.
+      </p>
     </section>
   </Layout>
 );

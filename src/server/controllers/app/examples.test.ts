@@ -192,7 +192,7 @@ describe("Examples Controller", () => {
       const response = await examples.index(request);
       const html = await response.text();
 
-      expect(html).not.toContain("<button");
+      expect(html).not.toContain("Delete</button");
       expect(html).not.toContain('/delete"');
     });
 

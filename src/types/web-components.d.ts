@@ -4,8 +4,8 @@ import type React from "react";
 declare module "react" {
   namespace JSX {
     interface IntrinsicElements {
-      "my-paragraph": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
+      "copy-button": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & { value?: string },
         HTMLElement
       >;
     }

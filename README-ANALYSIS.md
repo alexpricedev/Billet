@@ -30,9 +30,11 @@ Reworded to: "React JSX used purely as a server-side template engine — no clie
 
 Added a Preact island on `/examples`: a live search filter mounted into server-rendered HTML, proving the opt-in interactivity pattern.
 
-### 4. "Web components support: Use or author custom elements natively" — Thin
+### ~~4. "Web components support: Use or author custom elements natively" — Thin~~ FIXED
 
-There's a single `<my-paragraph>` web component. It's a minimal example, not a pattern you'd build on. There's no guidance on shadow DOM, slots, attribute handling, or how web components interact with the SSR story.
+~~There's a single `<my-paragraph>` web component. It's a minimal example, not a pattern you'd build on. There's no guidance on shadow DOM, slots, attribute handling, or how web components interact with the SSR story.~~
+
+Replaced `<my-paragraph>` with a `<copy-button>` web component that demonstrates shadow DOM, scoped styles, `observedAttributes`, `attributeChangedCallback`, and Clipboard API interaction. Used on both `/about` and `/examples` pages.
 
 ### 5. "Easy deploy: Instantly deployable to Railway" — Incomplete
 
@@ -85,7 +87,7 @@ The README significantly undersells the project. These major features exist but 
 
 8. **Add a "Build Your First Page" walkthrough.** The CLAUDE.md has a great "How Files Connect" section. A human-readable version in the README showing the 8-step flow for adding a page would make the starter far more approachable.
 
-9. **Add an opt-in framework example.** Create one page that mounts a small client-side component (even a vanilla Web Component with reactivity) to prove the "opt-in interactivity" claim. Bonus: show a React island alongside the SSR page.
+9. ~~**Add an opt-in framework example.**~~ DONE — Preact island on `/examples` proves framework opt-in; `<copy-button>` web component on `/about` and `/examples` proves native web component support with full lifecycle (shadow DOM, `observedAttributes`, `attributeChangedCallback`).
 
 10. **Add a health check endpoint** (`/api/health`) that verifies DB connectivity. Essential for Railway/any container platform.
 

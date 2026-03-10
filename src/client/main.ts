@@ -18,4 +18,4 @@ if (page && pages[page]) {
 }
 
 // Custom component scripts
-import "@client/components/my-paragraph";
+import "@client/components/copy-button";
