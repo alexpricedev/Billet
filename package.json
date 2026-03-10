@@ -1,5 +1,6 @@
 {
-  "name": "speedloaf",
+  "name": "billet",
+  "description": "A full-stack TypeScript starter designed to be built on by AI coding agents",
   "version": "0.1.0",
   "scripts": {
     "build": "bun run build:client && bun run build:css",
