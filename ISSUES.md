@@ -1,30 +1,33 @@
-# Planned Issues: AI-Agent-Friendly Web Starter Rebrand
+# Planned Issues: Billet — The AI-Agent-Friendly Web Starter
 
-These issues outline the transformation of SpeedLoaf into a web starter template specifically designed to be built on by AI coding agents.
+These issues outline the transformation of SpeedLoaf into **Billet** — a full-stack TypeScript web starter specifically designed to be built on by AI coding agents.
+
+> **Billet** (noun): A semi-finished piece of steel, shaped and ready to be worked into something specific. Just like a steel billet is the starting form that gets forged into a final product, Billet is the starting codebase that AI agents shape into your application.
 
 ---
 
-## Issue 1: Rebrand and reposition as an AI-agent-friendly web starter
+## Issue 1: Rebrand SpeedLoaf to Billet
 
 **Labels:** `branding`, `documentation`, `high-priority`
 
 ### Summary
 
-Full rebrand and repositioning. This is no longer a general-purpose web starter — it's a full-stack TypeScript starter **specifically designed to be built on by AI coding agents** (Claude Code, Cursor, Copilot, Windsurf, etc.).
+Rebrand from SpeedLoaf to **Billet** and reposition as a full-stack TypeScript starter **specifically designed to be built on by AI coding agents** (Claude Code, Cursor, Copilot, Windsurf, etc.).
 
 ### Tasks
 
-- [ ] Choose a new name and brand identity that communicates "AI-agent-optimized web starter"
-- [ ] Design/source a new logo
+- [x] Choose a new name — **Billet**
+- [ ] Design/source a new logo (steel billet / ingot motif)
 - [ ] Update `package.json` name, description, and metadata
 - [ ] Rewrite `README.md` with new positioning, features, and getting started guide
 - [ ] Highlight what makes it agent-friendly: clear architecture, strong types, comprehensive project docs, documented patterns, test infrastructure
-- [ ] Update any references to the old name throughout the codebase
-- [ ] Update the repo description on GitHub
+- [ ] Rename all references from "SpeedLoaf" to "Billet" throughout the codebase
+- [ ] Update the GitHub repo name and description
+- [ ] Secure `billet.dev` domain (if available)
 
 ### Context
 
-The target audience is developers who use AI coding tools to build full-stack web apps. The selling point isn't "fast starter template" — it's "a codebase that AI agents can understand, extend, and build on effectively."
+The target audience is developers who use AI coding tools to build full-stack web apps. The name "Billet" comes from steelmaking — a billet is the semi-finished starting form of steel, ready to be shaped into something specific. Sheffield connection: the Steel City, where crucible steel was invented.
 
 ---
 
