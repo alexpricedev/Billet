@@ -6,7 +6,6 @@
   },
   "deploy": {
     "startCommand": "bun run migrate:up && bun run start",
-    "healthcheckPath": "/",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
