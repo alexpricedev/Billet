@@ -16,7 +16,7 @@ export const login = {
 
     const state = getFlash(req);
 
-    return render(<Login state={state} />);
+    return await render(<Login state={state} />);
   },
 
   async create(req: BunRequest): Promise<Response> {

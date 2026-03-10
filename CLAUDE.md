@@ -48,7 +48,7 @@ NEVER try to roll your own lint or test commands.
 
 **View Controllers** (`src/server/controllers/app/*.test.ts`):
 - Mock service layer dependencies only  
-- Test actual HTML output using `renderToString()`
+- Test actual HTML output using `renderToReadableStream()`
 - Verify specific content appears in rendered HTML
 - Test redirect responses with actual status codes and Location headers
 
@@ -97,10 +97,10 @@ NEVER try to roll your own lint or test commands.
 
 ### Route Organization
 
-- Separate API routes (`/src/server/routes/api.ts`) and view routes (`/src/server/routes/views.tsx`)
+- Separate API routes (`/src/server/routes/api.ts`) and view routes (`/src/server/routes/app.tsx`)
 - Routes use Bun's native `routes: {}` configuration for better performance
 - API routes return JSON responses using `Response.json()`
-- View routes render HTML using `renderToString()` wrapped in Response objects
+- View routes render HTML using `renderToReadableStream()` wrapped in Response objects
 - Both route types can share services for business logic
 
 ### Route Handler Patterns
@@ -109,3 +109,89 @@ NEVER try to roll your own lint or test commands.
 - View routes: `(req) => Response` (after fetching data from services)
 - Avoid circular dependencies between routes (don't fetch API routes from view routes)
 - Use services to share logic between different route types
+
+## Project Structure
+
+### Directory Layout
+
+```
+src/
+├── client/                        # Browser-side code
+│   ├── main.ts                    # Entry point — routes to page init functions
+│   ├── style.css                  # Global styles (Tailwind base)
+│   ├── components/                # Reusable client components (web components, CSS)
+│   │   ├── my-paragraph.ts
+│   │   ├── nav.css
+│   │   └── layout.css
+│   └── pages/                     # Page-specific JS & CSS (co-located)
+│       ├── home.ts / home.css
+│       ├── about.ts / about.css
+│       └── contact.ts / contact.css
+│
+├── server/                        # Server-side code (Bun/TypeScript)
+│   ├── main.ts                    # Server entry point
+│   ├── routes/
+│   │   ├── app.tsx                # View route map
+│   │   └── api.ts                 # API route map
+│   ├── controllers/               # Route handlers (grouped by domain)
+│   │   ├── app/                   # View controllers — return HTML
+│   │   ├── api/                   # API controllers — return JSON
+│   │   └── auth/                  # Auth controllers — login/logout flows
+│   ├── templates/                 # Full-page JSX templates
+│   ├── components/                # Reusable server JSX components
+│   ├── services/                  # Business logic & data access
+│   ├── middleware/                # HTTP middleware (auth, CSRF)
+│   ├── utils/                     # Shared utilities (response, crypto, etc.)
+│   ├── database/
+│   │   ├── cli.ts / migrate.ts    # Migration tooling
+│   │   └── migrations/            # Numbered migration files
+│   └── test-utils/                # Test infrastructure (setup, factories, helpers)
+│
+└── types/                         # Global TypeScript type declarations
+```
+
+### Naming Conventions
+
+| What | Convention | Example |
+|------|-----------|---------|
+| Files & directories | kebab-case | `route-handler.ts`, `test-utils/` |
+| JSX component exports | PascalCase | `Home`, `Layout`, `CsrfField` |
+| Controller namespace exports | camelCase | `home`, `examplesApi`, `login` |
+| Service functions | camelCase | `getExamples`, `createCsrfToken` |
+| Type exports | PascalCase | `Example`, `VisitorStats`, `AuthContext` |
+| Migrations | `NNN_snake_case.ts` | `001_initial_setup.ts` |
+| Test files | Co-located `.test.ts` | `home.test.ts` next to `home.tsx` |
+
+**Controller barrel export naming:** App controllers export plain names (`home`, `about`). API controllers use an `Api` suffix (`examplesApi`, `statsApi`) to disambiguate when both domains share a resource name.
+
+### How Files Connect (Adding a New Page)
+
+To add a new page called "dashboard", create files in this order:
+
+1. **Service** (if it needs data): `src/server/services/dashboard.ts`
+   - Export functions and types
+2. **Template**: `src/server/templates/dashboard.tsx`
+   - Import types from service, accept data as props
+   - Wrap in `<Layout title="Dashboard" name="dashboard">`
+3. **Controller**: `src/server/controllers/app/dashboard.tsx`
+   - Import service functions and template
+   - Fetch data, pass to template via `render(<Dashboard ... />)`
+   - Export as `const dashboard = { index(req) { ... } }`
+4. **Barrel export**: Add `export { dashboard } from "./dashboard"` to `controllers/app/index.ts`
+5. **Route**: Add `"/dashboard": dashboard.index` to `routes/app.tsx`
+6. **Client JS** (if interactive): `src/client/pages/dashboard.ts`
+   - Export an `init()` function
+   - Register it in `src/client/main.ts`
+7. **Client CSS** (if page-specific styles): `src/client/pages/dashboard.css`
+8. **Test**: `src/server/controllers/app/dashboard.test.ts`
+
+For an **API endpoint**, the flow is similar but skips templates:
+1. Service → 2. Controller in `controllers/api/` → 3. Barrel export with `Api` suffix → 4. Route in `routes/api.ts` → 5. Test
+
+### Key Patterns
+
+- **Routes** are thin — they only map URL paths to controller methods
+- **Controllers** orchestrate: fetch from services, then render templates or return JSON
+- **Services** own all business logic and data access — controllers never query the DB directly
+- **Templates** are pure presentation — they receive fully resolved data as props
+- **Client scripts** use `data-page` on `<body>` for page routing (set by the `Layout` component's `name` prop)

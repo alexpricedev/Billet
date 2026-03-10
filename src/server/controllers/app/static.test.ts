@@ -6,7 +6,7 @@ import { contact } from "./contact";
 describe("Static Page Controllers", () => {
   describe("About Controller", () => {
     test("renders about page", async () => {
-      const response = about.index();
+      const response = await about.index();
       const html = await response.text();
 
       expect(response).toBeInstanceOf(Response);
@@ -19,7 +19,7 @@ describe("Static Page Controllers", () => {
 
   describe("Contact Controller", () => {
     test("renders contact page", async () => {
-      const response = contact.index();
+      const response = await contact.index();
       const html = await response.text();
 
       expect(response).toBeInstanceOf(Response);
