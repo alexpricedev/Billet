@@ -40,9 +40,11 @@ Replaced `<my-paragraph>` with a `<copy-button>` web component that demonstrates
 
 No `railway.json`, no `Dockerfile`, no `Procfile`. The deploy section is 4 bullet points that amount to "push and pray." There's no documentation of required environment variables (`DATABASE_URL`, `CRYPTO_PEPPER`, `APP_URL`), no mention that you need a PostgreSQL addon, and no migration step for production.
 
-### 6. "Modern frontend tooling: Integrates with your favorite tools and workflows" — Vague
+### ~~6. "Modern frontend tooling: Integrates with your favorite tools and workflows" — Vague~~ FIXED
 
-This claim says nothing specific. The actual tooling (Tailwind, Biome, Bun bundler) is good but the README doesn't name any of it in the features list.
+~~This claim says nothing specific. The actual tooling (Tailwind, Biome, Bun bundler) is good but the README doesn't name any of it in the features list.~~
+
+Replaced with: "Strict code quality: Biome linting with zero-warning enforcement, TypeScript strict mode, and Husky pre-commit hooks."
 
 ## What the README Undersells
 
@@ -81,7 +83,7 @@ The README significantly undersells the project. These major features exist but 
 
 6. **Document the testing story.** The "deterministic templates... test with confidence" tagline is the project's thesis. Back it up with a section showing how easy it is to test a controller without browser simulation.
 
-7. **Replace vague features with specific ones.** Instead of "Modern frontend tooling" → "Biome linting with zero-warning enforcement." Instead of "Separation of concerns" → "Service → Controller → Template architecture with type safety across layers."
+7. ~~**Replace vague features with specific ones.**~~ DONE — "Modern frontend tooling" replaced with "Strict code quality: Biome linting with zero-warning enforcement, TypeScript strict mode, and Husky pre-commit hooks."
 
 ### C. Exceed expectations
 

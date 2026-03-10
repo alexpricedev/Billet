@@ -44,7 +44,7 @@ Billet is built for server-rendered apps with light client-side interactivity. I
 - **Familiar JSX/TSX templating**: React JSX used purely as a server-side template engine — no client-side React, no virtual DOM, no hydration
 - **Web standards first**: Embraces native HTML, CSS, and JavaScript
 - **Separation of concerns**: Encourages clean, maintainable code structure
-- **Modern frontend tooling**: Integrates with your favorite tools and workflows
+- **Strict code quality**: Biome linting with zero-warning enforcement, TypeScript strict mode, and Husky pre-commit hooks
 - **Web components support**: Use or author custom elements natively
 - **Opt-in interactivity**: Sprinkle in any client-side framework where you need it
 - **Server-side rendering**: TSX-based static/server components
@@ -90,12 +90,37 @@ Contributions are welcome! Please open issues or PRs.
 
 ## ☁️ Deploy
 
-Deploy instantly on [Railway](https://railway.com?referralCode=XB1wns):
+### Railway
+
+A `railway.json` is included with build and start commands pre-configured.
 
 1. Push to GitHub
-2. Create a new Railway project
-3. Select your repo
-4. Watch it fly!
+2. Create a new [Railway](https://railway.com?referralCode=XB1wns) project and connect your repo
+3. Add a **PostgreSQL** plugin to the project
+4. Set the required environment variables (see below)
+5. Deploy — Railway will build, run migrations, and start the server
+
+### Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string (auto-set by Railway's PostgreSQL plugin) |
+| `CRYPTO_PEPPER` | Yes | Random secret used for HMAC session tokens — generate with `openssl rand -hex 32` |
+| `APP_URL` | Yes | Public URL of your app (e.g. `https://my-app.up.railway.app`) |
+| `APP_ORIGIN` | No | Expected origin for CSRF validation — defaults to request host if not set |
+| `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
+
+### Database
+
+Billet uses PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency. Migrations are managed with a lightweight CLI:
+
+```bash
+bun run migrate:up       # Run pending migrations
+bun run migrate:status   # Show migration state
+bun run migrate:create   # Create a new migration file
+```
+
+If you don't need a database, remove the `src/server/database/` and `src/server/services/` directories and strip the DB-related routes. There's no framework coupling to undo.
 
 ---
 
