@@ -19,6 +19,7 @@
     "lint:write": "bunx @biomejs/biome@beta check src --write",
     "typecheck": "bun --bun tsc --noEmit",
     "check": "bun run lint && bun run typecheck",
+    "generate:pepper": "bun -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     "migrate:up": "bun run src/server/database/cli.ts up",
     "migrate:status": "bun run src/server/database/cli.ts status",
     "migrate:create": "bun run src/server/database/cli.ts create",

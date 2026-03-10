@@ -90,25 +90,31 @@ Contributions are welcome! Please open issues or PRs.
 
 ## ☁️ Deploy
 
+Billet is a single Bun process — no containers, no serverless adapters, no platform-specific runtime. Anywhere you can run `bun run start`, it'll work: Railway, Fly.io, Render, a VPS, or your own machine.
+
 ### Railway
 
 A `railway.json` is included with build and start commands pre-configured.
 
 1. Push to GitHub
 2. Create a new [Railway](https://railway.com?referralCode=XB1wns) project and connect your repo
-3. Add a **PostgreSQL** plugin to the project
-4. Set the required environment variables (see below)
+3. Add a **PostgreSQL** plugin and link it to your service — this auto-sets `DATABASE_URL`
+4. Set the remaining environment variables (see below)
 5. Deploy — Railway will build, run migrations, and start the server
+
+> **Tip:** If you're using Claude Code with the [Railway MCP server](https://docs.railway.com/guides/mcp), you can ask Claude to set up the project, add PostgreSQL, and configure environment variables for you.
 
 ### Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string (auto-set by Railway's PostgreSQL plugin) |
-| `CRYPTO_PEPPER` | Yes | Random secret used for HMAC session tokens — generate with `openssl rand -hex 32` |
-| `APP_URL` | Yes | Public URL of your app (e.g. `https://my-app.up.railway.app`) |
+| `DATABASE_URL` | Yes | PostgreSQL connection string — auto-set when you link Railway's PostgreSQL plugin to your service |
+| `CRYPTO_PEPPER` | Yes | Secret key for session tokens — run `bun run generate:pepper` to get one (see below) |
+| `APP_URL` | Yes | Your app's public URL — you'll get this from Railway after your first deploy (e.g. `https://my-app.up.railway.app`) |
 | `APP_ORIGIN` | No | Expected origin for CSRF validation — defaults to request host if not set |
 | `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
+
+> **Generating `CRYPTO_PEPPER`:** This is a secret key used to secure session tokens. Run `bun run generate:pepper` to get a value. Use a different value for each environment (development, production, etc).
 
 ### Database
 
