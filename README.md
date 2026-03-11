@@ -53,7 +53,6 @@ Billet is built for server-rendered apps with light client-side interactivity. I
 - **Web standards first**: Embraces native HTML, CSS, and JavaScript
 - **Separation of concerns**: Encourages clean, maintainable code structure
 - **Strict code quality**: Biome linting with zero-warning enforcement, TypeScript strict mode, and Husky pre-commit hooks
-- **Web components support**: Use or author custom elements natively
 - **Opt-in interactivity**: Sprinkle in any client-side framework where you need it
 - **Server-side rendering**: TSX-based static/server components
 - **HTML streaming**: Powered by `react-dom/server` in Bun
