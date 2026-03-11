@@ -48,9 +48,9 @@ Both added a `bunfig.toml` with coverage thresholds (95% lines/functions, 80% br
 
 **Files:** `src/server/middleware/admin.ts` (new), `src/server/routes/admin.tsx` (new), `src/server/main.ts`
 
-### 8. Flash cookie refactor
+### ~~8. Flash cookie refactor~~ ✅ Done
 
-Both extracted `getFlashCookieOptions()` as a DRY helper for shared cookie config instead of inlining cookie options in multiple places.
+~~Both extracted `getFlashCookieOptions()` as a DRY helper for shared cookie config instead of inlining cookie options in multiple places.~~
 
 **Files:** `src/server/utils/flash.ts`
 
