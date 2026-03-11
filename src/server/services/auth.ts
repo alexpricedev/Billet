@@ -1,10 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { computeHMAC, generateSecureToken } from "../utils/crypto";
 import { db } from "./database";
-import {
-  convertGuestToAuthenticated,
-  createAuthenticatedSession,
-} from "./sessions";
+import { createAuthenticatedSession, deleteSession } from "./sessions";
 
 export interface User {
   id: string;
@@ -136,19 +133,11 @@ export const verifyMagicLink = async (
     created_at: string;
   };
 
-  let sessionId: string;
+  // Always create a fresh session to prevent session fixation attacks
   if (guestSessionId) {
-    const guestHash = computeHMAC(guestSessionId);
-    const converted = await convertGuestToAuthenticated(
-      guestHash,
-      tokenData.user_id,
-    );
-    sessionId = converted
-      ? guestSessionId
-      : await createAuthenticatedSession(tokenData.user_id);
-  } else {
-    sessionId = await createAuthenticatedSession(tokenData.user_id);
+    await deleteSession(guestSessionId);
   }
+  const sessionId = await createAuthenticatedSession(tokenData.user_id);
 
   const user: User = {
     id: userData.id,

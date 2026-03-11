@@ -296,26 +296,27 @@ describe("Auth Service with PostgreSQL", () => {
   });
 
   describe("guest session upgrade", () => {
-    test("upgrades guest session when guestSessionId provided", async () => {
-      // Create a guest session
+    test("deletes guest session and creates new session on login", async () => {
       const guestSessionId = await createGuestSession();
 
-      // Create a magic link
       const { user, rawToken } = await createMagicLink("upgrade@example.com");
 
-      // Verify magic link with guest session upgrade
       const result = await verifyMagicLink(rawToken, guestSessionId);
 
       expect(result.success).toBe(true);
       if (result.success) {
-        // Session ID should be the same (guest session was upgraded)
-        expect(result.sessionId).toBe(guestSessionId);
+        // New session ID should be different (prevents session fixation)
+        expect(result.sessionId).not.toBe(guestSessionId);
         expect(result.user.id).toBe(user.id);
 
-        // Verify the session is now authenticated
-        const sessionContext = await getSessionContextFromDB(guestSessionId);
-        expect(sessionContext?.isAuthenticated).toBe(true);
-        expect(sessionContext?.user?.id).toBe(user.id);
+        // Old guest session should be deleted
+        const oldSession = await getSessionContextFromDB(guestSessionId);
+        expect(oldSession).toBeNull();
+
+        // New session should be authenticated
+        const newSession = await getSessionContextFromDB(result.sessionId);
+        expect(newSession?.isAuthenticated).toBe(true);
+        expect(newSession?.user?.id).toBe(user.id);
       }
     });
 

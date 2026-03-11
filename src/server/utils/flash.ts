@@ -1,5 +1,5 @@
 import type { BunRequest } from "bun";
-import { computeHMAC } from "./crypto";
+import { computeHMAC, verifyHMAC } from "./crypto";
 
 const FLASH_COOKIE_PREFIX = "flash_";
 const FLASH_COOKIE_MAX_AGE = 300; // 5 minutes
@@ -52,8 +52,7 @@ export const getFlashCookie = <T>(req: BunRequest, key: string): T => {
     const providedSignature = signedValue.slice(0, dotIndex);
     const payload = signedValue.slice(dotIndex + 1);
 
-    const expectedSignature = computeHMAC(payload);
-    if (providedSignature !== expectedSignature) {
+    if (!verifyHMAC(payload, providedSignature)) {
       return {} as T;
     }
 
