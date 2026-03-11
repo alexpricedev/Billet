@@ -82,25 +82,19 @@ realfast added `src/server/middleware/rate-limit.ts` — sliding-window in-memor
 
 **Files:** `src/server/middleware/rate-limit.ts` (new)
 
-### 13. Migration `create` command
-
-realfast added a `create` command to `src/server/database/cli.ts` that generates timestamped migration files with up/down templates. The template only has `up`, `status`, and `down`.
-
-**Files:** `src/server/database/cli.ts`
-
-### 14. Stricter tsconfig
+### 13. Stricter tsconfig
 
 realfast added `noUnusedLocals` and `noUnusedParameters`. Both added `"include": ["src/**/*"]` for explicit compiler scope.
 
 **Files:** `tsconfig.json`
 
-### 15. Client page lifecycle system
+### 14. Client page lifecycle system
 
 realfast added `src/client/page-lifecycle.ts` — a `registerPage()` / `PageController` interface with `init()` and `cleanup()`. Solves the problem of page-specific JS leaking state across navigations (important if the template ever adopts Turbo or similar).
 
 **Files:** `src/client/page-lifecycle.ts` (new), `src/client/main.ts`
 
-### 16. Biome config updates
+### 15. Biome config updates
 
 realfast added `noUnusedVariables: "error"`, removed nursery rule overrides, and bumped the schema version.
 
@@ -130,23 +124,3 @@ mandir added a proper email provider interface with a Resend implementation alon
 
 **Files:** `src/server/services/email-providers/resend.ts` (new)
 
-### 20. Text utilities
-
-Both projects ended up needing `toTitleCase()` and `slugToLabel()`. Small but repeatedly useful.
-
-**Files:** `src/server/utils/text.ts` (new)
-
----
-
-## Skipped (domain-specific)
-
-These were changes made for the specific product, not the framework:
-
-- Extended user model fields (name, address, role, whatsapp)
-- Multiple transactional email templates (booking, refund, membership, etc.)
-- Stripe/Google Calendar/Mixpanel integrations
-- IoT health check polling (realfast vending machines)
-- DaisyUI, chart.js, marked, lucide-react dependencies
-- CSV export utilities
-- Turbo lifecycle management (only relevant if template adopts Turbo)
-- Domain-specific config directories (`src/server/config/`)
