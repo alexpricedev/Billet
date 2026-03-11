@@ -1,4 +1,5 @@
 import { runMigrations } from "./database/migrate";
+import { adminRoutes } from "./routes/admin";
 import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
 import { log } from "./services/logger";
@@ -10,6 +11,7 @@ const server = Bun.serve({
   idleTimeout: 30, // 30 second timeout
   routes: {
     ...appRoutes,
+    ...adminRoutes,
     ...apiRoutes,
   },
   async fetch(req) {
