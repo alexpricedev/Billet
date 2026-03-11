@@ -12,9 +12,9 @@ Changes made in **realfast** and **sheffield-hindu-mandir** that should come bac
 
 **Files:** `src/server/main.ts`
 
-### 2. Synchronous rendering
+### ~~2. Synchronous rendering~~ ✅ Done
 
-Both switched `src/server/utils/response.ts` from `renderToReadableStream()` to `renderToString()`. Streaming is unnecessary for server-rendered pages at this scale and the synchronous model is simpler to reason about. (Note: this contradicts a fix logged in README-ANALYSIS.md where we switched _to_ streaming — a decision was clearly reversed in practice.)
+~~Both switched `src/server/utils/response.ts` from `renderToReadableStream()` to `renderToString()`. Streaming is unnecessary for server-rendered pages at this scale and the synchronous model is simpler to reason about. (Note: this contradicts a fix logged in README-ANALYSIS.md where we switched _to_ streaming — a decision was clearly reversed in practice.)~~
 
 **Files:** `src/server/utils/response.ts`
 
