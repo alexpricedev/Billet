@@ -1,8 +1,11 @@
-import { createSessionCookie, verifyMagicLink } from "../../services/auth";
+import type { BunRequest } from "bun";
+import { getSessionContext } from "../../middleware/auth";
+import { verifyMagicLink } from "../../services/auth";
+import { setSessionCookie } from "../../services/sessions";
 import { redirect } from "../../utils/response";
 
 export const callback = {
-  async index(req: Request): Promise<Response> {
+  async index(req: BunRequest): Promise<Response> {
     const url = new URL(req.url);
     const token = url.searchParams.get("token");
 
@@ -11,20 +14,19 @@ export const callback = {
     }
 
     try {
-      const result = await verifyMagicLink(token);
+      const ctx = await getSessionContext(req);
+      const guestSessionId = ctx.isGuest ? ctx.sessionId : null;
+      const result = await verifyMagicLink(token, guestSessionId);
 
       if (!result.success) {
         return redirect(`/login?error=${encodeURIComponent(result.error)}`);
       }
 
-      const sessionCookie = createSessionCookie(result.sessionId);
+      setSessionCookie(req, result.sessionId);
 
       return new Response("", {
         status: 303,
-        headers: {
-          Location: "/",
-          "Set-Cookie": sessionCookie,
-        },
+        headers: { Location: "/" },
       });
     } catch {
       return redirect("/login?error=Authentication failed. Please try again.");

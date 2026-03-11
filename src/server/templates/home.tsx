@@ -1,12 +1,12 @@
 import { CsrfField } from "@server/components/csrf-field";
 import { Layout } from "@server/components/layouts";
-import type { AuthContext } from "@server/middleware/auth";
+import type { SessionContext } from "@server/middleware/auth";
 import type { VisitorStats } from "@server/services/analytics";
 
 export const Home = (props: {
   method: string;
   stats: VisitorStats;
-  auth: AuthContext;
+  auth: SessionContext;
   csrfToken: string | null;
 }) => (
   <Layout title="Home" name="home">

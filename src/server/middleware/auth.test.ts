@@ -13,9 +13,18 @@ mock.module("../services/database", () => ({
   },
 }));
 
-import { createSession, findOrCreateUser } from "../services/auth";
+import { findOrCreateUser } from "../services/auth";
 import { db } from "../services/database";
-import { getAuthContext, redirectIfAuthenticated, requireAuth } from "./auth";
+import {
+  createAuthenticatedSession,
+  createGuestSession,
+} from "../services/sessions";
+import { createBunRequest } from "../test-utils/bun-request";
+import {
+  getSessionContext,
+  redirectIfAuthenticated,
+  requireAuth,
+} from "./auth";
 
 describe("Auth Middleware", () => {
   beforeEach(async () => {
@@ -26,110 +35,125 @@ describe("Auth Middleware", () => {
     await connection.end();
   });
 
-  describe("getAuthContext", () => {
-    test("returns unauthenticated context for request without cookie", async () => {
-      const request = new Request("http://localhost:3000/test");
-      const context = await getAuthContext(request);
+  describe("getSessionContext", () => {
+    test("returns guest context with requiresSetCookie for request without cookie", async () => {
+      const request = createBunRequest("http://localhost:3000/test");
+      const context = await getSessionContext(request);
 
       expect(context.isAuthenticated).toBe(false);
+      expect(context.isGuest).toBe(true);
+      expect(context.requiresSetCookie).toBe(true);
       expect(context.user).toBeNull();
+      expect(context.sessionId).not.toBeNull();
+      expect(context.sessionType).toBe("guest");
     });
 
-    test("returns unauthenticated context for request with invalid session", async () => {
-      const request = new Request("http://localhost:3000/test", {
-        headers: {
-          cookie: "session_id=invalid-session-id",
-        },
+    test("returns guest context with requiresSetCookie false for valid guest session", async () => {
+      const sessionId = await createGuestSession();
+
+      const request = createBunRequest("http://localhost:3000/test", {
+        headers: { cookie: `session_id=${sessionId}` },
       });
-      const context = await getAuthContext(request);
+      const context = await getSessionContext(request);
 
       expect(context.isAuthenticated).toBe(false);
+      expect(context.isGuest).toBe(true);
+      expect(context.requiresSetCookie).toBe(false);
+      expect(context.user).toBeNull();
+      expect(context.sessionId).toBe(sessionId);
+      expect(context.sessionType).toBe("guest");
+    });
+
+    test("returns authenticated context with user data for valid authenticated session", async () => {
+      const user = await findOrCreateUser("valid@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      const request = createBunRequest("http://localhost:3000/test", {
+        headers: { cookie: `session_id=${sessionId}` },
+      });
+      const context = await getSessionContext(request);
+
+      expect(context.isAuthenticated).toBe(true);
+      expect(context.isGuest).toBe(false);
+      expect(context.requiresSetCookie).toBe(false);
+      expect(context.user).not.toBeNull();
+      expect(context.user?.id).toBe(user.id);
+      expect(context.user?.email).toBe(user.email);
+      expect(context.sessionId).toBe(sessionId);
+      expect(context.sessionType).toBe("authenticated");
+    });
+
+    test("returns guest context with requiresSetCookie for invalid session cookie", async () => {
+      const request = createBunRequest("http://localhost:3000/test", {
+        headers: { cookie: "session_id=invalid-session-id" },
+      });
+      const context = await getSessionContext(request);
+
+      expect(context.isAuthenticated).toBe(false);
+      expect(context.isGuest).toBe(true);
+      expect(context.requiresSetCookie).toBe(true);
       expect(context.user).toBeNull();
     });
 
-    test("returns unauthenticated context for expired session", async () => {
+    test("returns guest context with requiresSetCookie for expired session", async () => {
       const user = await findOrCreateUser("expired@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
 
-      // Create session using service, then manually expire it
-      const sessionId = await createSession(user.id);
-
-      // Import computeHMAC to get session hash for manual expiry
       const { computeHMAC } = await import("../utils/crypto");
       const sessionIdHash = computeHMAC(sessionId);
 
-      // Expire the session
       await db`
-        UPDATE sessions 
+        UPDATE sessions
         SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour'
         WHERE id_hash = ${sessionIdHash}
       `;
 
-      const request = new Request("http://localhost:3000/test", {
-        headers: {
-          cookie: `session_id=${sessionId}`,
-        },
+      const request = createBunRequest("http://localhost:3000/test", {
+        headers: { cookie: `session_id=${sessionId}` },
       });
-      const context = await getAuthContext(request);
+      const context = await getSessionContext(request);
 
       expect(context.isAuthenticated).toBe(false);
+      expect(context.isGuest).toBe(true);
+      expect(context.requiresSetCookie).toBe(true);
       expect(context.user).toBeNull();
     });
 
-    test("returns authenticated context for valid session", async () => {
-      const user = await findOrCreateUser("valid@example.com");
-      const sessionId = await createSession(user.id);
-
-      const request = new Request("http://localhost:3000/test", {
-        headers: {
-          cookie: `session_id=${sessionId}`,
-        },
+    test("handles database errors gracefully", async () => {
+      const request = createBunRequest("http://localhost:3000/test", {
+        headers: { cookie: "session_id=malformed-not-uuid" },
       });
-      const context = await getAuthContext(request);
+      const context = await getSessionContext(request);
 
-      expect(context.isAuthenticated).toBe(true);
-      expect(context.user).not.toBeNull();
-      expect(context.user?.id).toBe(user.id);
-      expect(context.user?.email).toBe(user.email);
+      expect(context.isAuthenticated).toBe(false);
+      expect(context.isGuest).toBe(true);
+      expect(context.requiresSetCookie).toBe(true);
+      expect(context.user).toBeNull();
     });
 
     test("handles multiple cookies correctly", async () => {
       const user = await findOrCreateUser("cookies@example.com");
-      const sessionId = await createSession(user.id);
+      const sessionId = await createAuthenticatedSession(user.id);
 
-      const request = new Request("http://localhost:3000/test", {
+      const request = createBunRequest("http://localhost:3000/test", {
         headers: {
           cookie: `other=value; session_id=${sessionId}; another=value`,
         },
       });
-      const context = await getAuthContext(request);
+      const context = await getSessionContext(request);
 
       expect(context.isAuthenticated).toBe(true);
       expect(context.user?.id).toBe(user.id);
-    });
-
-    test("handles database errors gracefully", async () => {
-      // Test with malformed session ID that will cause getSession to fail
-      const request = new Request("http://localhost:3000/test", {
-        headers: {
-          cookie: "session_id=invalid-malformed-session-id-not-uuid",
-        },
-      });
-      const context = await getAuthContext(request);
-
-      expect(context.isAuthenticated).toBe(false);
-      expect(context.user).toBeNull();
     });
   });
 
   describe("requireAuth", () => {
     test("returns null for authenticated user", async () => {
       const user = await findOrCreateUser("authed@example.com");
-      const sessionId = await createSession(user.id);
+      const sessionId = await createAuthenticatedSession(user.id);
 
-      const request = new Request("http://localhost:3000/protected", {
-        headers: {
-          cookie: `session_id=${sessionId}`,
-        },
+      const request = createBunRequest("http://localhost:3000/protected", {
+        headers: { cookie: `session_id=${sessionId}` },
       });
 
       const result = await requireAuth(request);
@@ -137,7 +161,21 @@ describe("Auth Middleware", () => {
     });
 
     test("returns redirect response for unauthenticated user", async () => {
-      const request = new Request("http://localhost:3000/protected");
+      const request = createBunRequest("http://localhost:3000/protected");
+
+      const result = await requireAuth(request);
+
+      expect(result).not.toBeNull();
+      expect(result?.status).toBe(303);
+      expect(result?.headers.get("location")).toBe("/login");
+    });
+
+    test("returns redirect for guest session", async () => {
+      const sessionId = await createGuestSession();
+
+      const request = createBunRequest("http://localhost:3000/protected", {
+        headers: { cookie: `session_id=${sessionId}` },
+      });
 
       const result = await requireAuth(request);
 
@@ -148,25 +186,19 @@ describe("Auth Middleware", () => {
 
     test("returns redirect for expired session", async () => {
       const user = await findOrCreateUser("expired2@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
 
-      // Create session using service, then manually expire it
-      const sessionId = await createSession(user.id);
-
-      // Import computeHMAC to get session hash for manual expiry
       const { computeHMAC } = await import("../utils/crypto");
       const sessionIdHash = computeHMAC(sessionId);
 
-      // Expire the session
       await db`
-        UPDATE sessions 
+        UPDATE sessions
         SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour'
         WHERE id_hash = ${sessionIdHash}
       `;
 
-      const request = new Request("http://localhost:3000/protected", {
-        headers: {
-          cookie: `session_id=${sessionId}`,
-        },
+      const request = createBunRequest("http://localhost:3000/protected", {
+        headers: { cookie: `session_id=${sessionId}` },
       });
 
       const result = await requireAuth(request);
@@ -180,12 +212,10 @@ describe("Auth Middleware", () => {
   describe("redirectIfAuthenticated", () => {
     test("returns redirect response for authenticated user", async () => {
       const user = await findOrCreateUser("authredirect@example.com");
-      const sessionId = await createSession(user.id);
+      const sessionId = await createAuthenticatedSession(user.id);
 
-      const request = new Request("http://localhost:3000/login", {
-        headers: {
-          cookie: `session_id=${sessionId}`,
-        },
+      const request = createBunRequest("http://localhost:3000/login", {
+        headers: { cookie: `session_id=${sessionId}` },
       });
 
       const result = await redirectIfAuthenticated(request);
@@ -196,7 +226,18 @@ describe("Auth Middleware", () => {
     });
 
     test("returns null for unauthenticated user", async () => {
-      const request = new Request("http://localhost:3000/login");
+      const request = createBunRequest("http://localhost:3000/login");
+
+      const result = await redirectIfAuthenticated(request);
+      expect(result).toBeNull();
+    });
+
+    test("returns null for guest session", async () => {
+      const sessionId = await createGuestSession();
+
+      const request = createBunRequest("http://localhost:3000/login", {
+        headers: { cookie: `session_id=${sessionId}` },
+      });
 
       const result = await redirectIfAuthenticated(request);
       expect(result).toBeNull();
@@ -204,25 +245,19 @@ describe("Auth Middleware", () => {
 
     test("returns null for expired session", async () => {
       const user = await findOrCreateUser("expiredredirect@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
 
-      // Create session using service, then manually expire it
-      const sessionId = await createSession(user.id);
-
-      // Import computeHMAC to get session hash for manual expiry
       const { computeHMAC } = await import("../utils/crypto");
       const sessionIdHash = computeHMAC(sessionId);
 
-      // Expire the session
       await db`
-        UPDATE sessions 
+        UPDATE sessions
         SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour'
         WHERE id_hash = ${sessionIdHash}
       `;
 
-      const request = new Request("http://localhost:3000/login", {
-        headers: {
-          cookie: `session_id=${sessionId}`,
-        },
+      const request = createBunRequest("http://localhost:3000/login", {
+        headers: { cookie: `session_id=${sessionId}` },
       });
 
       const result = await redirectIfAuthenticated(request);
@@ -230,10 +265,8 @@ describe("Auth Middleware", () => {
     });
 
     test("returns null for invalid session", async () => {
-      const request = new Request("http://localhost:3000/login", {
-        headers: {
-          cookie: "session_id=invalid-session-id",
-        },
+      const request = createBunRequest("http://localhost:3000/login", {
+        headers: { cookie: "session_id=invalid-session-id" },
       });
 
       const result = await redirectIfAuthenticated(request);
@@ -245,38 +278,32 @@ describe("Auth Middleware", () => {
     test("complete auth flow with middleware", async () => {
       const email = "integration@example.com";
 
-      // Step 1: Unauthenticated user trying to access protected resource
-      let request = new Request("http://localhost:3000/protected");
+      let request = createBunRequest("http://localhost:3000/protected");
       let authResult = await requireAuth(request);
       expect(authResult?.status).toBe(303);
       expect(authResult?.headers.get("location")).toBe("/login");
 
-      // Step 2: User tries to access login page (should work)
-      request = new Request("http://localhost:3000/login");
+      request = createBunRequest("http://localhost:3000/login");
       let redirectResult = await redirectIfAuthenticated(request);
       expect(redirectResult).toBeNull();
 
-      // Step 3: Create session (simulate successful login)
       const user = await findOrCreateUser(email);
-      const sessionId = await createSession(user.id);
+      const sessionId = await createAuthenticatedSession(user.id);
 
-      // Step 4: Authenticated user can access protected resources
-      request = new Request("http://localhost:3000/protected", {
+      request = createBunRequest("http://localhost:3000/protected", {
         headers: { cookie: `session_id=${sessionId}` },
       });
       authResult = await requireAuth(request);
-      expect(authResult).toBeNull(); // No redirect needed
+      expect(authResult).toBeNull();
 
-      // Step 5: Authenticated user trying to access login page gets redirected
-      request = new Request("http://localhost:3000/login", {
+      request = createBunRequest("http://localhost:3000/login", {
         headers: { cookie: `session_id=${sessionId}` },
       });
       redirectResult = await redirectIfAuthenticated(request);
       expect(redirectResult?.status).toBe(303);
       expect(redirectResult?.headers.get("location")).toBe("/");
 
-      // Step 6: Auth context provides user info
-      const context = await getAuthContext(request);
+      const context = await getSessionContext(request);
       expect(context.isAuthenticated).toBe(true);
       expect(context.user?.email).toBe(email);
     });

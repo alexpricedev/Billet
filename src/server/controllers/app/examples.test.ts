@@ -1,12 +1,9 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
-import {
-  createSession,
-  createSessionCookie,
-  findOrCreateUser,
-} from "../../services/auth";
+import { findOrCreateUser } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
 import type { Example } from "../../services/example";
+import { createAuthenticatedSession } from "../../services/sessions";
 import type { ExamplesState } from "../../templates/examples";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { createMockExample } from "../../test-utils/factories";
@@ -54,7 +51,7 @@ describe("Examples Controller", () => {
 
   const createTestSession = async () => {
     const user = await findOrCreateUser(randomEmail());
-    return createSession(user.id);
+    return createAuthenticatedSession(user.id);
   };
 
   describe("GET /examples", () => {
@@ -82,12 +79,11 @@ describe("Examples Controller", () => {
 
     test("renders examples page with form for authenticated users", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
 
       mockGetExamples.mockResolvedValue([]);
 
       const request = createBunRequest("http://localhost:3000/examples", {
-        headers: { Cookie: cookieHeader },
+        headers: { Cookie: `session_id=${sessionId}` },
       });
       const response = await examples.index(request);
       const html = await response.text();
@@ -100,7 +96,7 @@ describe("Examples Controller", () => {
 
     test("shows success message when state is submission-success", async () => {
       const sessionId = await createTestSession();
-      const sessionCookieHeader = createSessionCookie(sessionId);
+      const sessionCookieHeader = `session_id=${sessionId}`;
 
       mockGetExamples.mockResolvedValue([]);
 
@@ -124,7 +120,7 @@ describe("Examples Controller", () => {
 
     test("shows different success messages for created and deleted", async () => {
       const sessionId = await createTestSession();
-      const sessionCookieHeader = createSessionCookie(sessionId);
+      const sessionCookieHeader = `session_id=${sessionId}`;
 
       mockGetExamples.mockResolvedValue([]);
 
@@ -161,7 +157,7 @@ describe("Examples Controller", () => {
 
     test("shows delete buttons for authenticated users with examples", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
 
       const mockExamplesList = [
         createMockExample({ id: 1, name: "Example 1" }),
@@ -198,7 +194,7 @@ describe("Examples Controller", () => {
 
     test("generates CSRF token for authenticated users", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
 
       mockGetExamples.mockResolvedValue([]);
 
@@ -234,7 +230,7 @@ describe("Examples Controller", () => {
 
     test("rejects request without CSRF token", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
 
       const mockFormData = new FormData();
       mockFormData.append("name", "New Example");
@@ -257,7 +253,7 @@ describe("Examples Controller", () => {
 
     test("rejects request with invalid CSRF token", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
 
       const mockFormData = new FormData();
       mockFormData.append("name", "New Example");
@@ -281,7 +277,7 @@ describe("Examples Controller", () => {
 
     test("rejects request without Origin/Referer", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
 
       const mockFormData = new FormData();
@@ -303,7 +299,7 @@ describe("Examples Controller", () => {
 
     test("creates example with valid authentication and CSRF token", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
 
       const mockFormData = new FormData();
@@ -332,7 +328,7 @@ describe("Examples Controller", () => {
 
     test("trims whitespace from name before creating", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
 
       const mockFormData = new FormData();
@@ -361,7 +357,7 @@ describe("Examples Controller", () => {
 
     test("redirects without creating when name is empty", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
 
       const mockFormData = new FormData();
@@ -386,7 +382,7 @@ describe("Examples Controller", () => {
 
     test("redirects without creating when name is too short", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
 
       const mockFormData = new FormData();
@@ -411,7 +407,7 @@ describe("Examples Controller", () => {
 
     test("works with CSRF token in header instead of form", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
 
       const mockFormData = new FormData();
@@ -460,7 +456,7 @@ describe("Examples Controller", () => {
 
     test("rejects request without CSRF token", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
 
       const request = createBunRequest<"/examples/:id/delete">(
         "http://localhost:3000/examples/42/delete",
@@ -484,7 +480,7 @@ describe("Examples Controller", () => {
 
     test("deletes example with valid authentication and CSRF token", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",
@@ -522,7 +518,7 @@ describe("Examples Controller", () => {
 
     test("redirects without error when example not found", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",
@@ -556,7 +552,7 @@ describe("Examples Controller", () => {
 
     test("redirects when id is not a valid number", async () => {
       const sessionId = await createTestSession();
-      const cookieHeader = createSessionCookie(sessionId);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",

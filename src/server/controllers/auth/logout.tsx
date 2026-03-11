@@ -1,26 +1,13 @@
+import type { BunRequest } from "bun";
+import { getSessionContext } from "../../middleware/auth";
 import { csrfProtection } from "../../middleware/csrf";
-import {
-  clearSessionCookie,
-  deleteSession,
-  getSession,
-  getSessionIdFromCookies,
-} from "../../services/auth";
+import { clearSessionCookie, deleteSession } from "../../services/sessions";
 
 export const logout = {
-  async create(req: Request): Promise<Response> {
-    const cookieHeader = req.headers.get("cookie");
-    const sessionId = getSessionIdFromCookies(cookieHeader);
+  async create(req: BunRequest): Promise<Response> {
+    const ctx = await getSessionContext(req);
 
-    // Check if session actually exists and is valid
-    let hasValidSession = false;
-    if (sessionId) {
-      const sessionData = await getSession(sessionId);
-      hasValidSession = sessionData !== null;
-    }
-
-    // Only require CSRF protection if user has a valid session
-    if (hasValidSession) {
-      // CSRF protection for authenticated users
+    if (ctx.isAuthenticated && ctx.sessionId) {
       const csrfResponse = await csrfProtection(req, {
         method: "POST",
         path: "/auth/logout",
@@ -29,23 +16,18 @@ export const logout = {
         return csrfResponse;
       }
 
-      if (sessionId) {
-        try {
-          await deleteSession(sessionId);
-        } catch {
-          // Session deletion failed, but still clear cookie for security
-        }
+      try {
+        await deleteSession(ctx.sessionId);
+      } catch {
+        // Session deletion failed, but still clear cookie for security
       }
     }
 
-    const clearCookie = clearSessionCookie();
+    clearSessionCookie(req);
 
     return new Response("", {
       status: 303,
-      headers: {
-        Location: "/login",
-        "Set-Cookie": clearCookie,
-      },
+      headers: { Location: "/login" },
     });
   },
 };

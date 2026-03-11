@@ -15,6 +15,7 @@ mock.module("../../services/database", () => ({
 
 import { createMagicLink } from "../../services/auth";
 import { db } from "../../services/database";
+import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { callback } from "./callback";
 
 describe("Callback Controller", () => {
@@ -30,11 +31,9 @@ describe("Callback Controller", () => {
     test("successfully verifies valid magic link token", async () => {
       const { rawToken } = await createMagicLink("test@example.com");
 
-      const request = new Request(
+      const request = createBunRequest(
         `http://localhost:3000/auth/callback?token=${rawToken}`,
-        {
-          method: "GET",
-        },
+        { method: "GET" },
       );
 
       const response = await callback.index(request);
@@ -42,7 +41,7 @@ describe("Callback Controller", () => {
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/");
 
-      const setCookie = response.headers.get("set-cookie");
+      const setCookie = findSetCookie(request, "session_id");
       expect(setCookie).toContain("session_id=");
       expect(setCookie).toContain("HttpOnly");
       expect(setCookie).toContain("SameSite=Lax");
@@ -52,11 +51,13 @@ describe("Callback Controller", () => {
       const { user, rawToken } = await createMagicLink("used@example.com");
 
       await callback.index(
-        new Request(`http://localhost:3000/auth/callback?token=${rawToken}`),
+        createBunRequest(
+          `http://localhost:3000/auth/callback?token=${rawToken}`,
+        ),
       );
 
       const tokens = await db`
-        SELECT used_at FROM user_tokens 
+        SELECT used_at FROM user_tokens
         WHERE user_id = ${user.id} AND type = 'magic_link'
       `;
 
@@ -67,11 +68,13 @@ describe("Callback Controller", () => {
     test("creates valid session after token verification", async () => {
       const { user, rawToken } = await createMagicLink("session@example.com");
 
-      const response = await callback.index(
-        new Request(`http://localhost:3000/auth/callback?token=${rawToken}`),
+      const request = createBunRequest(
+        `http://localhost:3000/auth/callback?token=${rawToken}`,
       );
 
-      const setCookie = response.headers.get("set-cookie");
+      await callback.index(request);
+
+      const setCookie = findSetCookie(request, "session_id");
       const sessionMatch = setCookie?.match(/session_id=([^;]+)/);
       const sessionId = sessionMatch?.[1];
 
@@ -98,7 +101,7 @@ describe("Callback Controller", () => {
     });
 
     test("redirects with error for missing token", async () => {
-      const request = new Request("http://localhost:3000/auth/callback", {
+      const request = createBunRequest("http://localhost:3000/auth/callback", {
         method: "GET",
       });
 
@@ -111,11 +114,9 @@ describe("Callback Controller", () => {
     });
 
     test("redirects with error for invalid token", async () => {
-      const request = new Request(
+      const request = createBunRequest(
         "http://localhost:3000/auth/callback?token=invalid-token",
-        {
-          method: "GET",
-        },
+        { method: "GET" },
       );
 
       const response = await callback.index(request);
@@ -133,11 +134,15 @@ describe("Callback Controller", () => {
       const { rawToken } = await createMagicLink("reuse@example.com");
 
       await callback.index(
-        new Request(`http://localhost:3000/auth/callback?token=${rawToken}`),
+        createBunRequest(
+          `http://localhost:3000/auth/callback?token=${rawToken}`,
+        ),
       );
 
       const response = await callback.index(
-        new Request(`http://localhost:3000/auth/callback?token=${rawToken}`),
+        createBunRequest(
+          `http://localhost:3000/auth/callback?token=${rawToken}`,
+        ),
       );
 
       expect(response.status).toBe(303);
@@ -153,13 +158,15 @@ describe("Callback Controller", () => {
       const { user, rawToken } = await createMagicLink("expired@example.com");
 
       await db`
-        UPDATE user_tokens 
+        UPDATE user_tokens
         SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour'
         WHERE user_id = ${user.id} AND type = 'magic_link'
       `;
 
       const response = await callback.index(
-        new Request(`http://localhost:3000/auth/callback?token=${rawToken}`),
+        createBunRequest(
+          `http://localhost:3000/auth/callback?token=${rawToken}`,
+        ),
       );
 
       expect(response.status).toBe(303);
@@ -175,7 +182,9 @@ describe("Callback Controller", () => {
       await db`DELETE FROM users WHERE id = ${user.id}`;
 
       const response = await callback.index(
-        new Request(`http://localhost:3000/auth/callback?token=${rawToken}`),
+        createBunRequest(
+          `http://localhost:3000/auth/callback?token=${rawToken}`,
+        ),
       );
 
       expect(response.status).toBe(303);

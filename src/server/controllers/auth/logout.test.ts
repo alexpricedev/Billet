@@ -13,13 +13,11 @@ mock.module("../../services/database", () => ({
   },
 }));
 
-import {
-  createSession,
-  createSessionCookie,
-  findOrCreateUser,
-} from "../../services/auth";
+import { findOrCreateUser } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
 import { db } from "../../services/database";
+import { createAuthenticatedSession } from "../../services/sessions";
+import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { logout } from "./logout";
 
 describe("Logout Controller", () => {
@@ -34,8 +32,7 @@ describe("Logout Controller", () => {
   describe("POST /auth/logout", () => {
     test("successfully logs out user with valid session", async () => {
       const user = await findOrCreateUser("logout@example.com");
-      const sessionId = await createSession(user.id);
-      const cookieHeader = createSessionCookie(sessionId);
+      const sessionId = await createAuthenticatedSession(user.id);
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",
@@ -45,11 +42,11 @@ describe("Logout Controller", () => {
       const formData = new FormData();
       formData.append("_csrf", csrfToken);
 
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
-          Cookie: cookieHeader,
+          Cookie: `session_id=${sessionId}`,
         },
         body: formData,
       });
@@ -59,13 +56,11 @@ describe("Logout Controller", () => {
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/login");
 
-      // Should clear session cookie
-      const setCookie = response.headers.get("set-cookie");
+      const setCookie = findSetCookie(request, "session_id");
       expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("session_id=");
       expect(setCookie).toContain("Max-Age=0");
 
-      // Session should be deleted from database
       const { computeHMAC } = await import("../../utils/crypto");
       const sessionIdHash = computeHMAC(sessionId);
       const sessions = await db`
@@ -75,7 +70,7 @@ describe("Logout Controller", () => {
     });
 
     test("handles logout without session cookie gracefully", async () => {
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
       });
 
@@ -84,15 +79,14 @@ describe("Logout Controller", () => {
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/login");
 
-      // Should still clear cookie
-      const setCookie = response.headers.get("set-cookie");
+      const setCookie = findSetCookie(request, "session_id");
       expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("session_id=");
       expect(setCookie).toContain("Max-Age=0");
     });
 
     test("handles logout with invalid session ID gracefully", async () => {
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           cookie: "session_id=invalid-session-id",
@@ -104,14 +98,13 @@ describe("Logout Controller", () => {
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/login");
 
-      // Should clear cookie even if session doesn't exist
-      const setCookie = response.headers.get("set-cookie");
+      const setCookie = findSetCookie(request, "session_id");
       expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("Max-Age=0");
     });
 
     test("handles logout with malformed cookie header gracefully", async () => {
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           cookie: "malformed-cookie-data",
@@ -126,7 +119,7 @@ describe("Logout Controller", () => {
 
     test("multiple session cookies - uses correct session_id", async () => {
       const user = await findOrCreateUser("multi@example.com");
-      const sessionId = await createSession(user.id);
+      const sessionId = await createAuthenticatedSession(user.id);
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",
@@ -136,7 +129,7 @@ describe("Logout Controller", () => {
       const formData = new FormData();
       formData.append("_csrf", csrfToken);
 
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -162,12 +155,12 @@ describe("Logout Controller", () => {
     test("handles database error during session deletion gracefully", async () => {
       // Create session then delete the user to cause foreign key issues
       const user = await findOrCreateUser("dbError@example.com");
-      const sessionId = await createSession(user.id);
+      const sessionId = await createAuthenticatedSession(user.id);
 
       // Delete user (this will cascade delete the session in real DB, but might cause errors in test)
       await db`DELETE FROM users WHERE id = ${user.id}`;
 
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           cookie: `session_id=${sessionId}`,
@@ -180,13 +173,13 @@ describe("Logout Controller", () => {
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/login");
 
-      const setCookie = response.headers.get("set-cookie");
+      const setCookie = findSetCookie(request, "session_id");
       expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("Max-Age=0");
     });
 
     test("requires authentication - redirects unauthenticated users", async () => {
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -201,10 +194,10 @@ describe("Logout Controller", () => {
 
     test("requires CSRF token - rejects request without token", async () => {
       const user = await findOrCreateUser("csrf-test@example.com");
-      const sessionId = await createSession(user.id);
-      const cookieHeader = createSessionCookie(sessionId);
+      const sessionId = await createAuthenticatedSession(user.id);
+      const cookieHeader = `session_id=${sessionId}`;
 
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -220,13 +213,13 @@ describe("Logout Controller", () => {
 
     test("requires CSRF token - rejects request with invalid token", async () => {
       const user = await findOrCreateUser("csrf-test2@example.com");
-      const sessionId = await createSession(user.id);
-      const cookieHeader = createSessionCookie(sessionId);
+      const sessionId = await createAuthenticatedSession(user.id);
+      const cookieHeader = `session_id=${sessionId}`;
 
       const formData = new FormData();
       formData.append("_csrf", "invalid.token");
 
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -243,8 +236,8 @@ describe("Logout Controller", () => {
 
     test("accepts request with valid CSRF token", async () => {
       const user = await findOrCreateUser("csrf-test3@example.com");
-      const sessionId = await createSession(user.id);
-      const cookieHeader = createSessionCookie(sessionId);
+      const sessionId = await createAuthenticatedSession(user.id);
+      const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",
@@ -254,7 +247,7 @@ describe("Logout Controller", () => {
       const formData = new FormData();
       formData.append("_csrf", csrfToken);
 
-      const request = new Request("http://localhost:3000/auth/logout", {
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -268,8 +261,7 @@ describe("Logout Controller", () => {
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/login");
 
-      // Should clear session cookie
-      const setCookie = response.headers.get("set-cookie");
+      const setCookie = findSetCookie(request, "session_id");
       expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("session_id=");
       expect(setCookie).toContain("Max-Age=0");

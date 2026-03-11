@@ -1,13 +1,13 @@
 import type { BunRequest } from "bun";
-import { getAuthContext, requireAuth } from "../../middleware/auth";
+import { getSessionContext, requireAuth } from "../../middleware/auth";
 import { csrfProtection } from "../../middleware/csrf";
-import { getSessionIdFromCookies } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
 import {
   createExample,
   deleteExample,
   getExamples,
 } from "../../services/example";
+import { setSessionCookie } from "../../services/sessions";
 import type { ExamplesState } from "../../templates/examples";
 import { Examples } from "../../templates/examples";
 import { redirect, render } from "../../utils/response";
@@ -17,16 +17,14 @@ const { getFlash, setFlash } = stateHelpers<ExamplesState>();
 
 export const examples = {
   async index(req: BunRequest): Promise<Response> {
-    // Get auth context and cookie session id
-    const [auth, sessionId] = await Promise.all([
-      getAuthContext(req),
-      getSessionIdFromCookies(req.headers.get("cookie")),
-    ]);
-
+    const ctx = await getSessionContext(req);
     const examples = await getExamples();
 
-    if (!auth.isAuthenticated || !sessionId) {
-      // If not authenticated, they just get examples
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
+
+    if (!ctx.isAuthenticated || !ctx.sessionId) {
       return render(<Examples examples={examples} isAuthenticated={false} />);
     }
 
@@ -35,17 +33,15 @@ export const examples = {
     let createCsrfTokenValue: string | null = null;
     const deleteCsrfTokens: Record<number, string> = {};
 
-    // Create CSRF token for create action
     createCsrfTokenValue = await createCsrfToken(
-      sessionId,
+      ctx.sessionId,
       "POST",
       "/examples",
     );
 
-    // Create specific CSRF tokens for each example's delete endpoint
     for (const example of examples) {
       deleteCsrfTokens[example.id] = await createCsrfToken(
-        sessionId,
+        ctx.sessionId,
         "POST",
         `/examples/${example.id}/delete`,
       );
@@ -56,7 +52,7 @@ export const examples = {
         createCsrfToken={createCsrfTokenValue}
         deleteCsrfTokens={deleteCsrfTokens}
         examples={examples}
-        isAuthenticated={auth.isAuthenticated}
+        isAuthenticated={ctx.isAuthenticated}
         state={state}
       />,
     );

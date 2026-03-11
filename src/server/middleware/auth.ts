@@ -1,53 +1,73 @@
-import type { User } from "../services/auth";
+import type { BunRequest } from "bun";
 import {
-  getSession,
-  getSessionIdFromCookies,
+  createGuestSession,
+  getSessionContextFromDB,
+  getSessionIdFromRequest,
   renewSession,
-} from "../services/auth";
+  type SessionContext,
+} from "../services/sessions";
 
-export interface AuthContext {
-  user: User | null;
-  isAuthenticated: boolean;
-}
+export type { SessionContext };
 
-/**
- * Extract authentication context from request
- * Renews session activity for authenticated users
- */
-export const getAuthContext = async (req: Request): Promise<AuthContext> => {
-  const cookieHeader = req.headers.get("cookie");
-  const sessionId = getSessionIdFromCookies(cookieHeader);
+const EMPTY_CONTEXT: SessionContext = {
+  sessionId: null,
+  sessionHash: null,
+  sessionType: null,
+  user: null,
+  isGuest: false,
+  isAuthenticated: false,
+  requiresSetCookie: false,
+};
 
-  if (!sessionId) {
-    return { user: null, isAuthenticated: false };
-  }
-
+const createGuestContext = async (): Promise<SessionContext> => {
   try {
-    const sessionData = await getSession(sessionId);
-
-    if (!sessionData) {
-      return { user: null, isAuthenticated: false };
-    }
-
-    await renewSession(sessionId);
-
+    const sessionId = await createGuestSession();
     return {
-      user: sessionData.user,
-      isAuthenticated: true,
+      sessionId,
+      sessionHash: null,
+      sessionType: "guest",
+      user: null,
+      isGuest: true,
+      isAuthenticated: false,
+      requiresSetCookie: true,
     };
   } catch {
-    return { user: null, isAuthenticated: false };
+    return EMPTY_CONTEXT;
   }
 };
 
-/**
- * Middleware to require authentication
- * Returns redirect response if not authenticated, null to continue
- */
-export const requireAuth = async (req: Request): Promise<Response | null> => {
-  const auth = await getAuthContext(req);
+export const getSessionContext = async (
+  req: BunRequest,
+): Promise<SessionContext> => {
+  try {
+    const sessionId = getSessionIdFromRequest(req);
 
-  if (!auth.isAuthenticated) {
+    if (!sessionId) {
+      return createGuestContext();
+    }
+
+    const ctx = await getSessionContextFromDB(sessionId);
+
+    if (!ctx) {
+      return createGuestContext();
+    }
+
+    if (ctx.isAuthenticated) {
+      await renewSession(sessionId);
+    }
+
+    return ctx;
+  } catch {
+    return createGuestContext();
+  }
+};
+
+export const requireAuth = async (
+  req: BunRequest,
+): Promise<Response | null> => {
+  const ctx = await getSessionContext(req);
+
+  if (!ctx.isAuthenticated) {
     return new Response("", {
       status: 303,
       headers: { Location: "/login" },
@@ -57,16 +77,12 @@ export const requireAuth = async (req: Request): Promise<Response | null> => {
   return null;
 };
 
-/**
- * Middleware to redirect authenticated users away from auth pages
- * Returns redirect response if authenticated, null to continue
- */
 export const redirectIfAuthenticated = async (
-  req: Request,
+  req: BunRequest,
 ): Promise<Response | null> => {
-  const auth = await getAuthContext(req);
+  const ctx = await getSessionContext(req);
 
-  if (auth.isAuthenticated) {
+  if (ctx.isAuthenticated) {
     return new Response("", {
       status: 303,
       headers: { Location: "/" },

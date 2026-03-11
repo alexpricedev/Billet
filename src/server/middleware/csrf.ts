@@ -1,4 +1,4 @@
-import { getSessionIdFromCookies } from "../services/auth";
+import type { BunRequest } from "bun";
 import {
   CSRF_FIELD_NAME,
   CSRF_HEADER_NAME,
@@ -6,6 +6,7 @@ import {
   verifyCsrfToken,
 } from "../services/csrf";
 import { log } from "../services/logger";
+import { getSessionIdFromRequest } from "../services/sessions";
 
 export interface CsrfOptions {
   method?: string; // Optional - used for validation if provided
@@ -18,7 +19,7 @@ export interface CsrfOptions {
  * Validates CSRF token and Origin/Referer headers for state-changing requests
  */
 export const csrfProtection = async (
-  req: Request,
+  req: BunRequest,
   options: CsrfOptions,
 ): Promise<Response | null> => {
   const { method: expectedMethod, expectedOrigin } = options;
@@ -44,9 +45,7 @@ export const csrfProtection = async (
     return new Response("Invalid request origin", { status: 403 });
   }
 
-  // Get session ID from cookies
-  const cookieHeader = req.headers.get("cookie");
-  const sessionId = getSessionIdFromCookies(cookieHeader);
+  const sessionId = getSessionIdFromRequest(req);
 
   if (!sessionId) {
     return new Response("Invalid CSRF token", { status: 403 });

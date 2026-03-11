@@ -1,32 +1,32 @@
-import { getAuthContext } from "../../middleware/auth";
+import type { BunRequest } from "bun";
+import { getSessionContext } from "../../middleware/auth";
 import { getVisitorStats } from "../../services/analytics";
-import { getSessionIdFromCookies } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
+import { setSessionCookie } from "../../services/sessions";
 import { Home } from "../../templates/home";
 import { render } from "../../utils/response";
 
 export const home = {
-  async index(req: Request): Promise<Response> {
-    const [stats, auth] = await Promise.all([
+  async index(req: BunRequest): Promise<Response> {
+    const [stats, ctx] = await Promise.all([
       getVisitorStats(),
-      getAuthContext(req),
+      getSessionContext(req),
     ]);
 
-    // Generate CSRF token for logout form if authenticated
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
+
     let csrfToken: string | null = null;
-    if (auth.isAuthenticated) {
-      const cookieHeader = req.headers.get("cookie");
-      const sessionId = getSessionIdFromCookies(cookieHeader);
-      if (sessionId) {
-        csrfToken = await createCsrfToken(sessionId, "POST", "/auth/logout");
-      }
+    if (ctx.isAuthenticated && ctx.sessionId) {
+      csrfToken = await createCsrfToken(ctx.sessionId, "POST", "/auth/logout");
     }
 
     return render(
       <Home
         method={req.method}
         stats={stats}
-        auth={auth}
+        auth={ctx}
         csrfToken={csrfToken}
       />,
     );

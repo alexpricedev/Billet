@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
 import { cleanupTestData } from "../test-utils/helpers";
-import { createSession, findOrCreateUser } from "./auth";
+import { findOrCreateUser } from "./auth";
 import {
   createCsrfToken,
   ensureCsrfSecret,
@@ -9,6 +9,7 @@ import {
   verifyCsrfToken,
 } from "./csrf";
 import { db } from "./database";
+import { createAuthenticatedSession } from "./sessions";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
@@ -33,7 +34,7 @@ describe("CSRF Service", () => {
     email = `test-${Date.now()}-${Math.random()}@example.com`,
   ) => {
     const user = await findOrCreateUser(email);
-    return createSession(user.id);
+    return createAuthenticatedSession(user.id);
   };
 
   describe("ensureCsrfSecret", () => {
