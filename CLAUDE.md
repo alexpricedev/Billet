@@ -36,6 +36,10 @@ ALWAYS check for TS errors and linting issues before finishing a work loop (`bun
 - **Prettier**: Code formatting with consistent style
 - **TypeScript**: Strict mode enabled for type safety
 
+### No Web Components
+
+Shadow DOM and custom element lifecycles can't be tested without browser-level infrastructure (happy-dom, Puppeteer, etc.). Prefer pure functions for logic and Preact islands for client-side interactivity — both are testable with `bun:test`.
+
 ### Testing Strategies by Module Type
 
 ALWAYS run test suites via the `package.json` *test scripts* so the env vars are correct.
@@ -119,8 +123,7 @@ src/
 ├── client/                        # Browser-side code
 │   ├── main.ts                    # Entry point — routes to page init functions
 │   ├── style.css                  # Global styles (Tailwind base)
-│   ├── components/                # Reusable client components (web components, CSS)
-│   │   ├── my-paragraph.ts
+│   ├── components/                # Reusable client components (CSS)
 │   │   ├── nav.css
 │   │   └── layout.css
 │   └── pages/                     # Page-specific JS & CSS (co-located)

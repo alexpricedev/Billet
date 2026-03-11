@@ -16,6 +16,3 @@ const pages: Record<string, () => void> = {
 if (page && pages[page]) {
   pages[page]();
 }
-
-// Custom component scripts
-import "@client/components/copy-button";

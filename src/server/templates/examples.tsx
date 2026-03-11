@@ -1,5 +1,4 @@
 import type { JSX } from "react";
-import { CopyButton, CopyButtonTemplate } from "../components/copy-button";
 import { CsrfField } from "../components/csrf-field";
 import { Layout } from "../components/layouts";
 import type { Example } from "../services/example";
@@ -26,7 +25,6 @@ export type ExamplesProps = PublicExamplesProps | AuthExamplesProps;
 export const Examples = (props: ExamplesProps): JSX.Element => {
   return (
     <Layout title="Examples" name="examples">
-      <CopyButtonTemplate />
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Examples from Database</h1>
 
@@ -128,27 +126,22 @@ export const Examples = (props: ExamplesProps): JSX.Element => {
               <li className="flex items-center gap-2">
                 <span className="text-green-600">GET</span> /api/examples - List
                 all examples
-                <CopyButton value="/api/examples" />
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-blue-600">POST</span> /api/examples -
                 Create new example
-                <CopyButton value="/api/examples" />
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-green-600">GET</span> /api/examples/:id -
                 Get specific example
-                <CopyButton value="/api/examples/:id" />
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-orange-600">PUT</span> /api/examples/:id -
                 Update example
-                <CopyButton value="/api/examples/:id" />
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-red-600">DELETE</span> /api/examples/:id -
                 Delete example
-                <CopyButton value="/api/examples/:id" />
               </li>
             </ul>
           </div>
