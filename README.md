@@ -124,7 +124,9 @@ A `railway.json` is included with build and start commands pre-configured.
 
 ### Database
 
-Billet uses PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency. Migrations are managed with a lightweight CLI:
+Billet uses PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency. Migrations run automatically on server startup — pending migrations are applied before the server accepts requests. If a migration fails, the server won't start (fail-safe).
+
+A lightweight CLI is also available for manual operations:
 
 ```bash
 bun run migrate:up       # Run pending migrations

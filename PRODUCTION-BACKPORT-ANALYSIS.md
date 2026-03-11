@@ -6,9 +6,9 @@ Changes made in **realfast** and **sheffield-hindu-mandir** that should come bac
 
 ## High Priority (appeared in both projects)
 
-### 1. Auto-migrations on startup
+### ~~1. Auto-migrations on startup~~ ✅ Done
 
-Both projects added `await runMigrations()` in `main.ts` before `Bun.serve()`. The template currently relies on Railway's start command to run migrations, but baking it into the server entry point is more portable and works regardless of deployment platform.
+~~Both projects added `await runMigrations()` in `main.ts` before `Bun.serve()`. The template currently relies on Railway's start command to run migrations, but baking it into the server entry point is more portable and works regardless of deployment platform.~~
 
 **Files:** `src/server/main.ts`
 
@@ -110,11 +110,13 @@ realfast added `noUnusedVariables: "error"`, removed nursery rule overrides, and
 
 ## Low Priority (nice-to-have)
 
-### 17. Centralized logging
+### ~~17. Centralized logging~~ ✅ Done (simplified)
 
-realfast added `src/server/services/logger.ts` — in-memory log buffer with levels (error/warn/info), structured entries, and `drainLogs()` for batch processing. Paired with `log-scheduler.ts` for hourly email digests. Solves the problem of `no-console` being enforced with no alternative provided.
+~~realfast added `src/server/services/logger.ts` — in-memory log buffer with levels (error/warn/info), structured entries, and `drainLogs()` for batch processing. Paired with `log-scheduler.ts` for hourly email digests. Solves the problem of `no-console` being enforced with no alternative provided.~~
 
-**Files:** `src/server/services/logger.ts` (new), `src/server/services/log-scheduler.ts` (new)
+Implemented as a thin stdout/stderr wrapper (no buffering or scheduling). Biome `noConsole` rule now enforced.
+
+**Files:** `src/server/services/logger.ts` (new)
 
 ### 18. Database seed script template
 

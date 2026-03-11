@@ -19,8 +19,8 @@ This file contains essential context and guidelines for Claude instances working
 ALWAYS check for TS errors and linting issues before finishing a work loop (`bun run check`)
 
 - **Zero warnings allowed** (`--max-warnings 0`)
-- **No "any" types allowed** (`@typescript-eslint/no-explicit-any: error`)
-- **No console statements allowed** (`no-console: error`)
+- **No "any" types allowed** (`noExplicitAny: error`)
+- **No console statements allowed** (`noConsole: error`) — use `log` from `src/server/services/logger.ts` instead
 - **No unsafe writes**
 
 ### Package Management
@@ -88,6 +88,19 @@ NEVER try to roll your own lint or test commands.
 - No need for loading states when data is fetched server-side before rendering
 - Routes return Response objects with proper headers, not JSX elements directly
 - Templates receive fully resolved data as props
+
+### Server Startup
+
+- Migrations run automatically on startup (`await runMigrations()` before `Bun.serve()`)
+- If a migration fails, the server won't start (fail-safe)
+- No need to run migrations manually before starting the server
+
+### Logging
+
+- Use `log.info(category, message)`, `log.warn(...)`, `log.error(...)` from `src/server/services/logger.ts`
+- Never use `console.*` directly in server code — Biome enforces `noConsole: error`
+- CLI scripts (`cli.ts`, `bootstrap.ts`) and test files are exempt from this rule
+- Output format: `[LEVEL] [category] message` — goes to stdout/stderr for platform capture
 
 ### Service Layer Abstraction
 
