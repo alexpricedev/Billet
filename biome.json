@@ -16,6 +16,9 @@
         "noInferrableTypes": "error",
         "noUselessElse": "error"
       },
+      "suspicious": {
+        "noConsole": "error"
+      },
       "nursery": {
         "useUniqueElementIds": "off"
       }
@@ -27,13 +30,24 @@
       "linter": {
         "rules": {
           "suspicious": {
-            "noExplicitAny": "off"
+            "noExplicitAny": "off",
+            "noConsole": "off"
           }
         }
       }
     },
     {
       "includes": ["src/server/services/logger.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/server/database/cli.ts", "src/server/test-utils/bootstrap.ts"],
       "linter": {
         "rules": {
           "suspicious": {
