@@ -34,11 +34,11 @@ This isn't a limitation. It's a deliberate architectural choice that plays to AI
 
 ### Capture your backpressure
 
-The entire game now is to maximise the capture of your [backpressure](https://latentpatterns.com/principles) so agents stay on the rails. Backpressure is the automated feedback — type systems, test suites, linters, build errors, browser assertions — that tells an agent it went wrong before a human ever has to look. Without it, you become the bottleneck, manually catching trivial errors that a compiler or a test suite would have caught instantly.
+AI agents work best when they get told they're wrong immediately. Not by you — by the toolchain. Type errors, failing tests, lint warnings, broken builds — that's [backpressure](https://latentpatterns.com/principles), and it's the single most important thing you can invest in when working with agents. Every automated check that catches a mistake is one less time you have to context-switch back in to fix something a machine should have caught.
 
-If you have to go into the loop to rescue an agent, that is an anti-pattern. Don't just fix the output — ask why the agent went off the rails and engineer away that failure concern. Add a type constraint. Write a test. Tighten the schema. Every rescue mission you eliminate is capacity you reclaim for designing better loops. The goal is just enough backpressure to reject hallucinations and invalid output without creating so much resistance that the system grinds to a halt. Part art, part engineering, wholly non-negotiable.
+When you do have to step in and rescue an agent, don't just fix the output and move on. Ask why it went wrong and close that gap. Add a type. Write a test. Tighten a schema. The goal isn't zero failures — it's zero repeat failures. Every rescue you engineer away is time you get back.
 
-Billet is built with this principle baked in: strict TypeScript, zero-warning linting, deterministic templates, and a fast test loop that agents can run in seconds. The architecture is the backpressure.
+Billet is built around this idea: strict TypeScript, zero-warning linting, deterministic templates, and a test suite that runs in seconds. The architecture itself is the feedback loop.
 
 ### When Billet isn't the right fit
 
