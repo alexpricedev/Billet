@@ -103,6 +103,7 @@ Run the full suite: `bun run test`
 - **Tailwind CSS 4** with auto-compilation in development
 - **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example)
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
+- **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
 - **Asset cache-busting** in production — MD5-hashed filenames with immutable `Cache-Control` headers
 
 ---
