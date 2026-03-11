@@ -52,7 +52,7 @@ NEVER try to roll your own lint or test commands.
 
 **View Controllers** (`src/server/controllers/app/*.test.ts`):
 - Mock service layer dependencies only  
-- Test actual HTML output using `renderToReadableStream()`
+- Test actual HTML output using `renderToString()`
 - Verify specific content appears in rendered HTML
 - Test redirect responses with actual status codes and Location headers
 
@@ -112,7 +112,7 @@ NEVER try to roll your own lint or test commands.
 - Separate API routes (`/src/server/routes/api.ts`) and view routes (`/src/server/routes/app.tsx`)
 - Routes use Bun's native `routes: {}` configuration for better performance
 - API routes return JSON responses using `Response.json()`
-- View routes render HTML using `renderToReadableStream()` wrapped in Response objects
+- View routes render HTML using `renderToString()` wrapped in Response objects
 - Both route types can share services for business logic
 
 ### Route Handler Patterns

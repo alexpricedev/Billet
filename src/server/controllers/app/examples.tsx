@@ -27,9 +27,7 @@ export const examples = {
 
     if (!auth.isAuthenticated || !sessionId) {
       // If not authenticated, they just get examples
-      return await render(
-        <Examples examples={examples} isAuthenticated={false} />,
-      );
+      return render(<Examples examples={examples} isAuthenticated={false} />);
     }
 
     const state = getFlash(req);
@@ -53,7 +51,7 @@ export const examples = {
       );
     }
 
-    return await render(
+    return render(
       <Examples
         createCsrfToken={createCsrfTokenValue}
         deleteCsrfTokens={deleteCsrfTokens}

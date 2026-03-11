@@ -22,7 +22,7 @@ export const home = {
       }
     }
 
-    return await render(
+    return render(
       <Home
         method={req.method}
         stats={stats}
