@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { db } from "../services/database";
+import { log } from "../services/logger";
 
 export type Migration = {
   id: string;
@@ -87,7 +88,7 @@ export const runMigration = async (filename: string): Promise<void> => {
   const name = filename.replace(/^\d+_/, "").replace(".ts", "");
   await recordMigration(id, name);
 
-  console.log(`Applied migration: ${filename}`);
+  log.info("migrations", `Applied: ${filename}`);
 };
 
 /**
@@ -97,17 +98,20 @@ export const runMigrations = async (): Promise<void> => {
   const pendingMigrations = await getPendingMigrations();
 
   if (pendingMigrations.length === 0) {
-    console.log("No pending migrations");
+    log.info("migrations", "No pending migrations");
     return;
   }
 
-  console.log(`Running ${pendingMigrations.length} pending migrations...`);
+  log.info(
+    "migrations",
+    `Running ${pendingMigrations.length} pending migrations...`,
+  );
 
   for (const migration of pendingMigrations) {
     await runMigration(migration);
   }
 
-  console.log("All migrations completed");
+  log.info("migrations", "All migrations completed");
 };
 
 /**
@@ -130,7 +134,7 @@ export const rollbackMigration = async (filename: string): Promise<void> => {
   const id = filename.replace(".ts", "");
   await removeMigration(id);
 
-  console.log(`Rolled back migration: ${filename}`);
+  log.info("migrations", `Rolled back: ${filename}`);
 };
 
 /**
@@ -140,7 +144,7 @@ export const rollbackLastMigration = async (): Promise<void> => {
   const appliedMigrations = await getAppliedMigrations();
 
   if (appliedMigrations.length === 0) {
-    console.log("No migrations to rollback");
+    log.info("migrations", "No migrations to rollback");
     return;
   }
 
