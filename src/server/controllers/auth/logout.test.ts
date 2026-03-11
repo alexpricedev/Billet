@@ -13,6 +13,42 @@ mock.module("../../services/database", () => ({
   },
 }));
 
+// Re-mock auth middleware with real implementation to prevent contamination
+// from other test files (e.g. home.test.ts stubs getSessionContext globally).
+// Must inline the logic because require() returns the already-mocked version.
+mock.module("../../middleware/auth", () => {
+  const {
+    getSessionIdFromRequest,
+    getSessionContextFromDB,
+    createGuestSession,
+    renewSession,
+  } = require("../../services/sessions");
+
+  const createGuestContext = async () => {
+    const id = await createGuestSession();
+    return {
+      sessionId: id,
+      sessionHash: null,
+      sessionType: "guest",
+      user: null,
+      isGuest: true,
+      isAuthenticated: false,
+      requiresSetCookie: true,
+    };
+  };
+
+  return {
+    getSessionContext: async (req: import("bun").BunRequest) => {
+      const sessionId = getSessionIdFromRequest(req);
+      if (!sessionId) return createGuestContext();
+      const ctx = await getSessionContextFromDB(sessionId);
+      if (!ctx) return createGuestContext();
+      if (ctx.isAuthenticated) await renewSession(sessionId);
+      return ctx;
+    },
+  };
+});
+
 import { findOrCreateUser } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
 import { db } from "../../services/database";
