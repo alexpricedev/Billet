@@ -42,9 +42,9 @@ Both added a `bunfig.toml` with coverage thresholds (95% lines/functions, 80% br
 
 **Files:** `package.json`
 
-### 7. Admin middleware + route namespace
+### ~~7. Admin middleware + route namespace~~ ✅ Done
 
-Both added role-based admin middleware and a third route file (`routes/admin.tsx`). This is a natural extension of the auth system the template already ships.
+~~Both added role-based admin middleware and a third route file (`routes/admin.tsx`). This is a natural extension of the auth system the template already ships.~~
 
 **Files:** `src/server/middleware/admin.ts` (new), `src/server/routes/admin.tsx` (new), `src/server/main.ts`
 
