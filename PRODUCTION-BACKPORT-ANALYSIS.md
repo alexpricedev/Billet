@@ -18,11 +18,11 @@ Changes made in **realfast** and **sheffield-hindu-mandir** that should come bac
 
 **Files:** `src/server/utils/response.ts`
 
-### 3. Test coverage enforcement
+### ~~3. Test coverage enforcement~~ ✅ Done
 
-Both added a `bunfig.toml` with coverage thresholds (95% lines/functions, 80% branches/statements) and reporters (text + lcov). The template has no coverage config at all.
+~~Both added a `bunfig.toml` with coverage thresholds (95% lines/functions, 80% branches/statements) and reporters (text + lcov). The template has no coverage config at all.~~
 
-**Files:** `bunfig.toml` (new)
+**Files:** `bunfig.toml`
 
 ### ~~4. Guest session service + BunRequest cookie API~~ ✅ Done
 
@@ -54,9 +54,11 @@ Both added a `bunfig.toml` with coverage thresholds (95% lines/functions, 80% br
 
 **Files:** `src/server/utils/flash.ts`
 
-### 9. User agent utilities
+### ~~9. User agent utilities~~ — Skipped
 
-Both added platform detection (iOS, Android, Turbo Native) with CSS class injection into `<body>`, integrated into the `render()` function in `response.ts`.
+~~Both added platform detection (iOS, Android, Turbo Native) with CSS class injection into `<body>`, integrated into the `render()` function in `response.ts`.~~
+
+Skipped — the implementations detect iOS/Android/Turbo Native platforms, which is domain-specific. Mobile vs desktop detection is better handled by CSS media queries (already available via Tailwind).
 
 **Files:** `src/server/utils/user-agent.ts` (new), `src/server/utils/response.ts`
 
@@ -64,39 +66,39 @@ Both added platform detection (iOS, Android, Turbo Native) with CSS class inject
 
 ## Medium Priority (one project, but clearly generic)
 
-### 10. Environment validation on startup
+### ~~10. Environment validation on startup~~ ✅ Done
 
-realfast added `src/server/utils/env.ts` — validates required env vars at startup with helpful error messages. Exits with code 1 if anything is missing. Prevents silent failures in production.
+~~realfast added `src/server/utils/env.ts` — validates required env vars at startup with helpful error messages. Exits with code 1 if anything is missing. Prevents silent failures in production.~~
 
 **Files:** `src/server/utils/env.ts` (new), `src/server/main.ts`
 
-### 11. Asset cache-busting service
+### ~~11. Asset cache-busting service~~ ✅ Done
 
-realfast added `src/server/services/assets.ts` — MD5-hashes JS/CSS filenames in production, serves with `Cache-Control: public, max-age=31536000, immutable`. Essential for production performance and already called out as a gap in README-ANALYSIS.md.
+~~realfast added `src/server/services/assets.ts` — MD5-hashes JS/CSS filenames in production, serves with `Cache-Control: public, max-age=31536000, immutable`. Essential for production performance and already called out as a gap in README-ANALYSIS.md.~~
 
 **Files:** `src/server/services/assets.ts` (new), `src/server/main.ts`
 
-### 12. Rate limiting middleware
+### ~~12. Rate limiting middleware~~ ✅ Done
 
-realfast added `src/server/middleware/rate-limit.ts` — sliding-window in-memory rate limiter with configurable max requests and window. Generic enough for any project with public APIs.
+~~realfast added `src/server/middleware/rate-limit.ts` — sliding-window in-memory rate limiter with configurable max requests and window. Generic enough for any project with public APIs.~~
 
 **Files:** `src/server/middleware/rate-limit.ts` (new)
 
-### 13. Stricter tsconfig
+### ~~13. Stricter tsconfig~~ ✅ Done
 
-realfast added `noUnusedLocals` and `noUnusedParameters`. Both added `"include": ["src/**/*"]` for explicit compiler scope.
+~~realfast added `noUnusedLocals` and `noUnusedParameters`. Both added `"include": ["src/**/*"]` for explicit compiler scope.~~
 
 **Files:** `tsconfig.json`
 
-### 14. Client page lifecycle system
+### ~~14. Client page lifecycle system~~ ✅ Done
 
-realfast added `src/client/page-lifecycle.ts` — a `registerPage()` / `PageController` interface with `init()` and `cleanup()`. Solves the problem of page-specific JS leaking state across navigations (important if the template ever adopts Turbo or similar).
+~~realfast added `src/client/page-lifecycle.ts` — a `registerPage()` / `PageController` interface with `init()` and `cleanup()`. Solves the problem of page-specific JS leaking state across navigations (important if the template ever adopts Turbo or similar).~~
 
 **Files:** `src/client/page-lifecycle.ts` (new), `src/client/main.ts`
 
-### 15. Biome config updates
+### ~~15. Biome config updates~~ ✅ Done
 
-realfast added `noUnusedVariables: "error"`, removed nursery rule overrides, and bumped the schema version.
+~~realfast added `noUnusedVariables: "error"`. Nursery overrides kept (needed for server-rendered JSX with static IDs).~~
 
 **Files:** `biome.json`
 
@@ -112,15 +114,16 @@ Implemented as a thin stdout/stderr wrapper (no buffering or scheduling). Biome 
 
 **Files:** `src/server/services/logger.ts` (new)
 
-### 18. Database seed script template
+### ~~18. Database seed script template~~ ✅ Done
 
-Both added `bun run seed` scripts with domain-specific data. The template should include an empty seed scaffold and the npm script.
+~~Both added `bun run seed` scripts with domain-specific data. The template should include an empty seed scaffold and the npm script.~~
 
 **Files:** `src/server/database/seed.ts` (new), `package.json`
 
-### 19. Email provider abstraction
+### ~~19. Email provider abstraction~~ ✅ Done
 
-mandir added a proper email provider interface with a Resend implementation alongside the existing console provider. The template only has the console provider.
+~~mandir added a proper email provider interface with a Resend implementation alongside the existing console provider. The template only has the console provider.~~
 
-**Files:** `src/server/services/email-providers/resend.ts` (new)
+Implemented with pluggable `registerEmailProvider()` API. Resend provider included as a reference implementation (requires `bun add resend` to use). Users can register any custom provider via the `EmailProvider` interface.
 
+**Files:** `src/server/services/email.ts`, `src/server/services/email-providers/resend.ts` (new)

@@ -98,11 +98,34 @@ If you didn't request this email, you can safely ignore it.`;
 
 let emailServiceInstance: EmailService | null = null;
 
+const providerFactories: Record<string, () => EmailProvider> = {
+  console: () => {
+    const { ConsoleLogProvider } =
+      require("./email-providers/console") as typeof import("./email-providers/console");
+    return new ConsoleLogProvider();
+  },
+};
+
+export function registerEmailProvider(
+  name: string,
+  factory: () => EmailProvider,
+): void {
+  providerFactories[name] = factory;
+}
+
 export const getEmailService = (): EmailService => {
   if (!emailServiceInstance) {
-    const ConsoleLogProvider =
-      require("./email-providers/console").ConsoleLogProvider;
-    emailServiceInstance = new EmailService(new ConsoleLogProvider());
+    const providerName = process.env.EMAIL_PROVIDER || "console";
+    const factory = providerFactories[providerName];
+
+    if (!factory) {
+      throw new Error(
+        `Unknown EMAIL_PROVIDER "${providerName}". ` +
+          "Register it with registerEmailProvider() before calling getEmailService().",
+      );
+    }
+
+    emailServiceInstance = new EmailService(factory());
   }
   return emailServiceInstance;
 };

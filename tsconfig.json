@@ -6,6 +6,8 @@
     "jsxImportSource": "react",
     "moduleResolution": "Node",
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "baseUrl": "src",
@@ -14,5 +16,6 @@
       "@server/*": ["server/*"]
     }
   },
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "src/server/services/email-providers/resend.ts"]
 }

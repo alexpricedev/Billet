@@ -5,6 +5,7 @@ import {
   EmailService,
   getEmailService,
   type MagicLinkEmailData,
+  registerEmailProvider,
   setEmailService,
 } from "./email";
 
@@ -130,6 +131,32 @@ describe("Email Service", () => {
 
       const retrievedService = getEmailService();
       expect(retrievedService).toBe(customService);
+    });
+
+    test("uses registered custom provider via EMAIL_PROVIDER", () => {
+      setEmailService(null as unknown as EmailService);
+      const originalProvider = process.env.EMAIL_PROVIDER;
+      process.env.EMAIL_PROVIDER = "custom";
+
+      registerEmailProvider("custom", () => mockProvider);
+      const service = getEmailService();
+      expect(service).toBeInstanceOf(EmailService);
+
+      process.env.EMAIL_PROVIDER = originalProvider;
+      setEmailService(null as unknown as EmailService);
+    });
+
+    test("throws for unknown provider", () => {
+      setEmailService(null as unknown as EmailService);
+      const originalProvider = process.env.EMAIL_PROVIDER;
+      process.env.EMAIL_PROVIDER = "nonexistent";
+
+      expect(() => getEmailService()).toThrow(
+        'Unknown EMAIL_PROVIDER "nonexistent"',
+      );
+
+      process.env.EMAIL_PROVIDER = originalProvider;
+      setEmailService(null as unknown as EmailService);
     });
   });
 

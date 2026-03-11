@@ -2,13 +2,17 @@ import { runMigrations } from "./database/migrate";
 import { adminRoutes } from "./routes/admin";
 import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
+import { handleAssetRequest, initAssets } from "./services/assets";
 import { log } from "./services/logger";
+import { validateEnv } from "./utils/env";
 
+validateEnv();
 await runMigrations();
+await initAssets();
 
 const server = Bun.serve({
   port: process.env.PORT || 3000,
-  idleTimeout: 30, // 30 second timeout
+  idleTimeout: 30,
   routes: {
     ...appRoutes,
     ...adminRoutes,
@@ -17,14 +21,15 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
 
-    // Serve compiled JS/CSS from the dist directory
     if (url.pathname.startsWith("/assets/")) {
+      const cached = handleAssetRequest(url);
+      if (cached) return cached;
+
       const file = Bun.file(`dist${url.pathname}`);
       if (await file.exists()) return new Response(file);
       return new Response("Asset not found", { status: 404 });
     }
 
-    // Serve static files from the public directory
     if (url.pathname.startsWith("/")) {
       const file = Bun.file(`public${url.pathname}`);
       if (await file.exists()) return new Response(file);

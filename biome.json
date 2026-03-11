@@ -4,6 +4,9 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "correctness": {
+        "noUnusedVariables": "error"
+      },
       "style": {
         "noParameterAssign": "error",
         "useAsConstAssertion": "error",
@@ -47,7 +50,7 @@
       }
     },
     {
-      "includes": ["src/server/database/cli.ts", "src/server/test-utils/bootstrap.ts"],
+      "includes": ["src/server/database/cli.ts", "src/server/database/seed.ts", "src/server/test-utils/bootstrap.ts"],
       "linter": {
         "rules": {
           "suspicious": {

@@ -1,18 +1,12 @@
-// Page scripts
+import { initializePage, registerPage } from "@client/page-lifecycle";
 import { init as initAbout } from "@client/pages/about";
 import { init as initContact } from "@client/pages/contact";
 import { init as initExamples } from "@client/pages/examples";
 import { init as initHome } from "@client/pages/home";
 
-const page = document.body.dataset.page;
+registerPage("home", { init: initHome });
+registerPage("about", { init: initAbout });
+registerPage("contact", { init: initContact });
+registerPage("examples", { init: initExamples });
 
-const pages: Record<string, () => void> = {
-  home: initHome,
-  about: initAbout,
-  contact: initContact,
-  examples: initExamples,
-};
-
-if (page && pages[page]) {
-  pages[page]();
-}
+initializePage(document.body.dataset.page);

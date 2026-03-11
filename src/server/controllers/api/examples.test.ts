@@ -91,7 +91,7 @@ describe("Examples API", () => {
       const request = createMockRequest(
         "http://localhost:3000/api/examples/invalid",
       );
-      const _response = await examplesApi.show(request);
+      await examplesApi.show(request);
 
       // parseInt("invalid") returns NaN, and Number.parseInt with fallback returns 0
       expect(mockGetExampleById).toHaveBeenCalledWith(Number.NaN);
