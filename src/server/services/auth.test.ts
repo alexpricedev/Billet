@@ -1,7 +1,6 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
 import { cleanupTestData } from "../test-utils/helpers";
-import { computeHMAC } from "../utils/crypto";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
@@ -14,19 +13,13 @@ mock.module("./database", () => ({
   },
 }));
 
-import {
-  clearSessionCookie,
-  createMagicLink,
-  createSession,
-  createSessionCookie,
-  deleteSession,
-  findOrCreateUser,
-  getSession,
-  getSessionIdFromCookies,
-  renewSession,
-  verifyMagicLink,
-} from "./auth";
+import { createMagicLink, findOrCreateUser, verifyMagicLink } from "./auth";
 import { db } from "./database";
+import {
+  createGuestSession,
+  deleteSession,
+  getSessionContextFromDB,
+} from "./sessions";
 
 describe("Auth Service with PostgreSQL", () => {
   beforeEach(async () => {
@@ -207,138 +200,6 @@ describe("Auth Service with PostgreSQL", () => {
     });
   });
 
-  describe("createSession", () => {
-    test("creates session with UUID and expiry", async () => {
-      const user = await findOrCreateUser("session@example.com");
-      const sessionId = await createSession(user.id);
-
-      expect(sessionId).toBeDefined();
-      expect(typeof sessionId).toBe("string");
-
-      // Verify session exists in database by hash
-      const sessionIdHash = computeHMAC(sessionId);
-      const sessions = await db`
-        SELECT id_hash, user_id, expires_at, created_at
-        FROM sessions
-        WHERE id_hash = ${sessionIdHash}
-      `;
-
-      expect(sessions).toHaveLength(1);
-      expect((sessions[0] as any).user_id).toBe(user.id);
-
-      // Expiry should be about 30 days from now
-      const expiresAt = new Date((sessions[0] as any).expires_at as string);
-      const now = new Date();
-      const diffDays =
-        (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-      expect(diffDays).toBeGreaterThan(29);
-      expect(diffDays).toBeLessThan(31);
-    });
-  });
-
-  describe("getSession", () => {
-    test("returns session and user data for valid session", async () => {
-      const user = await findOrCreateUser("getsession@example.com");
-      const sessionId = await createSession(user.id);
-
-      const result = await getSession(sessionId);
-
-      expect(result).not.toBeNull();
-      expect(result?.user.id).toBe(user.id);
-      expect(result?.user.email).toBe(user.email);
-      expect(result?.session.id_hash).toBe(computeHMAC(sessionId));
-      expect(result?.session.user_id).toBe(user.id);
-    });
-
-    test("returns null for non-existent session", async () => {
-      const result = await getSession("non-existent-session-id");
-      expect(result).toBeNull();
-    });
-
-    test("returns null for expired session", async () => {
-      const user = await findOrCreateUser("expiredsession@example.com");
-      const sessionId = await createSession(user.id);
-
-      // Manually expire the session
-      const sessionIdHash = computeHMAC(sessionId);
-      await db`
-        UPDATE sessions 
-        SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour'
-        WHERE id_hash = ${sessionIdHash}
-      `;
-
-      const result = await getSession(sessionId);
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("deleteSession", () => {
-    test("successfully deletes existing session", async () => {
-      const user = await findOrCreateUser("deletesession@example.com");
-      const sessionId = await createSession(user.id);
-
-      const deleted = await deleteSession(sessionId);
-      expect(deleted).toBe(true);
-
-      // Verify session is gone
-      const result = await getSession(sessionId);
-      expect(result).toBeNull();
-    });
-
-    test("returns false for non-existent session", async () => {
-      // Test what PostgreSQL returns for a DELETE with no matches
-      const _testResult = await db`
-        DELETE FROM sessions WHERE id_hash = 'non-existent-hash'
-      `;
-
-      // Now test our function
-      const deleted = await deleteSession(
-        "00000000-0000-0000-0000-000000000000",
-      );
-      expect(deleted).toBe(false);
-    });
-  });
-
-  describe("cookie utilities", () => {
-    test("createSessionCookie generates proper cookie string", () => {
-      const cookie = createSessionCookie("test-session-id");
-
-      expect(cookie).toContain("session_id=test-session-id");
-      expect(cookie).toContain("HttpOnly");
-      expect(cookie).toContain("Path=/");
-      expect(cookie).toContain("Max-Age=2592000"); // 30 days
-      expect(cookie).toContain("SameSite=Lax");
-    });
-
-    test("clearSessionCookie generates cookie clear string", () => {
-      const cookie = clearSessionCookie();
-
-      expect(cookie).toContain("session_id=");
-      expect(cookie).toContain("Max-Age=0");
-      expect(cookie).toContain("HttpOnly");
-      expect(cookie).toContain("Path=/");
-    });
-
-    test("getSessionIdFromCookies extracts session ID", () => {
-      const cookies = "other=value; session_id=test-session; another=value";
-      const sessionId = getSessionIdFromCookies(cookies);
-
-      expect(sessionId).toBe("test-session");
-    });
-
-    test("getSessionIdFromCookies returns null for missing cookie", () => {
-      const cookies = "other=value; another=value";
-      const sessionId = getSessionIdFromCookies(cookies);
-
-      expect(sessionId).toBeNull();
-    });
-
-    test("getSessionIdFromCookies returns null for null header", () => {
-      const sessionId = getSessionIdFromCookies(null);
-      expect(sessionId).toBeNull();
-    });
-  });
-
   describe("integration scenarios", () => {
     test("complete magic link auth flow", async () => {
       // Step 1: Create magic link
@@ -352,15 +213,15 @@ describe("Auth Service with PostgreSQL", () => {
       if (!authResult.success) return;
 
       // Step 3: Use session
-      const sessionData = await getSession(authResult.sessionId);
-      expect(sessionData?.user.id).toBe(user.id);
+      const sessionData = await getSessionContextFromDB(authResult.sessionId);
+      expect(sessionData?.user?.id).toBe(user.id);
 
       // Step 4: Logout
       const loggedOut = await deleteSession(authResult.sessionId);
       expect(loggedOut).toBe(true);
 
       // Step 5: Verify session is gone
-      const noSession = await getSession(authResult.sessionId);
+      const noSession = await getSessionContextFromDB(authResult.sessionId);
       expect(noSession).toBeNull();
     });
 
@@ -379,11 +240,11 @@ describe("Auth Service with PostgreSQL", () => {
       expect(auth1.sessionId).not.toBe(auth2.sessionId);
       expect(auth1.user.id).not.toBe(auth2.user.id);
 
-      const session1 = await getSession(auth1.sessionId);
-      const session2 = await getSession(auth2.sessionId);
+      const session1 = await getSessionContextFromDB(auth1.sessionId);
+      const session2 = await getSessionContextFromDB(auth2.sessionId);
 
-      expect(session1?.user.email).toBe("user1@example.com");
-      expect(session2?.user.email).toBe("user2@example.com");
+      expect(session1?.user?.email).toBe("user1@example.com");
+      expect(session2?.user?.email).toBe("user2@example.com");
     });
   });
 
@@ -394,7 +255,7 @@ describe("Auth Service with PostgreSQL", () => {
 
       // Get the stored hash from database
       const tokens = await db`
-        SELECT token_hash FROM user_tokens 
+        SELECT token_hash FROM user_tokens
         WHERE user_id = ${user.id} AND type = 'magic_link'
       `;
 
@@ -408,68 +269,6 @@ describe("Auth Service with PostgreSQL", () => {
       // Verify only the raw token with pepper works
       const validResult = await verifyMagicLink(rawToken);
       expect(validResult.success).toBe(true);
-    });
-
-    test("session renewal extends activity timestamp", async () => {
-      const user = await findOrCreateUser("renewal@example.com");
-      const sessionId = await createSession(user.id);
-
-      // Get initial activity timestamp
-      const sessionHash = computeHMAC(sessionId);
-      const initialSessions = await db`
-        SELECT last_activity_at FROM sessions 
-        WHERE id_hash = ${sessionHash}
-      `;
-
-      expect(initialSessions).toHaveLength(1);
-      const initialActivity = new Date(
-        (initialSessions[0] as any).last_activity_at,
-      );
-
-      // Wait a small amount to ensure timestamp difference
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      // Renew session
-      const renewed = await renewSession(sessionId);
-      expect(renewed).toBe(true);
-
-      // Verify activity timestamp was updated
-      const updatedSessions = await db`
-        SELECT last_activity_at FROM sessions 
-        WHERE id_hash = ${sessionHash}
-      `;
-
-      expect(updatedSessions).toHaveLength(1);
-      const updatedActivity = new Date(
-        (updatedSessions[0] as any).last_activity_at,
-      );
-
-      expect(updatedActivity.getTime()).toBeGreaterThan(
-        initialActivity.getTime(),
-      );
-    });
-
-    test("session lookup uses HMAC not raw ID", async () => {
-      const user = await findOrCreateUser("hmac@example.com");
-      const rawSessionId = await createSession(user.id);
-
-      // Verify raw session ID cannot be found directly in database
-      const rawLookup = await db`
-        SELECT * FROM sessions WHERE id_hash = ${rawSessionId}
-      `;
-      expect(rawLookup).toHaveLength(0);
-
-      // Verify HMAC lookup works
-      const hmacHash = computeHMAC(rawSessionId);
-      const hmacLookup = await db`
-        SELECT * FROM sessions WHERE id_hash = ${hmacHash}
-      `;
-      expect(hmacLookup).toHaveLength(1);
-
-      // Verify getSession works with raw ID (computes HMAC internally)
-      const sessionData = await getSession(rawSessionId);
-      expect(sessionData).not.toBeNull();
-      expect(sessionData?.user.id).toBe(user.id);
     });
 
     test("race condition with HMAC still works atomically", async () => {
@@ -492,6 +291,70 @@ describe("Auth Service with PostgreSQL", () => {
       expect(failures[0].success).toBe(false);
       if (!failures[0].success) {
         expect(failures[0].error).toBe("Invalid or expired token");
+      }
+    });
+  });
+
+  describe("guest session upgrade", () => {
+    test("upgrades guest session when guestSessionId provided", async () => {
+      // Create a guest session
+      const guestSessionId = await createGuestSession();
+
+      // Create a magic link
+      const { user, rawToken } = await createMagicLink("upgrade@example.com");
+
+      // Verify magic link with guest session upgrade
+      const result = await verifyMagicLink(rawToken, guestSessionId);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // Session ID should be the same (guest session was upgraded)
+        expect(result.sessionId).toBe(guestSessionId);
+        expect(result.user.id).toBe(user.id);
+
+        // Verify the session is now authenticated
+        const sessionContext = await getSessionContextFromDB(guestSessionId);
+        expect(sessionContext?.isAuthenticated).toBe(true);
+        expect(sessionContext?.user?.id).toBe(user.id);
+      }
+    });
+
+    test("creates new session when no guestSessionId", async () => {
+      // Create a magic link
+      const { user, rawToken } = await createMagicLink("newuser@example.com");
+
+      // Verify magic link without guest session
+      const result = await verifyMagicLink(rawToken);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.sessionId).toBeDefined();
+        expect(result.user.id).toBe(user.id);
+
+        // Verify the session is authenticated
+        const sessionContext = await getSessionContextFromDB(result.sessionId);
+        expect(sessionContext?.isAuthenticated).toBe(true);
+        expect(sessionContext?.user?.id).toBe(user.id);
+      }
+    });
+
+    test("creates new session when guest upgrade fails", async () => {
+      // Create a magic link
+      const { user, rawToken } = await createMagicLink("fallback@example.com");
+
+      // Try to verify with non-existent guest session
+      const result = await verifyMagicLink(rawToken, "non-existent-session-id");
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // Should have created a new session (not the non-existent one)
+        expect(result.sessionId).not.toBe("non-existent-session-id");
+        expect(result.user.id).toBe(user.id);
+
+        // Verify the new session is authenticated
+        const sessionContext = await getSessionContextFromDB(result.sessionId);
+        expect(sessionContext?.isAuthenticated).toBe(true);
+        expect(sessionContext?.user?.id).toBe(user.id);
       }
     });
   });
