@@ -1,5 +1,9 @@
+import { runMigrations } from "./database/migrate";
 import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
+import { log } from "./services/logger";
+
+await runMigrations();
 
 const server = Bun.serve({
   port: process.env.PORT || 3000,
@@ -28,4 +32,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Server running at http://localhost:${server.port}`);
+log.info("server", `Listening on port ${server.port}`);
