@@ -24,15 +24,15 @@ Both added a `bunfig.toml` with coverage thresholds (95% lines/functions, 80% br
 
 **Files:** `bunfig.toml` (new)
 
-### 4. Guest session service + BunRequest cookie API
+### ~~4. Guest session service + BunRequest cookie API~~ ✅ Done
 
-Both added a `getSessionContext()` function that auto-creates guest sessions, separating session concerns from auth concerns. Both use `BunRequest` with its native cookie API instead of manual string parsing. This supports cart/state before login and is a cleaner architecture overall.
+~~Both added a `getSessionContext()` function that auto-creates guest sessions, separating session concerns from auth concerns. Both use `BunRequest` with its native cookie API instead of manual string parsing. This supports cart/state before login and is a cleaner architecture overall.~~
 
 **Files:** `src/server/services/sessions.ts` (new), `src/server/middleware/auth.ts`
 
-### 5. BunRequest test helpers with cookie mocking
+### ~~5. BunRequest test helpers with cookie mocking~~ ✅ Done
 
-Both upgraded `createBunRequest()` with full cookie API mocking (`get()`, `set()`, `delete()`), cookie header parsing, and assertion helpers like `getSetCookieHeaders()` and `findSetCookie()`.
+~~Both upgraded `createBunRequest()` with full cookie API mocking (`get()`, `set()`, `delete()`), cookie header parsing, and assertion helpers like `getSetCookieHeaders()` and `findSetCookie()`.~~
 
 **Files:** `src/server/test-utils/bun-request.ts`, `src/server/test-utils/setup.ts`
 
