@@ -100,7 +100,7 @@ Run the full suite: `bun run test`
 ### Frontend
 
 - **React JSX as a template engine** — server-side only, no client-side React, no virtual DOM, no hydration
-- **Tailwind CSS 4** with hot-reload in development
+- **Tailwind CSS 4** with auto-compilation in development
 - **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example)
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
 - **Asset cache-busting** in production — MD5-hashed filenames with immutable `Cache-Control` headers
