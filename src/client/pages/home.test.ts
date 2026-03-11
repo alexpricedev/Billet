@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { init } from "./home";
 
 describe("home page init", () => {
   beforeEach(() => {
@@ -13,7 +12,8 @@ describe("home page init", () => {
     document.body.innerHTML = "";
   });
 
-  test("increments count on button click", () => {
+  test("increments count on button click", async () => {
+    const { init } = await import("./home");
     init();
 
     const button = document.getElementById("counter");
@@ -30,8 +30,9 @@ describe("home page init", () => {
     expect(display.textContent).toBe("2");
   });
 
-  test("does nothing when elements are missing", () => {
+  test("does nothing when elements are missing", async () => {
     document.body.innerHTML = "";
+    const { init } = await import("./home");
     init();
   });
 });

@@ -66,6 +66,14 @@ NEVER try to roll your own lint or test commands.
 - Focus on input/output transformations
 - Test edge cases and error handling
 
+**Client Scripts** (`src/client/**/*.test.ts`):
+- Use happy-dom for DOM globals (auto-loaded via bunfig.toml prelude)
+- Set up DOM fixtures matching server-rendered HTML in `beforeEach`
+- Clean up with `document.body.innerHTML = ""` in `afterEach`
+- Call `init()` and assert DOM state changes
+- For Preact components, render into a container and assert output
+- Use dynamic imports for page init functions to get fresh module context (avoid top-level imports with module caching)
+
 ### Best Practices
 
 - **Test user interactions**: Focus on user behavior rather than implementation
