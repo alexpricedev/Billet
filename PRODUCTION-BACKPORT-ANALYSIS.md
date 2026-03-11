@@ -36,9 +36,9 @@ Both added a `bunfig.toml` with coverage thresholds (95% lines/functions, 80% br
 
 **Files:** `src/server/test-utils/bun-request.ts`, `src/server/test-utils/setup.ts`
 
-### 6. Install tailwindcss as a dep (not bunx)
+### ~~6. Install tailwindcss as a dep (not bunx)~~ ✅ Done
 
-Both switched from `bunx @tailwindcss/cli` to running `tailwindcss` as a direct dependency. More reliable, avoids re-downloading on every build.
+~~Both switched from `bunx @tailwindcss/cli` to running `tailwindcss` as a direct dependency. More reliable, avoids re-downloading on every build.~~
 
 **Files:** `package.json`
 
