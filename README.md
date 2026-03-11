@@ -86,7 +86,7 @@ The "deterministic templates, test with confidence" tagline isn't a marketing cl
 - **Real database testing** for services — tests run against PostgreSQL with table truncation for isolation
 - **Mock-based controller tests** that verify HTTP responses (status codes, headers, HTML content) without touching the database
 - **Client script tests** using happy-dom for DOM globals, with page lifecycle isolation
-- **Coverage enforcement** via `bunfig.toml` — builds fail if coverage drops below thresholds
+
 
 Run the full suite: `bun run test`
 
@@ -100,9 +100,10 @@ Run the full suite: `bun run test`
 ### Frontend
 
 - **React JSX as a template engine** — server-side only, no client-side React, no virtual DOM, no hydration
-- **Tailwind CSS 4** with hot-reload in development
+- **Tailwind CSS 4** with auto-compilation in development
 - **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example)
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
+- **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
 - **Asset cache-busting** in production — MD5-hashed filenames with immutable `Cache-Control` headers
 
 ---
@@ -135,7 +136,7 @@ Every layer catches a different class of error before a human has to:
 | Biome linting | Style violations, unsafe patterns, console usage |
 | Pre-commit hooks | Anything that slipped past the editor |
 | Test suite | Behavioural regressions, broken templates, bad responses |
-| Coverage thresholds | Untested code paths |
+
 
 This is the [backpressure](#capture-your-backpressure) that keeps agents on the rails.
 
