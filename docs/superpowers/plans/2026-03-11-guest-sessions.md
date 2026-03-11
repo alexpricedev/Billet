@@ -4,7 +4,7 @@
 
 **Goal:** Add auto-created guest sessions for all visitors, upgrade to authenticated on login, and switch to BunRequest's native cookie API.
 
-**Architecture:** New sessions service owns session lifecycle (create guest, lookup, upgrade, delete). Auth service keeps magic links and user management but delegates session operations. Middleware replaces `getAuthContext(Request)` with `getSessionContext(BunRequest)`. All controllers switch to the new API.
+**Architecture:** New sessions service owns session lifecycle (create guest, lookup, upgrade, delete). Auth service keeps magic links and user management but delegates session operations. Middleware replaces `getAuthContext(Request)` with `getSessionContext(BunRequest)`. All controllers, CSRF middleware, and templates switch to the new API.
 
 **Tech Stack:** Bun, TypeScript, PostgreSQL, Biome
 
@@ -17,18 +17,35 @@
 | Action | File | Responsibility |
 |--------|------|----------------|
 | Create | `src/server/database/migrations/003_add_guest_sessions.ts` | Add session_type column, make user_id nullable |
-| Create | `src/server/services/sessions.ts` | Session lifecycle: guest creation, lookup, upgrade, delete, cookie helpers |
+| Create | `src/server/services/sessions.ts` | Session lifecycle: guest creation, lookup, upgrade, delete, cookie helpers, cleanup |
 | Create | `src/server/services/sessions.test.ts` | Sessions service tests (real DB) |
+| Modify | `src/server/middleware/auth.ts` | Replace getAuthContext with getSessionContext, export SessionContext |
+| Modify | `src/server/middleware/auth.test.ts` | Update tests for new middleware |
+| Modify | `src/server/middleware/csrf.ts` | Switch from manual cookie parsing to BunRequest + sessions service |
+| Modify | `src/server/middleware/csrf.test.ts` | Update tests for BunRequest-based CSRF middleware |
+| Modify | `src/server/templates/home.tsx` | AuthContext → SessionContext |
+| Modify | `src/server/controllers/auth/callback.tsx` | Use sessions service, pass guest session for upgrade |
+| Modify | `src/server/controllers/auth/callback.test.ts` | Update mocks for new API |
+| Modify | `src/server/controllers/auth/logout.tsx` | Use getSessionContext + sessions service cookie helpers |
+| Modify | `src/server/controllers/auth/logout.test.ts` | Update mocks for new API |
+| Modify | `src/server/controllers/app/home.tsx` | Switch to getSessionContext, BunRequest |
+| Modify | `src/server/controllers/app/home.test.ts` | Update mocks for new API |
+| Modify | `src/server/controllers/app/examples.tsx` | Switch to getSessionContext |
+| Modify | `src/server/controllers/app/examples.test.ts` | Update mocks for new API |
 | Modify | `src/server/services/auth.ts` | Remove session CRUD and cookie helpers; update verifyMagicLink |
 | Modify | `src/server/services/auth.test.ts` | Update tests for refactored auth service |
-| Modify | `src/server/middleware/auth.ts` | Replace getAuthContext with getSessionContext |
-| Modify | `src/server/middleware/auth.test.ts` | Update tests for new middleware |
-| Modify | `src/server/controllers/auth/callback.tsx` | Use sessions service, pass guest session for upgrade |
-| Modify | `src/server/controllers/auth/logout.tsx` | Use sessions service cookie helpers |
-| Modify | `src/server/controllers/app/home.tsx` | Switch to getSessionContext |
-| Modify | `src/server/controllers/app/examples.tsx` | Switch to getSessionContext |
-| Modify | `src/server/controllers/auth/login.tsx` | Switch to getSessionContext |
-| Modify | Controller test files | Update mocks for new API |
+
+**Not modified:** `src/server/controllers/auth/login.tsx` — already uses `BunRequest` and `redirectIfAuthenticated`, no changes needed.
+
+---
+
+## Task ordering rationale
+
+Tasks are ordered so `bun run check` (lint + typecheck) passes after every commit.
+
+1. **Task 1** (migration) and **Task 2** (sessions service) add new files only — nothing breaks.
+2. **Task 3** (consumers) switches ALL consumers (middleware, CSRF, controllers, templates) to the new sessions API in one commit — nothing references removed auth exports afterward.
+3. **Task 4** (auth cleanup) safely removes old exports from auth.ts since no consumers reference them.
 
 ---
 
@@ -95,7 +112,6 @@ git commit -m "feat: add guest sessions migration (session_type + nullable user_
 import { SQL } from "bun";
 import {
   afterAll,
-  afterEach,
   beforeEach,
   describe,
   expect,
@@ -119,6 +135,7 @@ const {
   convertGuestToAuthenticated,
   deleteSession,
   renewSession,
+  cleanupExpired,
 } = await import("./sessions");
 
 const { findOrCreateUser } = await import("./auth");
@@ -302,6 +319,19 @@ describe("renewSession", () => {
 
     expect(new Date(after[0].last_activity_at).getTime())
       .toBeGreaterThan(new Date(before[0].last_activity_at).getTime());
+  });
+});
+
+describe("cleanupExpired", () => {
+  test("removes expired sessions and tokens", async () => {
+    const rawId = await createGuestSession();
+    const hash = computeHMAC(rawId);
+    await db`UPDATE sessions SET expires_at = NOW() - INTERVAL '1 hour' WHERE id_hash = ${hash}`;
+
+    await cleanupExpired();
+
+    const rows = await db`SELECT * FROM sessions WHERE id_hash = ${hash}`;
+    expect(rows).toHaveLength(0);
   });
 });
 ```
@@ -504,6 +534,18 @@ export const renewSession = async (
     return false;
   }
 };
+
+export const cleanupExpired = async (): Promise<void> => {
+  await db`
+    DELETE FROM user_tokens
+    WHERE expires_at < CURRENT_TIMESTAMP
+  `;
+
+  await db`
+    DELETE FROM sessions
+    WHERE expires_at < CURRENT_TIMESTAMP
+  `;
+};
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -525,135 +567,25 @@ git commit -m "feat: add sessions service with guest session support"
 
 ---
 
-## Task 3: Refactor auth service
+## Task 3: Switch all consumers to new session API
+
+This task updates ALL consumers of the old auth session/cookie exports in one commit. This ensures `bun run check` passes — no broken intermediate state.
 
 **Files:**
-- Modify: `src/server/services/auth.ts`
-- Modify: `src/server/services/auth.test.ts`
+- Modify: `src/server/middleware/auth.ts` + `auth.test.ts`
+- Modify: `src/server/middleware/csrf.ts` + `csrf.test.ts`
+- Modify: `src/server/templates/home.tsx`
+- Modify: `src/server/controllers/auth/callback.tsx` + `callback.test.ts`
+- Modify: `src/server/controllers/auth/logout.tsx` + `logout.test.ts`
+- Modify: `src/server/controllers/app/home.tsx` + `home.test.ts`
+- Modify: `src/server/controllers/app/examples.tsx` + `examples.test.ts`
 
-This task removes session CRUD and cookie helpers from auth.ts (now in sessions service) and updates `verifyMagicLink` to accept an optional guest session ID for upgrade.
-
-- [ ] **Step 1: Update verifyMagicLink signature and implementation**
-
-In `src/server/services/auth.ts`, change the import block at the top to add sessions service imports:
-
-```ts
-// Add this import
-import {
-  convertGuestToAuthenticated,
-  createAuthenticatedSession,
-} from "./sessions";
-```
-
-Then replace the `verifyMagicLink` function. The old function (lines 110-164) creates a session via `createSession`. The new one accepts `guestSessionId?` and tries to upgrade:
-
-Old (lines 110-112):
-```ts
-export const verifyMagicLink = async (
-  rawToken: string,
-): Promise<AuthResult> => {
-```
-
-New:
-```ts
-export const verifyMagicLink = async (
-  rawToken: string,
-  guestSessionId?: string | null,
-): Promise<AuthResult> => {
-```
-
-Old (line 155):
-```ts
-  const sessionId = await createSession(tokenData.user_id);
-```
-
-New:
-```ts
-  let sessionId: string;
-  if (guestSessionId) {
-    const guestHash = computeHMAC(guestSessionId);
-    const converted = await convertGuestToAuthenticated(
-      guestHash,
-      tokenData.user_id,
-    );
-    sessionId = converted
-      ? guestSessionId
-      : await createAuthenticatedSession(tokenData.user_id);
-  } else {
-    sessionId = await createAuthenticatedSession(tokenData.user_id);
-  }
-```
-
-- [ ] **Step 2: Remove session CRUD functions**
-
-Remove these functions from `src/server/services/auth.ts` (they now live in sessions service):
-
-- `createSession` (lines 171-182)
-- `getSession` (lines 188-228)
-- `deleteSession` (lines 234-247)
-- `renewSession` (lines 253-268)
-
-- [ ] **Step 3: Remove cookie helpers**
-
-Remove these exports from `src/server/services/auth.ts`:
-
-- `SESSION_COOKIE_NAME` (line 290)
-- `SESSION_COOKIE_OPTIONS` (lines 291-297)
-- `createSessionCookie` (lines 302-317)
-- `clearSessionCookie` (lines 323-333)
-- `getSessionIdFromCookies` (lines 339-352)
-
-Also remove the `Session` interface (lines 15-21) and `SessionQueryResult` interface (lines 33-42) since they're no longer used here.
-
-- [ ] **Step 4: Update auth.test.ts**
-
-The auth tests that test `createSession`, `getSession`, `deleteSession`, `renewSession`, and the cookie helpers should be removed or moved. Tests for `verifyMagicLink` need updating to handle the new guest session upgrade path.
-
-Remove test blocks for:
-- `createSession`
-- `getSession` / `deleteSession` / `renewSession`
-- `createSessionCookie` / `clearSessionCookie` / `getSessionIdFromCookies`
-
-Update `verifyMagicLink` tests:
-- Import `createGuestSession` from sessions service
-- Add test: "upgrades guest session when guestSessionId provided"
-- Add test: "creates new session when no guestSessionId"
-- Add test: "creates new session when guest upgrade fails"
-
-Update imports at the top of auth.test.ts to remove deleted exports and add sessions service imports.
-
-- [ ] **Step 5: Run tests**
-
-Run: `bun run test:file src/server/services/auth.test.ts`
-Expected: All remaining tests PASS
-
-- [ ] **Step 6: Run full check**
-
-Run: `bun run check`
-Expected: PASS
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add src/server/services/auth.ts src/server/services/auth.test.ts
-git commit -m "refactor: move session CRUD to sessions service, add guest upgrade to verifyMagicLink"
-```
-
----
-
-## Task 4: Refactor auth middleware
-
-**Files:**
-- Modify: `src/server/middleware/auth.ts`
-- Modify: `src/server/middleware/auth.test.ts`
-
-- [ ] **Step 1: Rewrite middleware**
+- [ ] **Step 1: Rewrite auth middleware**
 
 Replace the entire `src/server/middleware/auth.ts` with:
 
 ```ts
 import type { BunRequest } from "bun";
-import type { User } from "../services/auth";
 import {
   type SessionContext,
   createGuestSession,
@@ -748,58 +680,86 @@ export const redirectIfAuthenticated = async (
 };
 ```
 
-- [ ] **Step 2: Update middleware tests**
+- [ ] **Step 2: Update CSRF middleware**
 
-Rewrite `src/server/middleware/auth.test.ts` to test `getSessionContext` instead of `getAuthContext`. Tests should:
+In `src/server/middleware/csrf.ts`, make two changes:
 
-- Mock `../services/sessions` module instead of `../services/auth`
-- Test: no cookie → returns guest context with requiresSetCookie
-- Test: valid guest cookie → returns guest context
-- Test: valid authenticated cookie → returns authenticated context, calls renewSession
-- Test: invalid/expired cookie → returns guest context with requiresSetCookie
-- Test: error in lookup → returns guest context
-- Test requireAuth and redirectIfAuthenticated with BunRequest
+1. Replace the import:
 
-Use `createBunRequest` from test-utils for creating requests with cookies.
-
-- [ ] **Step 3: Run tests**
-
-Run: `bun run test:file src/server/middleware/auth.test.ts`
-Expected: All tests PASS
-
-- [ ] **Step 4: Run full check**
-
-Run: `bun run check`
-Expected: PASS (there will be TS errors in controllers that still import old auth exports — that's expected and fixed in Task 5)
-
-Note: If `bun run check` fails due to controller imports of removed auth exports, that's OK. The typecheck will fail but lint should pass. Task 5 fixes the controllers.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/server/middleware/auth.ts src/server/middleware/auth.test.ts
-git commit -m "refactor: replace getAuthContext with getSessionContext using BunRequest"
+Old:
+```ts
+import { getSessionIdFromCookies } from "../services/auth";
 ```
 
----
+New:
+```ts
+import type { BunRequest } from "bun";
+import { getSessionIdFromRequest } from "../services/sessions";
+```
 
-## Task 5: Update controllers
+2. Change the function signature and cookie reading:
 
-**Files:**
-- Modify: `src/server/controllers/auth/callback.tsx`
-- Modify: `src/server/controllers/auth/logout.tsx`
-- Modify: `src/server/controllers/app/home.tsx`
-- Modify: `src/server/controllers/app/examples.tsx`
-- Modify: `src/server/controllers/auth/login.tsx`
-- Modify: All corresponding test files
+Old:
+```ts
+export const csrfProtection = async (
+  req: Request,
+  options: CsrfOptions,
+): Promise<Response | null> => {
+```
 
-- [ ] **Step 1: Update callback.tsx**
+New:
+```ts
+export const csrfProtection = async (
+  req: BunRequest,
+  options: CsrfOptions,
+): Promise<Response | null> => {
+```
 
-Replace entire file:
+Old (lines 47-49):
+```ts
+  const cookieHeader = req.headers.get("cookie");
+  const sessionId = getSessionIdFromCookies(cookieHeader);
+```
+
+New:
+```ts
+  const sessionId = getSessionIdFromRequest(req);
+```
+
+Everything else in the function stays the same.
+
+- [ ] **Step 3: Update home template**
+
+In `src/server/templates/home.tsx`:
+
+Old:
+```tsx
+import type { AuthContext } from "@server/middleware/auth";
+```
+New:
+```tsx
+import type { SessionContext } from "@server/middleware/auth";
+```
+
+Old:
+```tsx
+  auth: AuthContext;
+```
+New:
+```tsx
+  auth: SessionContext;
+```
+
+No other changes — the template uses `props.auth.isAuthenticated` and `props.auth.user?.email` which both exist on `SessionContext`.
+
+- [ ] **Step 4: Update callback.tsx**
+
+Replace the entire `src/server/controllers/auth/callback.tsx`:
 
 ```tsx
-import { verifyMagicLink } from "../../services/auth";
+import type { BunRequest } from "bun";
 import { getSessionContext } from "../../middleware/auth";
+import { verifyMagicLink } from "../../services/auth";
 import { setSessionCookie } from "../../services/sessions";
 import { redirect } from "../../utils/response";
 
@@ -835,17 +795,19 @@ export const callback = {
 };
 ```
 
-- [ ] **Step 2: Update logout.tsx**
+Key changes: takes `BunRequest`, calls `getSessionContext` to get guest session for upgrade, uses `setSessionCookie(req, ...)` instead of manual `Set-Cookie` header.
 
-Replace entire file:
+- [ ] **Step 5: Update logout.tsx**
+
+Replace the entire `src/server/controllers/auth/logout.tsx`:
 
 ```tsx
-import { csrfProtection } from "../../middleware/csrf";
+import type { BunRequest } from "bun";
 import { getSessionContext } from "../../middleware/auth";
+import { csrfProtection } from "../../middleware/csrf";
 import {
   clearSessionCookie,
   deleteSession,
-  getSessionIdFromRequest,
 } from "../../services/sessions";
 
 export const logout = {
@@ -864,7 +826,7 @@ export const logout = {
       try {
         await deleteSession(ctx.sessionId);
       } catch {
-        // Session deletion failed, but still clear cookie for security
+        // Session deletion failed — still clear cookie
       }
     }
 
@@ -878,70 +840,373 @@ export const logout = {
 };
 ```
 
-- [ ] **Step 3: Update home.tsx**
+Key changes: takes `BunRequest`, uses `getSessionContext` instead of manual session lookup, uses `clearSessionCookie(req)` and `deleteSession` from sessions service instead of auth service, no manual `Set-Cookie` header.
 
-Update to use `getSessionContext` and `setSessionCookie`. The controller needs to:
-1. Call `getSessionContext(req)` instead of `getAuthContext(req)`
-2. Use `ctx.sessionId` for CSRF token generation instead of manual cookie parsing
-3. Call `setSessionCookie` if `ctx.requiresSetCookie`
+- [ ] **Step 6: Update home.tsx controller**
 
-Replace auth-related imports and update the handler to use the session context. The key changes:
-- Import `getSessionContext` from `../../middleware/auth` instead of `getAuthContext`
-- Import `setSessionCookie` from `../../services/sessions`
-- Remove import of `getSessionIdFromCookies` from `../../services/auth`
-- Use `ctx.sessionId` for CSRF token generation
-- Add `setSessionCookie(req, ctx.sessionId)` when `ctx.requiresSetCookie`
+Replace the entire `src/server/controllers/app/home.tsx`:
 
-- [ ] **Step 4: Update examples.tsx**
+```tsx
+import type { BunRequest } from "bun";
+import { getSessionContext } from "../../middleware/auth";
+import { createCsrfToken } from "../../services/csrf";
+import { setSessionCookie } from "../../services/sessions";
+import { getVisitorStats } from "../../services/analytics";
+import { Home } from "../../templates/home";
+import { render } from "../../utils/response";
 
-Same pattern as home.tsx:
-- Replace `getAuthContext` with `getSessionContext`
-- Replace `getSessionIdFromCookies` usage with `ctx.sessionId`
-- Import `setSessionCookie` from sessions service
-- Add `setSessionCookie` when `ctx.requiresSetCookie`
+export const home = {
+  async index(req: BunRequest): Promise<Response> {
+    const [stats, ctx] = await Promise.all([
+      getVisitorStats(),
+      getSessionContext(req),
+    ]);
 
-For the `create` and `destroy` methods that use `requireAuth`, update the request parameter type to `BunRequest`.
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
 
-- [ ] **Step 5: Update login.tsx**
+    let csrfToken: string | null = null;
+    if (ctx.isAuthenticated && ctx.sessionId) {
+      csrfToken = await createCsrfToken(ctx.sessionId, "POST", "/auth/logout");
+    }
 
-Update to use BunRequest type. The `redirectIfAuthenticated` call should work since it was updated to accept BunRequest in Task 4. Update the handler parameter from `Request` to `BunRequest`.
+    return render(
+      <Home
+        method={req.method}
+        stats={stats}
+        auth={ctx}
+        csrfToken={csrfToken}
+      />,
+    );
+  },
+};
+```
 
-- [ ] **Step 6: Update controller tests**
+Key changes: `BunRequest` instead of `Request`, `getSessionContext` instead of `getAuthContext`, `ctx.sessionId` for CSRF instead of manual cookie parsing, `setSessionCookie` for guest sessions.
 
-Update all controller test files to:
+- [ ] **Step 7: Update examples.tsx controller**
+
+Replace the entire `src/server/controllers/app/examples.tsx`:
+
+```tsx
+import type { BunRequest } from "bun";
+import { getSessionContext, requireAuth } from "../../middleware/auth";
+import { csrfProtection } from "../../middleware/csrf";
+import { createCsrfToken } from "../../services/csrf";
+import { setSessionCookie } from "../../services/sessions";
+import {
+  createExample,
+  deleteExample,
+  getExamples,
+} from "../../services/example";
+import type { ExamplesState } from "../../templates/examples";
+import { Examples } from "../../templates/examples";
+import { redirect, render } from "../../utils/response";
+import { stateHelpers } from "../../utils/state";
+
+const { getFlash, setFlash } = stateHelpers<ExamplesState>();
+
+export const examples = {
+  async index(req: BunRequest): Promise<Response> {
+    const ctx = await getSessionContext(req);
+
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
+
+    const examples = await getExamples();
+
+    if (!ctx.isAuthenticated || !ctx.sessionId) {
+      return render(<Examples examples={examples} isAuthenticated={false} />);
+    }
+
+    const state = getFlash(req);
+
+    const createCsrfTokenValue = await createCsrfToken(
+      ctx.sessionId,
+      "POST",
+      "/examples",
+    );
+
+    const deleteCsrfTokens: Record<number, string> = {};
+    for (const example of examples) {
+      deleteCsrfTokens[example.id] = await createCsrfToken(
+        ctx.sessionId,
+        "POST",
+        `/examples/${example.id}/delete`,
+      );
+    }
+
+    return render(
+      <Examples
+        createCsrfToken={createCsrfTokenValue}
+        deleteCsrfTokens={deleteCsrfTokens}
+        examples={examples}
+        isAuthenticated={ctx.isAuthenticated}
+        state={state}
+      />,
+    );
+  },
+
+  async create(req: BunRequest): Promise<Response> {
+    const authRedirect = await requireAuth(req);
+    if (authRedirect) {
+      return authRedirect;
+    }
+
+    const csrfResponse = await csrfProtection(req, {
+      method: "POST",
+      path: "/examples",
+    });
+    if (csrfResponse) {
+      return csrfResponse;
+    }
+
+    const formData = await req.formData();
+    const name = formData.get("name") as string;
+
+    if (!name || name.trim().length < 2) {
+      return redirect("/examples");
+    }
+
+    await createExample(name.trim());
+    setFlash(req, { state: "submission-success" });
+    return redirect("/examples");
+  },
+
+  async destroy<T extends `${string}:id${string}`>(
+    req: BunRequest<T>,
+  ): Promise<Response> {
+    const authRedirect = await requireAuth(req);
+    if (authRedirect) {
+      return authRedirect;
+    }
+
+    const csrfResponse = await csrfProtection(req, {
+      method: "POST",
+      path: req.url,
+    });
+    if (csrfResponse) {
+      return csrfResponse;
+    }
+
+    const idParam = req.params.id;
+    const id = Number.parseInt(idParam, 10);
+
+    if (!idParam || Number.isNaN(id)) {
+      return redirect("/examples");
+    }
+
+    const deleted = await deleteExample(id);
+
+    if (!deleted) {
+      return redirect("/examples");
+    }
+
+    setFlash(req, { state: "deletion-success" });
+    return redirect("/examples");
+  },
+};
+```
+
+Key changes: `getSessionContext` instead of `getAuthContext`, `ctx.sessionId` for CSRF instead of `getSessionIdFromCookies`, `setSessionCookie` for guest sessions.
+
+- [ ] **Step 8: Update auth middleware tests**
+
+Rewrite `src/server/middleware/auth.test.ts` to test `getSessionContext` instead of `getAuthContext`. Mock `../services/sessions` instead of `../services/auth`. Use `createBunRequest` from test-utils.
+
+Test scenarios:
+- No cookie → creates guest session, returns guest context with `requiresSetCookie: true`
+- Valid guest cookie → returns guest context with `isGuest: true`
+- Valid authenticated cookie → returns authenticated context, calls `renewSession`
+- Invalid/expired cookie → creates guest session, returns guest context with `requiresSetCookie: true`
+- DB error → creates guest session (never crashes)
+- `requireAuth` with unauthenticated → returns 303 redirect to /login
+- `requireAuth` with authenticated → returns null
+- `redirectIfAuthenticated` with authenticated → returns 303 redirect to /
+- `redirectIfAuthenticated` with unauthenticated → returns null
+
+- [ ] **Step 9: Update CSRF middleware tests**
+
+Update `src/server/middleware/csrf.test.ts`:
+- Replace `new Request(url, { headers: { Cookie: ... } })` with `createBunRequest(url, { headers: { Cookie: "session_id=<raw-id>" } })` from test-utils
+- Remove imports of `createSessionCookie` from `../../services/auth`
+- Mock `../../services/sessions` module for `getSessionIdFromRequest` if needed, OR pass cookies through `createBunRequest`'s cookies support
+
+The CSRF tests should still test the same behaviors (token validation, origin checking, etc.) — only the request construction changes.
+
+- [ ] **Step 10: Update controller tests**
+
+For each controller test file, update:
+
+**`callback.test.ts`:**
+- Mock `../../middleware/auth` with `getSessionContext` (returns guest context by default)
+- Mock `../../services/sessions` for `setSessionCookie`
+- Mock `../../services/auth` for `verifyMagicLink` only
+- Use `createBunRequest` for test requests
+- Verify `setSessionCookie` called with session ID on success
+- Verify guest session ID passed to `verifyMagicLink`
+
+**`logout.test.ts`:**
+- Mock `../../middleware/auth` with `getSessionContext` (returns authenticated context)
+- Mock `../../services/sessions` for `clearSessionCookie`, `deleteSession`
+- Remove imports of `createSessionCookie`, `clearSessionCookie`, `getSessionIdFromCookies`, `getSession`, `deleteSession` from auth service
+- Use `createBunRequest` for test requests
+- Verify `deleteSession` and `clearSessionCookie` called
+
+**`home.test.ts`:**
 - Mock `../../middleware/auth` with `getSessionContext` instead of `getAuthContext`
-- Use `createBunRequest` (already available) for creating test requests
-- Mock `../../services/sessions` for `setSessionCookie`, `clearSessionCookie`, `deleteSession`
-- Update assertions for new API
+- Mock `../../services/sessions` for `setSessionCookie`
+- Verify `setSessionCookie` called when `requiresSetCookie` is true
+- Verify CSRF token generated using `ctx.sessionId`
 
-Key test files to update:
-- `callback.test.ts` — mock getSessionContext, verifyMagicLink, setSessionCookie
-- `logout.test.ts` — mock getSessionContext, deleteSession, clearSessionCookie
-- `home.test.ts` — mock getSessionContext instead of getAuthContext
-- `examples.test.ts` — mock getSessionContext instead of getAuthContext
-- `login.test.ts` — mock redirectIfAuthenticated (same as before, just BunRequest)
-- `static.test.ts` — likely unchanged (about/contact don't use auth)
+**`examples.test.ts`:**
+- Mock `../../middleware/auth` with `getSessionContext` and `requireAuth` instead of `getAuthContext`
+- Mock `../../services/sessions` for `setSessionCookie`
+- Remove import of `createSessionCookie` and `getSessionIdFromCookies` from auth service
+- Use `createBunRequest` for all test requests (already does for some)
+- Verify `setSessionCookie` called when `requiresSetCookie` is true
 
-- [ ] **Step 7: Run all tests**
+**`login.test.ts`:**
+- No changes expected — already uses `redirectIfAuthenticated` mock and `BunRequest`
+
+- [ ] **Step 11: Run all tests**
 
 Run: `bun run test`
 Expected: All tests PASS
 
-- [ ] **Step 8: Run full check**
+- [ ] **Step 12: Run full check**
 
 Run: `bun run check`
-Expected: PASS
+Expected: PASS — no TS errors, no lint warnings
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 13: Commit**
 
 ```bash
-git add src/server/controllers/ src/server/middleware/
-git commit -m "refactor: update all controllers to use getSessionContext and BunRequest cookie API"
+git add src/server/middleware/ src/server/controllers/ src/server/templates/home.tsx
+git commit -m "refactor: switch all consumers to getSessionContext and BunRequest cookie API"
 ```
 
 ---
 
-## Task 6: Final verification
+## Task 4: Auth service cleanup
+
+**Files:**
+- Modify: `src/server/services/auth.ts`
+- Modify: `src/server/services/auth.test.ts`
+
+All consumers were updated in Task 3. Now we safely remove old session/cookie exports and update `verifyMagicLink`.
+
+- [ ] **Step 1: Update verifyMagicLink signature and implementation**
+
+Add imports at the top of `src/server/services/auth.ts`:
+
+```ts
+import {
+  convertGuestToAuthenticated,
+  createAuthenticatedSession,
+} from "./sessions";
+```
+
+Change verifyMagicLink signature (line 110):
+
+Old:
+```ts
+export const verifyMagicLink = async (
+  rawToken: string,
+): Promise<AuthResult> => {
+```
+
+New:
+```ts
+export const verifyMagicLink = async (
+  rawToken: string,
+  guestSessionId?: string | null,
+): Promise<AuthResult> => {
+```
+
+Replace the session creation line (currently `const sessionId = await createSession(tokenData.user_id);`):
+
+```ts
+  let sessionId: string;
+  if (guestSessionId) {
+    const guestHash = computeHMAC(guestSessionId);
+    const converted = await convertGuestToAuthenticated(
+      guestHash,
+      tokenData.user_id,
+    );
+    sessionId = converted
+      ? guestSessionId
+      : await createAuthenticatedSession(tokenData.user_id);
+  } else {
+    sessionId = await createAuthenticatedSession(tokenData.user_id);
+  }
+```
+
+- [ ] **Step 2: Remove old session CRUD functions**
+
+Remove from `src/server/services/auth.ts`:
+- `Session` interface (lines 15-21)
+- `SessionQueryResult` interface (lines 33-42)
+- `createSession` function (lines 171-182)
+- `getSession` function (lines 188-228)
+- `deleteSession` function (lines 234-247)
+- `renewSession` function (lines 253-268)
+
+- [ ] **Step 3: Remove old cookie helpers and cleanupExpired**
+
+Remove from `src/server/services/auth.ts`:
+- `cleanupExpired` function (lines 274-284) — now in sessions service
+- `SESSION_COOKIE_NAME` (line 290)
+- `SESSION_COOKIE_OPTIONS` (lines 291-297)
+- `createSessionCookie` function (lines 302-317)
+- `clearSessionCookie` function (lines 323-333)
+- `getSessionIdFromCookies` function (lines 339-352)
+
+Auth service should now only export: `User`, `UserToken`, `AuthResult`, `findOrCreateUser`, `createMagicLink`, `verifyMagicLink`.
+
+- [ ] **Step 4: Update auth.test.ts**
+
+Remove test blocks for:
+- `createSession`
+- `getSession` / `deleteSession` / `renewSession`
+- `createSessionCookie` / `clearSessionCookie` / `getSessionIdFromCookies`
+- `cleanupExpired` (tested in sessions.test.ts)
+
+Update `verifyMagicLink` tests:
+- Import `createGuestSession` from sessions service (dynamic import with mock)
+- Add test: "upgrades guest session when guestSessionId provided" — create guest session, call `verifyMagicLink(token, guestSessionId)`, verify session type changed to authenticated
+- Add test: "creates new session when no guestSessionId" — call `verifyMagicLink(token)`, verify new authenticated session created
+- Add test: "creates new session when guest upgrade fails (expired guest)" — expire the guest session, call `verifyMagicLink(token, guestSessionId)`, verify new authenticated session created instead
+
+Update imports at top of auth.test.ts: remove deleted exports, add sessions service imports.
+
+- [ ] **Step 5: Run tests**
+
+Run: `bun run test:file src/server/services/auth.test.ts`
+Expected: All remaining tests PASS
+
+- [ ] **Step 6: Run full test suite**
+
+Run: `bun run test`
+Expected: All tests PASS
+
+- [ ] **Step 7: Run full check**
+
+Run: `bun run check`
+Expected: PASS
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/server/services/auth.ts src/server/services/auth.test.ts
+git commit -m "refactor: remove old session CRUD from auth service, add guest upgrade to verifyMagicLink"
+```
+
+---
+
+## Task 5: Final verification
 
 - [ ] **Step 1: Run full test suite**
 
@@ -957,10 +1222,16 @@ Expected: PASS
 
 Search for `getAuthContext`, `createSessionCookie`, `clearSessionCookie`, `getSessionIdFromCookies`, and `createSession` (not `createAuthenticatedSession` or `createGuestSession`) in `src/server/` to verify no stale references remain.
 
-Expected: Zero matches in production code (test files may still reference them in import mocks, that's OK)
+Expected: Zero matches in production code. Test mocks may reference old names in mock setup — that's fine as long as they're not importing from auth service.
 
 - [ ] **Step 4: Grep for manual cookie parsing**
 
-Search for `req.headers.get("cookie")` in controllers to verify all cookie access goes through the BunRequest API.
+Search for `req.headers.get("cookie")` in controllers and middleware to verify all cookie access goes through the BunRequest API.
 
-Expected: Zero matches in controller files (middleware and test files may still have it)
+Expected: Zero matches in controllers and middleware production code.
+
+- [ ] **Step 5: Verify AuthContext is gone**
+
+Search for `AuthContext` in `src/server/` — should only appear in test mock definitions, not in production code.
+
+Expected: Zero matches in production code.
