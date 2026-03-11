@@ -70,7 +70,12 @@ export const Examples = (props: ExamplesProps): JSX.Element => {
           )}
         </div>
 
-        <div id="examples-search" />
+        <div
+          id="examples-search"
+          data-examples={JSON.stringify(
+            props.examples.map((e) => ({ id: e.id, name: e.name })),
+          )}
+        />
 
         {props.examples.length === 0 ? (
           <p className="text-gray-600">No examples found in the database.</p>

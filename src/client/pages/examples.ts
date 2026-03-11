@@ -3,9 +3,9 @@ import { h, render } from "preact";
 
 export function init() {
   const mount = document.getElementById("examples-search");
-  const list = document.getElementById("examples-list");
-  if (!mount || !list) return;
+  if (!mount) return;
 
-  const total = list.children.length;
-  render(h(ExampleSearch, { total }), mount);
+  const raw = mount.dataset.examples;
+  const examples = raw ? JSON.parse(raw) : [];
+  render(h(ExampleSearch, { examples }), mount);
 }
