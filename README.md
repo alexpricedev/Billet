@@ -32,6 +32,14 @@ Billet takes the opposite approach. It's a single-instance server-rendered app w
 
 This isn't a limitation. It's a deliberate architectural choice that plays to AI's strengths: strong type information to reason about, functional input/output patterns, and a feedback loop (write code → run tests → see results) that works in seconds, not minutes.
 
+### Capture your backpressure
+
+The entire game now is to maximise the capture of your [backpressure](https://latentpatterns.com/principles) so agents stay on the rails. Backpressure is the automated feedback — type systems, test suites, linters, build errors, browser assertions — that tells an agent it went wrong before a human ever has to look. Without it, you become the bottleneck, manually catching trivial errors that a compiler or a test suite would have caught instantly.
+
+If you have to go into the loop to rescue an agent, that is an anti-pattern. Don't just fix the output — ask why the agent went off the rails and engineer away that failure concern. Add a type constraint. Write a test. Tighten the schema. Every rescue mission you eliminate is capacity you reclaim for designing better loops. The goal is just enough backpressure to reject hallucinations and invalid output without creating so much resistance that the system grinds to a halt. Part art, part engineering, wholly non-negotiable.
+
+Billet is built with this principle baked in: strict TypeScript, zero-warning linting, deterministic templates, and a fast test loop that agents can run in seconds. The architecture is the backpressure.
+
 ### When Billet isn't the right fit
 
 Billet is built for server-rendered apps with light client-side interactivity. If your project needs a highly reactive, state-driven UI — real-time collaborative editing, complex drag-and-drop interfaces, rich data visualisations — you're better off with a full client-side framework like React or Svelte from the start. Billet lets you opt in to client-side frameworks per page, but if most of your pages need one, the thin-frontend approach is working against you rather than for you.
