@@ -9,6 +9,7 @@ import {
 export interface User {
   id: string;
   email: string;
+  role: "user" | "admin";
   created_at: Date;
 }
 
@@ -35,7 +36,7 @@ export const findOrCreateUser = async (email: string): Promise<User> => {
 
   // First try to find existing user
   const existing = await db`
-    SELECT id, email, created_at
+    SELECT id, email, role, created_at
     FROM users
     WHERE email = ${normalizedEmail}
   `;
@@ -49,7 +50,7 @@ export const findOrCreateUser = async (email: string): Promise<User> => {
   const newUser = await db`
     INSERT INTO users (id, email)
     VALUES (${userId}, ${normalizedEmail})
-    RETURNING id, email, created_at
+    RETURNING id, email, role, created_at
   `;
 
   return newUser[0] as User;
@@ -119,7 +120,7 @@ export const verifyMagicLink = async (
   };
 
   const userResults = await db`
-    SELECT id, email, created_at
+    SELECT id, email, role, created_at
     FROM users
     WHERE id = ${tokenData.user_id}
   `;
@@ -131,6 +132,7 @@ export const verifyMagicLink = async (
   const userData = userResults[0] as {
     id: string;
     email: string;
+    role: "user" | "admin";
     created_at: string;
   };
 
@@ -151,6 +153,7 @@ export const verifyMagicLink = async (
   const user: User = {
     id: userData.id,
     email: userData.email,
+    role: userData.role,
     created_at: new Date(userData.created_at),
   };
 
