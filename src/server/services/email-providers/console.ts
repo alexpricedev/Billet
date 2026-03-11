@@ -1,4 +1,5 @@
 import type { EmailMessage, EmailProvider } from "../email";
+import { log } from "../logger";
 
 export class ConsoleLogProvider implements EmailProvider {
   async send(message: EmailMessage): Promise<void> {
@@ -19,6 +20,6 @@ export class ConsoleLogProvider implements EmailProvider {
       "================================",
     ].join("\n");
 
-    console.log(output);
+    log.info("email", output);
   }
 }

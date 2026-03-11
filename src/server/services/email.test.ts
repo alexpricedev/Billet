@@ -200,6 +200,7 @@ describe("ConsoleLogProvider", () => {
 
     expect(logCalls).toHaveLength(1);
     const output = logCalls[0];
+    expect(output).toContain("[INFO] [email]");
     expect(output).toContain("📧 EMAIL SEND");
     expect(output).toContain("Test User <test@example.com>");
     expect(output).toContain("From User <from@example.com>");

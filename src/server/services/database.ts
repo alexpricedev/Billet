@@ -1,4 +1,5 @@
 import { SQL } from "bun";
+import { log } from "./logger";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
@@ -12,7 +13,10 @@ export const testConnection = async (): Promise<boolean> => {
     await db`SELECT 1`;
     return true;
   } catch (error) {
-    console.error("Database connection failed:", error);
+    log.error(
+      "database",
+      `Connection failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return false;
   }
 };

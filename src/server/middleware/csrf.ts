@@ -5,6 +5,7 @@ import {
   validateOrigin,
   verifyCsrfToken,
 } from "../services/csrf";
+import { log } from "../services/logger";
 
 export interface CsrfOptions {
   method?: string; // Optional - used for validation if provided
@@ -25,8 +26,9 @@ export const csrfProtection = async (
 
   // Assert method matches if provided (catch misconfigurations)
   if (expectedMethod && expectedMethod.toUpperCase() !== actualMethod) {
-    console.error(
-      `CSRF middleware: method mismatch - expected ${expectedMethod}, got ${actualMethod}`,
+    log.error(
+      "csrf",
+      `Method mismatch - expected ${expectedMethod}, got ${actualMethod}`,
     );
     return new Response("Invalid request configuration", { status: 500 });
   }
