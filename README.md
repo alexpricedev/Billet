@@ -46,21 +46,102 @@ Billet is built for server-rendered apps with light client-side interactivity. I
 
 ---
 
-## 🚀 Features
+## What's Included
 
-- **Bun-powered**: Lightning-fast dev/build with Bun
-- **Familiar JSX/TSX templating**: React JSX used purely as a server-side template engine — no client-side React, no virtual DOM, no hydration
-- **Web standards first**: Embraces native HTML, CSS, and JavaScript
-- **Separation of concerns**: Encourages clean, maintainable code structure
-- **Strict code quality**: Biome linting with zero-warning enforcement, TypeScript strict mode, and Husky pre-commit hooks
-- **Opt-in interactivity**: Sprinkle in any client-side framework where you need it
-- **Server-side rendering**: Synchronous TSX templates powered by `react-dom/server`
-- **TypeScript-first**: Everything is written in TS and wired up by Bun
-- **Easy deploy**: Instantly deployable to Railway
+Billet ships more than most starters advertise. Here's what you get out of the box.
+
+### Authentication
+
+A complete magic-link email auth flow: users enter their email, receive a login link, and get a session. No passwords to store, hash, or reset.
+
+- **Magic-link login** with HMAC-protected tokens and expiry
+- **Session management** with 30-day sessions, automatic renewal, and secure cookie handling (HttpOnly, Secure, SameSite)
+- **Guest sessions** that auto-create for unauthenticated visitors — useful for carts, preferences, or any state you want before login
+- **Admin middleware** with role-based route protection and a dedicated `/admin` route namespace
+- **Pluggable email providers** — ships with a console provider for development; add Resend or any custom provider via a simple interface
+
+### Security
+
+- **CSRF protection** using the synchronizer token pattern with timing-safe comparison and origin validation
+- **Rate limiting** middleware with configurable sliding-window limits per IP
+- **Session fixation prevention** — sessions are regenerated on login
+- **Environment validation** at startup — the server fails fast with clear error messages if required variables are missing
+- **Response hardening** with security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
+
+### Database
+
+PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
+
+- **Auto-migrations on startup** — pending migrations run before the server accepts requests; if one fails, the server won't start
+- **Migration CLI** for manual operations (`migrate:up`, `migrate:status`, `migrate:create`)
+- **Seed script** scaffold for development data (`bun run seed`)
+- **Parameterised queries** throughout — no string concatenation, no SQL injection surface
+
+### Testing
+
+The "deterministic templates, test with confidence" tagline isn't a marketing claim — it's backed by infrastructure.
+
+- **30 test files** covering controllers, services, middleware, utilities, and client scripts
+- **No browser simulation needed** — server-rendered templates are pure functions of props, testable with `renderToString()` and string assertions
+- **Real database testing** for services — tests run against PostgreSQL with table truncation for isolation
+- **Mock-based controller tests** that verify HTTP responses (status codes, headers, HTML content) without touching the database
+- **Client script tests** using happy-dom for DOM globals, with page lifecycle isolation
+- **Coverage enforcement** via `bunfig.toml` — builds fail if coverage drops below thresholds
+
+Run the full suite: `bun run test`
+
+### Code Quality
+
+- **Biome** linting with zero-warning enforcement (`--max-warnings 0`) — no `any` types, no `console` statements, no unused variables
+- **TypeScript** strict mode with `noUnusedLocals` and `noUnusedParameters`
+- **Husky** pre-commit hooks that run lint and typecheck before every commit
+- **Structured logging** via `src/server/services/logger.ts` — replaces `console.*` with levelled output (info, warn, error)
+
+### Frontend
+
+- **React JSX as a template engine** — server-side only, no client-side React, no virtual DOM, no hydration
+- **Tailwind CSS 4** with hot-reload in development
+- **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example)
+- **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
+- **Asset cache-busting** in production — MD5-hashed filenames with immutable `Cache-Control` headers
 
 ---
 
-## 🏁 Quick Start
+## Built for AI Agents
+
+The "designed for AI agents" tagline is the reason Billet exists, so here's what that means in practice.
+
+### CLAUDE.md — the agent's guide
+
+The repo includes a 200-line [`CLAUDE.md`](CLAUDE.md) that serves as an onboarding document for AI coding agents. It covers the full architecture: directory layout, naming conventions, routing patterns, service layer design, testing strategies by module type, and a step-by-step walkthrough for adding a new page. When an agent opens this project, it knows where everything goes and how everything connects — before writing a single line of code.
+
+### Why this architecture works for agents
+
+AI agents are good at following patterns with fast, unambiguous feedback. Billet is designed around that:
+
+- **Deterministic templates.** Given the same props, a template produces the same HTML. Agents can write a template, call `renderToString()`, and assert on the output — no browser, no async rendering, no timing issues.
+- **Strong types as context.** Types flow from service to controller to template. When an agent's code doesn't typecheck, it gets an error with a file path, line number, and expected type — enough to self-correct without human intervention.
+- **Fast feedback loops.** `bun run test` completes in seconds. `bun run check` (lint + typecheck) catches issues before they compound. Agents can write-test-fix in tight cycles.
+- **Separation of concerns.** Services own data, controllers orchestrate, templates render. Each layer is independently testable. An agent working on a controller doesn't need to understand the database schema — it works against typed service functions.
+- **Zero-ambiguity conventions.** File naming, export patterns, route registration — everything follows documented conventions. There's one right way to add a page, one right way to add an API endpoint, and it's written down.
+
+### The feedback stack
+
+Every layer catches a different class of error before a human has to:
+
+| Layer | What it catches |
+|---|---|
+| TypeScript strict mode | Type mismatches, missing properties, unused code |
+| Biome linting | Style violations, unsafe patterns, console usage |
+| Pre-commit hooks | Anything that slipped past the editor |
+| Test suite | Behavioural regressions, broken templates, bad responses |
+| Coverage thresholds | Untested code paths |
+
+This is the [backpressure](#capture-your-backpressure) that keeps agents on the rails.
+
+---
+
+## Quick Start
 
 ```bash
 bun install
@@ -71,30 +152,49 @@ Then visit [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 📁 Folder Structure
-
-Billet just wants you to separate your backend logic and view creation (HTML) from your frontend code (style and interactivity). You can do what you like in terms of dir structure but here is the high level:
+## Project Structure
 
 ```
-├── public/           # Static assets (logo, etc)
-├── src/
-│   ├── client/       # Frontend (component and page CSS + JS)
-│   ├── server/       # Server routes, SSR templates using JSX (views)
-│   └── types/        # Shared TypeScript types
-├── dist/             # Build output
-├── package.json      # Project metadata & scripts
-└── README.md         # This file
+src/
+├── client/                     # Browser-side code
+│   ├── main.ts                 # Entry point — routes to page controllers
+│   ├── page-lifecycle.ts       # Page init/cleanup system
+│   ├── style.css               # Global styles (Tailwind base)
+│   ├── components/             # Shared CSS (nav, layout)
+│   └── pages/                  # Page-specific JS + CSS (co-located)
+│
+├── server/                     # Server-side code
+│   ├── main.ts                 # Server entry point
+│   ├── routes/
+│   │   ├── app.tsx             # View routes (HTML)
+│   │   ├── api.ts              # API routes (JSON)
+│   │   └── admin.tsx           # Admin routes (protected)
+│   ├── controllers/            # Route handlers
+│   │   ├── app/                # View controllers — return HTML
+│   │   ├── api/                # API controllers — return JSON
+│   │   └── auth/               # Auth controllers — login/logout
+│   ├── templates/              # Full-page JSX templates
+│   ├── components/             # Reusable server JSX components
+│   ├── services/               # Business logic & data access
+│   ├── middleware/             # Auth, CSRF, rate limiting, admin
+│   ├── utils/                  # Response helpers, crypto, env validation
+│   └── database/
+│       ├── cli.ts / migrate.ts # Migration tooling
+│       ├── seed.ts             # Development seed data
+│       └── migrations/         # Numbered migration files
+│
+└── types/                      # Global TypeScript declarations
 ```
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please open issues or PRs.
 
 ---
 
-## ☁️ Deploy
+## Deploy
 
 Billet is a single Bun process — no containers, no serverless adapters, no platform-specific runtime. Anywhere you can run `bun run start`, it'll work: Railway, Fly.io, Render, a VPS, or your own machine.
 
@@ -138,7 +238,7 @@ If you don't need a database, remove the `src/server/database/` and `src/server/
 
 ---
 
-## 📄 License
+## License
 
 MIT — free for personal and commercial use.
 
