@@ -9,11 +9,11 @@
     &::before {
       content: "";
       position: absolute;
-      top: 20%;
+      top: 10%;
       left: 50%;
       transform: translateX(-50%);
-      width: 480px;
-      height: 320px;
+      width: min(680px, 90vw);
+      height: 420px;
       background: radial-gradient(
         ellipse,
         rgba(124, 133, 240, 0.28) 0%,
