@@ -9,13 +9,9 @@
     &::before {
       content: "";
       position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 900px;
-      height: 600px;
+      inset: 0;
       background: radial-gradient(
-        ellipse,
+        ellipse 70% 60% at 50% 40%,
         rgba(124, 133, 240, 0.3) 0%,
         rgba(124, 133, 240, 0.12) 35%,
         rgba(124, 133, 240, 0.04) 60%,
