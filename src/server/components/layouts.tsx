@@ -33,10 +33,15 @@ export function Layout({
         <header>
           <a href="/" className="logo">
             <img src="/logo.png" alt="logo" />
+            <span>Billet</span>
           </a>
           <Nav page={name} user={user} csrfToken={csrfToken} />
         </header>
         <main>{children}</main>
+        <footer>
+          <a href="https://github.com/alexpricedev/Billet">GitHub</a>
+          <a href="https://alexprice.dev">alexprice.dev</a>
+        </footer>
         <script type="module" src="/assets/main.js" />
       </body>
     </html>

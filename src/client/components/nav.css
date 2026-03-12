@@ -1,11 +1,17 @@
 [data-component="nav"] {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 1.5rem;
   margin-left: 2rem;
 
   @media (width <= 640px) {
-    margin-left: 0;
+    margin-left: 1rem;
+    gap: 1rem;
   }
 
   ul {
+    align-items: center;
     display: flex;
     gap: 1.5rem;
     list-style: none;
@@ -36,5 +42,9 @@
         font-weight: 500;
       }
     }
+  }
+
+  .nav-auth {
+    margin-left: auto;
   }
 }
