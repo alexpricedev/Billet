@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildReadme, generateEnvContent, isValidDbUrl, toSlug } from "./setup";
+import { buildReadme, generateEnvContent, isValidDbUrl, renameInFile, toSlug } from "./setup";
 
 describe("toSlug", () => {
   test("converts display name to kebab-case slug", () => {
@@ -139,5 +139,28 @@ describe("buildReadme", () => {
   test("replaces remaining Billet references with display name", async () => {
     const result = buildReadme(await readmeContent, "My Cool App", "my-cool-app");
     expect(result).not.toContain("Billet");
+  });
+});
+
+describe("renameInFile", () => {
+  test("replaces Billet with display name", () => {
+    const result = renameInFile('title="Login - Billet"', "My App", "my-app");
+    expect(result).toBe('title="Login - My App"');
+  });
+
+  test("replaces billet with slug", () => {
+    const result = renameInFile('"name": "billet"', "My App", "my-app");
+    expect(result).toBe('"name": "my-app"');
+  });
+
+  test("replaces both in same content", () => {
+    const content = "Billet is great. Use billet today.";
+    const result = renameInFile(content, "My App", "my-app");
+    expect(result).toBe("My App is great. Use my-app today.");
+  });
+
+  test("handles content with no matches", () => {
+    const result = renameInFile("no matches here", "My App", "my-app");
+    expect(result).toBe("no matches here");
   });
 });

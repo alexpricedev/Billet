@@ -87,6 +87,14 @@ export function buildReadme(
   return kept.replace(/Billet/g, displayName).replace(/billet/g, slug);
 }
 
+export function renameInFile(
+  content: string,
+  displayName: string,
+  slug: string,
+): string {
+  return content.replace(/Billet/g, displayName).replace(/billet/g, slug);
+}
+
 function extractSections(lines: string[]): Record<string, string> {
   const sections: Record<string, string> = {};
   let currentSection = "";
