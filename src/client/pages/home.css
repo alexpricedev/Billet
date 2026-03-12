@@ -11,9 +11,80 @@
       margin-bottom: 1rem;
     }
 
-    .subtitle {
-      color: var(--color-text-tertiary);
-      font-size: 1.125rem;
+    .lead {
+      margin-bottom: 2rem;
+    }
+  }
+
+  .hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+
+    a {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 150ms ease;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+
+      &:hover,
+      &:focus {
+        background: var(--color-primary-hover);
+        color: #fff;
+        text-decoration: none;
+      }
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+
+      &:hover,
+      &:focus {
+        background: var(--color-surface);
+        color: var(--color-text);
+        text-decoration: none;
+      }
+    }
+  }
+
+  .stat-badge {
+    color: var(--color-text-quaternary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .features {
+    padding-bottom: 2rem;
+
+    h2 {
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      margin-bottom: 0;
+
+      h3 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        margin-bottom: 0;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
     }
   }
 
@@ -25,11 +96,5 @@
     @media (width >= 768px) {
       grid-template-columns: repeat(2, 1fr);
     }
-  }
-
-  .stat-badge {
-    color: var(--color-text-quaternary);
-    font-family: var(--font-mono);
-    font-size: 12px;
   }
 }

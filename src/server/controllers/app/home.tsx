@@ -17,16 +17,16 @@ export const home = {
       setSessionCookie(req, ctx.sessionId);
     }
 
-    let csrfToken: string | null = null;
+    let csrfToken: string | undefined;
     if (ctx.isAuthenticated && ctx.sessionId) {
       csrfToken = await createCsrfToken(ctx.sessionId, "POST", "/auth/logout");
     }
 
     return render(
       <Home
-        method={req.method}
-        stats={stats}
-        auth={ctx}
+        visitorCount={stats.visitorCount}
+        lastUpdated={new Date(stats.lastUpdated)}
+        user={ctx.user}
         csrfToken={csrfToken}
       />,
     );
