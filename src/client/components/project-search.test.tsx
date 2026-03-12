@@ -18,11 +18,26 @@ describe("ProjectSearch", () => {
 
     const list = document.createElement("div");
     list.id = "projects-list";
-    for (const p of projects) {
-      const card = document.createElement("div");
-      card.textContent = p.title;
-      list.appendChild(card);
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    for (const label of ["Title", "Created by"]) {
+      const th = document.createElement("th");
+      th.textContent = label;
+      headerRow.appendChild(th);
     }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    for (const p of projects) {
+      const row = document.createElement("tr");
+      const td = document.createElement("td");
+      td.textContent = p.title;
+      row.appendChild(td);
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    list.appendChild(table);
     document.body.appendChild(list);
   });
 
@@ -38,10 +53,12 @@ describe("ProjectSearch", () => {
     expect(input.placeholder).toBe("Search projects...");
   });
 
-  test("does not show count when query is empty", () => {
+  test("always shows count", () => {
     render(<ProjectSearch projects={projects} />, container);
-    const countText = container.querySelector("p");
-    expect(countText).toBeNull();
+    const countText = container.querySelector(".search-count");
+    expect(countText).not.toBeNull();
+    if (!countText) throw new Error("Count not found");
+    expect(countText.textContent).toContain("Showing 3 of 3");
   });
 
   test("filters and shows count when query is entered", async () => {
@@ -54,13 +71,13 @@ describe("ProjectSearch", () => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    const countText = container.querySelector("p");
+    const countText = container.querySelector(".search-count");
     expect(countText).not.toBeNull();
-    if (!countText) throw new Error("Count text not found");
+    if (!countText) throw new Error("Count not found");
     expect(countText.textContent).toContain("Showing 1 of 3");
   });
 
-  test("hides non-matching cards in the server-rendered list", async () => {
+  test("hides non-matching rows in the server-rendered table", async () => {
     render(<ProjectSearch projects={projects} />, container);
     const input = container.querySelector("input");
     if (!input) throw new Error("Input not found");
@@ -72,13 +89,13 @@ describe("ProjectSearch", () => {
 
     const listEl = document.getElementById("projects-list");
     if (!listEl) throw new Error("List not found");
-    const cards = listEl.children;
-    expect((cards[0] as HTMLElement).hidden).toBe(true);
-    expect((cards[1] as HTMLElement).hidden).toBe(false);
-    expect((cards[2] as HTMLElement).hidden).toBe(true);
+    const rows = listEl.querySelectorAll("tbody tr");
+    expect((rows[0] as HTMLElement).hidden).toBe(true);
+    expect((rows[1] as HTMLElement).hidden).toBe(false);
+    expect((rows[2] as HTMLElement).hidden).toBe(true);
   });
 
-  test("shows all cards when query is cleared", async () => {
+  test("shows all rows when query is cleared", async () => {
     render(<ProjectSearch projects={projects} />, container);
     const input = container.querySelector("input");
     if (!input) throw new Error("Input not found");
@@ -93,9 +110,47 @@ describe("ProjectSearch", () => {
 
     const listEl = document.getElementById("projects-list");
     if (!listEl) throw new Error("List not found");
-    const cards = listEl.children;
-    for (const card of Array.from(cards)) {
-      expect((card as HTMLElement).hidden).toBe(false);
+    const rows = listEl.querySelectorAll("tbody tr:not(.empty-row)");
+    for (const row of Array.from(rows)) {
+      expect((row as HTMLElement).hidden).toBe(false);
     }
+  });
+
+  test("shows empty row when no results match", async () => {
+    render(<ProjectSearch projects={projects} />, container);
+    const input = container.querySelector("input");
+    if (!input) throw new Error("Input not found");
+
+    input.value = "zzz";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    const listEl = document.getElementById("projects-list");
+    if (!listEl) throw new Error("List not found");
+    const emptyRow = listEl.querySelector(".empty-row") as HTMLElement;
+    expect(emptyRow).not.toBeNull();
+    expect(emptyRow.hidden).toBe(false);
+    expect(emptyRow.textContent).toContain("No matching projects found.");
+  });
+
+  test("hides empty row when results match again", async () => {
+    render(<ProjectSearch projects={projects} />, container);
+    const input = container.querySelector("input");
+    if (!input) throw new Error("Input not found");
+
+    input.value = "zzz";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    input.value = "alpha";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    const listEl = document.getElementById("projects-list");
+    if (!listEl) throw new Error("List not found");
+    const emptyRow = listEl.querySelector(".empty-row") as HTMLElement;
+    expect(emptyRow).not.toBeNull();
+    expect(emptyRow.hidden).toBe(true);
   });
 });

@@ -1,19 +1,35 @@
 [data-page="forms"] {
+  .forms-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+
+    @media (width <= 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .form-card {
     display: block;
-    margin: 0 auto;
-    max-width: 480px;
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
 
     label {
       color: var(--color-text-secondary);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
+      letter-spacing: 0.01em;
     }
 
     input,
@@ -22,12 +38,34 @@
     }
   }
 
-  .form-explainer {
-    color: var(--color-text-tertiary);
-    font-size: 14px;
-    line-height: 1.6;
-    margin-top: 2rem;
-    text-align: center;
+  .how-it-works {
+    h2 {
+      margin-bottom: 1.25rem;
+    }
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .step {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    p {
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0;
+    }
 
     code {
       background: var(--color-surface);
@@ -36,7 +74,21 @@
       color: var(--color-text-secondary);
       font-family: var(--font-mono);
       font-size: 12px;
-      padding: 2px 6px;
+      padding: 1px 5px;
     }
+  }
+
+  .step-num {
+    align-items: center;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+    border-radius: 50%;
+    color: var(--color-primary);
+    display: flex;
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 600;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
   }
 }

@@ -24,7 +24,7 @@ export const Login = ({ state }: LoginProps) => {
           padding: "48px 16px",
         }}
       >
-        <div style={{ width: "100%", maxWidth: "400px" }}>
+        <div style={{ width: "100%", maxWidth: "440px" }}>
           <div style={{ textAlign: "center", marginBottom: "32px" }}>
             <a
               href="/"

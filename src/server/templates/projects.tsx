@@ -75,6 +75,13 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
           )}
         />
       </div>
+      {!props.isAuthenticated && (
+        <p className="text-tertiary">
+          <a href="/login">Log in</a> to delete projects — the delete column
+          only renders for authenticated users, showing how auth gates both
+          controller logic and template output.
+        </p>
+      )}
       {props.projects.length === 0 ? (
         <p className="text-tertiary">No projects yet.</p>
       ) : (
@@ -91,7 +98,13 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
               {props.projects.map((project) => (
                 <tr key={project.id}>
                   <td>{project.title}</td>
-                  <td>{project.created_by ?? "Guest"}</td>
+                  <td>
+                    {project.created_by
+                      ? project.created_by === props.user?.email
+                        ? "You"
+                        : "User"
+                      : "Guest"}
+                  </td>
                   {props.isAuthenticated &&
                     props.deleteCsrfTokens[project.id] && (
                       <td style={{ textAlign: "right" }}>
@@ -118,6 +131,11 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
 
       <section style={{ marginTop: "2.5rem" }}>
         <h2>API Endpoints</h2>
+        <p className="text-tertiary">
+          The same service layer backs both the HTML forms above and the JSON
+          API below — adding an API is simple when business logic lives in one
+          place.
+        </p>
         <div className="card">
           <table style={{ width: "100%" }}>
             <tbody>

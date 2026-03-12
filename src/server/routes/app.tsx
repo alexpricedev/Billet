@@ -5,7 +5,10 @@ import { createRouteHandler } from "../utils/route-handler";
 export const appRoutes = {
   "/": home.index,
   "/stack": stack.index,
-  "/forms": forms.index,
+  "/forms": createRouteHandler({
+    GET: forms.index,
+    POST: forms.create,
+  }),
   "/projects": createRouteHandler({
     GET: projects.index,
     POST: projects.create,
