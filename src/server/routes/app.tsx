@@ -1,4 +1,4 @@
-import { examples, forms, home, stack } from "../controllers/app";
+import { forms, home, projects, stack } from "../controllers/app";
 import { callback, login, logout } from "../controllers/auth";
 import { createRouteHandler } from "../utils/route-handler";
 
@@ -6,12 +6,12 @@ export const appRoutes = {
   "/": home.index,
   "/stack": stack.index,
   "/forms": forms.index,
-  "/examples": createRouteHandler({
-    GET: examples.index,
-    POST: examples.create,
+  "/projects": createRouteHandler({
+    GET: projects.index,
+    POST: projects.create,
   }),
-  "/examples/:id/delete": createRouteHandler({
-    POST: examples.destroy<"/examples/:id/delete">,
+  "/projects/:id/delete": createRouteHandler({
+    POST: projects.destroy<"/projects/:id/delete">,
   }),
   "/login": createRouteHandler({
     GET: login.index,

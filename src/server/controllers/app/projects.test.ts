@@ -2,11 +2,11 @@ import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
 import { findOrCreateUser } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
-import type { Example } from "../../services/example";
+import type { Project } from "../../services/project";
 import { createAuthenticatedSession } from "../../services/sessions";
-import type { ExamplesState } from "../../templates/examples";
+import type { ProjectsState } from "../../templates/projects";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
-import { createMockExample } from "../../test-utils/factories";
+import { createMockProject } from "../../test-utils/factories";
 import { cleanupTestData, randomEmail } from "../../test-utils/helpers";
 import { stateHelpers } from "../../utils/state";
 
@@ -21,28 +21,27 @@ mock.module("../../services/database", () => ({
   },
 }));
 
-// Mock the example service
-const mockGetExamples = mock(async (): Promise<Example[]> => []);
-const mockCreateExample = mock(
-  async (): Promise<Example> => createMockExample(),
+const mockGetProjects = mock(async (): Promise<Project[]> => []);
+const mockCreateProject = mock(
+  async (): Promise<Project> => createMockProject(),
 );
-const mockDeleteExample = mock(async (): Promise<boolean> => true);
+const mockDeleteProject = mock(async (): Promise<boolean> => true);
 
-mock.module("../../services/example", () => ({
-  getExamples: mockGetExamples,
-  createExample: mockCreateExample,
-  deleteExample: mockDeleteExample,
+mock.module("../../services/project", () => ({
+  getProjects: mockGetProjects,
+  createProject: mockCreateProject,
+  deleteProject: mockDeleteProject,
 }));
 
 import { db } from "../../services/database";
-import { examples } from "./examples";
+import { projects } from "./projects";
 
-describe("Examples Controller", () => {
+describe("Projects Controller", () => {
   beforeEach(async () => {
     await cleanupTestData(db);
-    mockGetExamples.mockClear();
-    mockCreateExample.mockClear();
-    mockDeleteExample.mockClear();
+    mockGetProjects.mockClear();
+    mockCreateProject.mockClear();
+    mockDeleteProject.mockClear();
   });
 
   afterAll(async () => {
@@ -54,138 +53,135 @@ describe("Examples Controller", () => {
     return createAuthenticatedSession(user.id);
   };
 
-  describe("GET /examples", () => {
-    test("renders examples page for unauthenticated users", async () => {
-      const mockExamplesList = [
-        createMockExample({ id: 1, name: "Example 1" }),
-        createMockExample({ id: 2, name: "Example 2" }),
+  describe("GET /projects", () => {
+    test("renders projects page for unauthenticated users", async () => {
+      const mockProjectsList = [
+        createMockProject({ id: 1, title: "Project 1" }),
+        createMockProject({ id: 2, title: "Project 2" }),
       ];
-      mockGetExamples.mockResolvedValue(mockExamplesList);
+      mockGetProjects.mockResolvedValue(mockProjectsList);
 
-      const request = createBunRequest("http://localhost:3000/examples");
-      const response = await examples.index(request);
+      const request = createBunRequest("http://localhost:3000/projects");
+      const response = await projects.index(request);
       const html = await response.text();
 
-      expect(mockGetExamples).toHaveBeenCalled();
+      expect(mockGetProjects).toHaveBeenCalled();
       expect(response.headers.get("content-type")).toBe("text/html");
 
-      expect(html).toContain("Examples from Database");
-      expect(html).toContain("Example 1");
-      expect(html).toContain("Example 2");
-      expect(html).toContain("log in");
-      expect(html).toContain("to add examples");
+      expect(html).toContain("Projects");
+      expect(html).toContain("Project 1");
+      expect(html).toContain("Project 2");
+      expect(html).toContain("Sign in");
+      expect(html).toContain("to create projects");
       expect(html).not.toContain('name="_csrf"');
     });
 
-    test("renders examples page with form for authenticated users", async () => {
+    test("renders projects page with form for authenticated users", async () => {
       const sessionId = await createTestSession();
 
-      mockGetExamples.mockResolvedValue([]);
+      mockGetProjects.mockResolvedValue([]);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         headers: { Cookie: `session_id=${sessionId}` },
       });
-      const response = await examples.index(request);
+      const response = await projects.index(request);
       const html = await response.text();
 
-      expect(html).toContain("Examples from Database");
+      expect(html).toContain("Projects");
       expect(html).toContain('name="_csrf"');
-      expect(html).toContain("Add Example");
-      expect(html).not.toContain("Please log in to add examples");
+      expect(html).toContain("Add Project");
+      expect(html).not.toContain("Sign in");
     });
 
     test("shows success message when state is submission-success", async () => {
       const sessionId = await createTestSession();
       const sessionCookieHeader = `session_id=${sessionId}`;
 
-      mockGetExamples.mockResolvedValue([]);
+      mockGetProjects.mockResolvedValue([]);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         headers: {
           Cookie: sessionCookieHeader,
         },
       });
 
-      // Set flash cookie before calling the handler
-      const { setFlash } = stateHelpers<ExamplesState>();
+      const { setFlash } = stateHelpers<ProjectsState>();
       setFlash(request, {
         state: "submission-success",
       });
 
-      const response = await examples.index(request);
+      const response = await projects.index(request);
       const html = await response.text();
 
-      expect(html).toContain("✅ Example added successfully!");
+      expect(html).toContain("Project added successfully.");
     });
 
     test("shows different success messages for created and deleted", async () => {
       const sessionId = await createTestSession();
       const sessionCookieHeader = `session_id=${sessionId}`;
 
-      mockGetExamples.mockResolvedValue([]);
+      mockGetProjects.mockResolvedValue([]);
 
-      // Test created message
-      const createRequest = createBunRequest("http://localhost:3000/examples", {
+      const createRequest = createBunRequest("http://localhost:3000/projects", {
         headers: {
           Cookie: sessionCookieHeader,
         },
       });
-      const { setFlash: setCreateFlash } = stateHelpers<ExamplesState>();
+      const { setFlash: setCreateFlash } = stateHelpers<ProjectsState>();
       setCreateFlash(createRequest, {
         state: "submission-success",
       });
-      const createResponse = await examples.index(createRequest);
+      const createResponse = await projects.index(createRequest);
       const createHtml = await createResponse.text();
 
-      expect(createHtml).toContain("✅ Example added successfully!");
+      expect(createHtml).toContain("Project added successfully.");
 
-      // Test deleted message
-      const deleteRequest = createBunRequest("http://localhost:3000/examples", {
+      const deleteRequest = createBunRequest("http://localhost:3000/projects", {
         headers: {
           Cookie: sessionCookieHeader,
         },
       });
-      const { setFlash: setDeleteFlash } = stateHelpers<ExamplesState>();
+      const { setFlash: setDeleteFlash } = stateHelpers<ProjectsState>();
       setDeleteFlash(deleteRequest, {
         state: "deletion-success",
       });
-      const deleteResponse = await examples.index(deleteRequest);
+      const deleteResponse = await projects.index(deleteRequest);
       const deleteHtml = await deleteResponse.text();
 
-      expect(deleteHtml).toContain("🗑️ Example deleted successfully!");
+      expect(deleteHtml).toContain("Project deleted successfully.");
     });
 
-    test("shows delete buttons for authenticated users with examples", async () => {
+    test("shows delete buttons for authenticated users with projects", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
 
-      const mockExamplesList = [
-        createMockExample({ id: 1, name: "Example 1" }),
-        createMockExample({ id: 2, name: "Example 2" }),
+      const mockProjectsList = [
+        createMockProject({ id: 1, title: "Project 1" }),
+        createMockProject({ id: 2, title: "Project 2" }),
       ];
-      mockGetExamples.mockResolvedValue(mockExamplesList);
+      mockGetProjects.mockResolvedValue(mockProjectsList);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         headers: { Cookie: cookieHeader },
       });
-      const response = await examples.index(request);
+      const response = await projects.index(request);
       const html = await response.text();
 
       expect(html).toContain("Delete");
-      expect(html).toContain('action="/examples/1/delete"');
-      expect(html).toContain('action="/examples/2/delete"');
+      expect(html).toContain('action="/projects/1/delete"');
+      expect(html).toContain('action="/projects/2/delete"');
       expect(html).toContain('name="_csrf"');
     });
 
     test("does not show delete buttons for unauthenticated users", async () => {
-      const mockExamplesList = [
-        createMockExample({ id: 1, name: "Example 1" }),
-        createMockExample({ id: 2, name: "Example 2" }),
+      const mockProjectsList = [
+        createMockProject({ id: 1, title: "Project 1" }),
+        createMockProject({ id: 2, title: "Project 2" }),
       ];
-      mockGetExamples.mockResolvedValue(mockExamplesList);
+      mockGetProjects.mockResolvedValue(mockProjectsList);
 
-      const request = createBunRequest("http://localhost:3000/examples");
-      const response = await examples.index(request);
+      const request = createBunRequest("http://localhost:3000/projects");
+      const response = await projects.index(request);
       const html = await response.text();
 
       expect(html).not.toContain("Delete</button");
@@ -196,34 +192,33 @@ describe("Examples Controller", () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
 
-      mockGetExamples.mockResolvedValue([]);
+      mockGetProjects.mockResolvedValue([]);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         headers: { Cookie: cookieHeader },
       });
-      const response = await examples.index(request);
+      const response = await projects.index(request);
       const html = await response.text();
 
-      // Should contain CSRF token field
       expect(html).toContain('name="_csrf"');
       expect(html).toContain('value="');
     });
   });
 
-  describe("POST /examples", () => {
+  describe("POST /projects", () => {
     test("redirects unauthenticated users to login", async () => {
       const mockFormData = new FormData();
-      mockFormData.append("name", "New Example");
+      mockFormData.append("title", "New Project");
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: { Origin: "http://localhost:3000" },
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).not.toHaveBeenCalled();
+      expect(mockCreateProject).not.toHaveBeenCalled();
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/login");
     });
@@ -233,9 +228,9 @@ describe("Examples Controller", () => {
       const cookieHeader = `session_id=${sessionId}`;
 
       const mockFormData = new FormData();
-      mockFormData.append("name", "New Example");
+      mockFormData.append("title", "New Project");
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -244,9 +239,9 @@ describe("Examples Controller", () => {
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).not.toHaveBeenCalled();
+      expect(mockCreateProject).not.toHaveBeenCalled();
       expect(response.status).toBe(403);
       expect(await response.text()).toBe("Invalid CSRF token");
     });
@@ -256,10 +251,10 @@ describe("Examples Controller", () => {
       const cookieHeader = `session_id=${sessionId}`;
 
       const mockFormData = new FormData();
-      mockFormData.append("name", "New Example");
+      mockFormData.append("title", "New Project");
       mockFormData.append("_csrf", "invalid.token");
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -268,9 +263,9 @@ describe("Examples Controller", () => {
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).not.toHaveBeenCalled();
+      expect(mockCreateProject).not.toHaveBeenCalled();
       expect(response.status).toBe(403);
       expect(await response.text()).toBe("Invalid CSRF token");
     });
@@ -278,35 +273,35 @@ describe("Examples Controller", () => {
     test("rejects request without Origin/Referer", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
-      const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
+      const csrfToken = await createCsrfToken(sessionId, "POST", "/projects");
 
       const mockFormData = new FormData();
-      mockFormData.append("name", "New Example");
+      mockFormData.append("title", "New Project");
       mockFormData.append("_csrf", csrfToken);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: { Cookie: cookieHeader },
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).not.toHaveBeenCalled();
+      expect(mockCreateProject).not.toHaveBeenCalled();
       expect(response.status).toBe(403);
       expect(await response.text()).toBe("Invalid request origin");
     });
 
-    test("creates example with valid authentication and CSRF token", async () => {
+    test("creates project with valid authentication and CSRF token", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
-      const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
+      const csrfToken = await createCsrfToken(sessionId, "POST", "/projects");
 
       const mockFormData = new FormData();
-      mockFormData.append("name", "New Example");
+      mockFormData.append("title", "New Project");
       mockFormData.append("_csrf", csrfToken);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -315,27 +310,27 @@ describe("Examples Controller", () => {
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).toHaveBeenCalledWith("New Example");
+      expect(mockCreateProject).toHaveBeenCalledWith("New Project");
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/examples");
+      expect(response.headers.get("location")).toBe("/projects");
 
       const setCookie = findSetCookie(request, "flash_state");
       expect(setCookie).toBeDefined();
       expect(setCookie).toContain("submission-success");
     });
 
-    test("trims whitespace from name before creating", async () => {
+    test("trims whitespace from title before creating", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
-      const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
+      const csrfToken = await createCsrfToken(sessionId, "POST", "/projects");
 
       const mockFormData = new FormData();
-      mockFormData.append("name", "  Trimmed Example  ");
+      mockFormData.append("title", "  Trimmed Project  ");
       mockFormData.append("_csrf", csrfToken);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -344,27 +339,27 @@ describe("Examples Controller", () => {
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).toHaveBeenCalledWith("Trimmed Example");
+      expect(mockCreateProject).toHaveBeenCalledWith("Trimmed Project");
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/examples");
+      expect(response.headers.get("location")).toBe("/projects");
 
       const setCookie = findSetCookie(request, "flash_state");
       expect(setCookie).toBeDefined();
       expect(setCookie).toContain("submission-success");
     });
 
-    test("redirects without creating when name is empty", async () => {
+    test("redirects without creating when title is empty", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
-      const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
+      const csrfToken = await createCsrfToken(sessionId, "POST", "/projects");
 
       const mockFormData = new FormData();
-      mockFormData.append("name", "");
+      mockFormData.append("title", "");
       mockFormData.append("_csrf", csrfToken);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -373,23 +368,23 @@ describe("Examples Controller", () => {
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).not.toHaveBeenCalled();
+      expect(mockCreateProject).not.toHaveBeenCalled();
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/examples");
+      expect(response.headers.get("location")).toBe("/projects");
     });
 
-    test("redirects without creating when name is too short", async () => {
+    test("redirects without creating when title is too short", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
-      const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
+      const csrfToken = await createCsrfToken(sessionId, "POST", "/projects");
 
       const mockFormData = new FormData();
-      mockFormData.append("name", "x");
+      mockFormData.append("title", "x");
       mockFormData.append("_csrf", csrfToken);
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -398,22 +393,22 @@ describe("Examples Controller", () => {
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).not.toHaveBeenCalled();
+      expect(mockCreateProject).not.toHaveBeenCalled();
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/examples");
+      expect(response.headers.get("location")).toBe("/projects");
     });
 
     test("works with CSRF token in header instead of form", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
-      const csrfToken = await createCsrfToken(sessionId, "POST", "/examples");
+      const csrfToken = await createCsrfToken(sessionId, "POST", "/projects");
 
       const mockFormData = new FormData();
-      mockFormData.append("name", "Header Token Example");
+      mockFormData.append("title", "Header Token Project");
 
-      const request = createBunRequest("http://localhost:3000/examples", {
+      const request = createBunRequest("http://localhost:3000/projects", {
         method: "POST",
         headers: {
           Origin: "http://localhost:3000",
@@ -423,11 +418,11 @@ describe("Examples Controller", () => {
         body: mockFormData,
       });
 
-      const response = await examples.create(request);
+      const response = await projects.create(request);
 
-      expect(mockCreateExample).toHaveBeenCalledWith("Header Token Example");
+      expect(mockCreateProject).toHaveBeenCalledWith("Header Token Project");
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/examples");
+      expect(response.headers.get("location")).toBe("/projects");
 
       const setCookie = findSetCookie(request, "flash_state");
       expect(setCookie).toBeDefined();
@@ -435,10 +430,10 @@ describe("Examples Controller", () => {
     });
   });
 
-  describe("POST /examples/:id/delete", () => {
+  describe("POST /projects/:id/delete", () => {
     test("redirects unauthenticated users to login", async () => {
-      const request = createBunRequest<"/examples/:id/delete">(
-        "http://localhost:3000/examples/42/delete",
+      const request = createBunRequest<"/projects/:id/delete">(
+        "http://localhost:3000/projects/42/delete",
         {
           method: "POST",
           headers: { Origin: "http://localhost:3000" },
@@ -447,9 +442,9 @@ describe("Examples Controller", () => {
         { id: "42" },
       );
 
-      const response = await examples.destroy(request);
+      const response = await projects.destroy(request);
 
-      expect(mockDeleteExample).not.toHaveBeenCalled();
+      expect(mockDeleteProject).not.toHaveBeenCalled();
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/login");
     });
@@ -458,8 +453,8 @@ describe("Examples Controller", () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
 
-      const request = createBunRequest<"/examples/:id/delete">(
-        "http://localhost:3000/examples/42/delete",
+      const request = createBunRequest<"/projects/:id/delete">(
+        "http://localhost:3000/projects/42/delete",
         {
           method: "POST",
           headers: {
@@ -471,29 +466,29 @@ describe("Examples Controller", () => {
         { id: "42" },
       );
 
-      const response = await examples.destroy(request);
+      const response = await projects.destroy(request);
 
-      expect(mockDeleteExample).not.toHaveBeenCalled();
+      expect(mockDeleteProject).not.toHaveBeenCalled();
       expect(response.status).toBe(403);
       expect(await response.text()).toBe("Invalid CSRF token");
     });
 
-    test("deletes example with valid authentication and CSRF token", async () => {
+    test("deletes project with valid authentication and CSRF token", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",
-        "/examples/42/delete",
+        "/projects/42/delete",
       );
 
-      mockDeleteExample.mockResolvedValue(true);
+      mockDeleteProject.mockResolvedValue(true);
 
       const mockFormData = new FormData();
       mockFormData.append("_csrf", csrfToken);
 
-      const request = createBunRequest<"/examples/:id/delete">(
-        "http://localhost:3000/examples/42/delete",
+      const request = createBunRequest<"/projects/:id/delete">(
+        "http://localhost:3000/projects/42/delete",
         {
           method: "POST",
           headers: {
@@ -505,33 +500,33 @@ describe("Examples Controller", () => {
         { id: "42" },
       );
 
-      const response = await examples.destroy(request);
+      const response = await projects.destroy(request);
 
       expect(response.status).toBe(303);
-      expect(mockDeleteExample).toHaveBeenCalledWith(42);
-      expect(response.headers.get("location")).toBe("/examples");
+      expect(mockDeleteProject).toHaveBeenCalledWith(42);
+      expect(response.headers.get("location")).toBe("/projects");
 
       const setCookie = findSetCookie(request, "flash_state");
       expect(setCookie).toBeDefined();
       expect(setCookie).toContain("deletion-success");
     });
 
-    test("redirects without error when example not found", async () => {
+    test("redirects without error when project not found", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",
-        "/examples/999/delete",
+        "/projects/999/delete",
       );
 
-      mockDeleteExample.mockResolvedValue(false);
+      mockDeleteProject.mockResolvedValue(false);
 
       const mockFormData = new FormData();
       mockFormData.append("_csrf", csrfToken);
 
-      const request = createBunRequest<"/examples/:id/delete">(
-        "http://localhost:3000/examples/999/delete",
+      const request = createBunRequest<"/projects/:id/delete">(
+        "http://localhost:3000/projects/999/delete",
         {
           method: "POST",
           headers: {
@@ -543,11 +538,11 @@ describe("Examples Controller", () => {
         { id: "999" },
       );
 
-      const response = await examples.destroy(request);
+      const response = await projects.destroy(request);
 
-      expect(mockDeleteExample).toHaveBeenCalledWith(999);
+      expect(mockDeleteProject).toHaveBeenCalledWith(999);
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/examples");
+      expect(response.headers.get("location")).toBe("/projects");
     });
 
     test("redirects when id is not a valid number", async () => {
@@ -556,14 +551,14 @@ describe("Examples Controller", () => {
       const csrfToken = await createCsrfToken(
         sessionId,
         "POST",
-        "/examples/invalid/delete",
+        "/projects/invalid/delete",
       );
 
       const mockFormData = new FormData();
       mockFormData.append("_csrf", csrfToken);
 
-      const request = createBunRequest<"/examples/:id/delete">(
-        "http://localhost:3000/examples/invalid/delete",
+      const request = createBunRequest<"/projects/:id/delete">(
+        "http://localhost:3000/projects/invalid/delete",
         {
           method: "POST",
           headers: {
@@ -575,11 +570,11 @@ describe("Examples Controller", () => {
         { id: "invalid" },
       );
 
-      const response = await examples.destroy(request);
+      const response = await projects.destroy(request);
 
-      expect(mockDeleteExample).not.toHaveBeenCalled();
+      expect(mockDeleteProject).not.toHaveBeenCalled();
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/examples");
+      expect(response.headers.get("location")).toBe("/projects");
     });
   });
 });
