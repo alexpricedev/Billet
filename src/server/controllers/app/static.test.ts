@@ -1,19 +1,35 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 
-import { about } from "./about";
+import { createBunRequest } from "../../test-utils/bun-request";
 import { contact } from "./contact";
+import { stack } from "./stack";
+
+mock.module("../../middleware/auth", () => ({
+  getSessionContext: () =>
+    Promise.resolve({
+      sessionId: null,
+      user: null,
+      isGuest: false,
+      isAuthenticated: false,
+      requiresSetCookie: false,
+    }),
+}));
+
+mock.module("../../services/csrf", () => ({
+  createCsrfToken: () => Promise.resolve("mock-csrf-token"),
+}));
 
 describe("Static Page Controllers", () => {
-  describe("About Controller", () => {
-    test("renders about page", async () => {
-      const response = await about.index();
+  describe("Stack Controller", () => {
+    test("renders stack page", async () => {
+      const req = createBunRequest("http://localhost:3000/stack");
+      const response = await stack.index(req);
       const html = await response.text();
 
       expect(response).toBeInstanceOf(Response);
       expect(response.headers.get("content-type")).toBe("text/html");
 
-      // Test actual HTML content
-      expect(html).toContain("About");
+      expect(html).toContain("The Stack");
     });
   });
 
@@ -25,7 +41,6 @@ describe("Static Page Controllers", () => {
       expect(response).toBeInstanceOf(Response);
       expect(response.headers.get("content-type")).toBe("text/html");
 
-      // Test actual HTML content
       expect(html).toContain("Contact");
     });
   });

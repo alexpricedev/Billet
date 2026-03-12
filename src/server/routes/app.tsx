@@ -1,10 +1,10 @@
-import { about, contact, examples, home } from "../controllers/app";
+import { contact, examples, home, stack } from "../controllers/app";
 import { callback, login, logout } from "../controllers/auth";
 import { createRouteHandler } from "../utils/route-handler";
 
 export const appRoutes = {
   "/": home.index,
-  "/about": about.index,
+  "/stack": stack.index,
   "/contact": contact.index,
   "/examples": createRouteHandler({
     GET: examples.index,
