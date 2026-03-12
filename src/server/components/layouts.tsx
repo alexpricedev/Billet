@@ -1,20 +1,25 @@
 import type React from "react";
 
+import type { User } from "../services/users";
 import { Nav } from "./nav";
 
-type LayoutProps = {
+interface LayoutProps {
   title: string;
   name: string;
   children: React.ReactNode;
-};
+  user?: User | null;
+  csrfToken?: string;
+}
 
-/**
- * Main application layout with header, navigation, and footer
- * Use for: Authenticated app pages, public marketing pages
- */
-export function Layout({ title, name, children }: LayoutProps) {
+export function Layout({
+  title,
+  name,
+  children,
+  user,
+  csrfToken,
+}: LayoutProps) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ colorScheme: "dark" }}>
       <head>
         <meta charSet="utf-8" />
         <meta
@@ -24,12 +29,12 @@ export function Layout({ title, name, children }: LayoutProps) {
         <title>{title}</title>
         <link rel="stylesheet" href="/assets/main.css" />
       </head>
-      <body data-page={name} data-component="layout">
+      <body data-page={name}>
         <header>
           <a href="/" className="logo">
             <img src="/logo.png" alt="logo" />
           </a>
-          <Nav page={name} />
+          <Nav page={name} user={user} csrfToken={csrfToken} />
         </header>
         <main>{children}</main>
         <script type="module" src="/assets/main.js" />
@@ -38,18 +43,14 @@ export function Layout({ title, name, children }: LayoutProps) {
   );
 }
 
-type BaseLayoutProps = {
+interface BaseLayoutProps {
   title: string;
   children: React.ReactNode;
-};
+}
 
-/**
- * Minimal layout without navigation or header
- * Use for: Authentication pages, error pages, standalone forms
- */
 export function BaseLayout({ title, children }: BaseLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ colorScheme: "dark" }}>
       <head>
         <meta charSet="utf-8" />
         <meta
