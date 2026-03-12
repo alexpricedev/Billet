@@ -1,4 +1,4 @@
-export { about } from "./about";
-export { contact } from "./contact";
-export { examples } from "./examples";
+export { forms } from "./forms";
 export { home } from "./home";
+export { projects } from "./projects";
+export { stack } from "./stack";

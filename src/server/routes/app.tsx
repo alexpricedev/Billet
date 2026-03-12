@@ -1,17 +1,20 @@
-import { about, contact, examples, home } from "../controllers/app";
+import { forms, home, projects, stack } from "../controllers/app";
 import { callback, login, logout } from "../controllers/auth";
 import { createRouteHandler } from "../utils/route-handler";
 
 export const appRoutes = {
   "/": home.index,
-  "/about": about.index,
-  "/contact": contact.index,
-  "/examples": createRouteHandler({
-    GET: examples.index,
-    POST: examples.create,
+  "/stack": stack.index,
+  "/forms": createRouteHandler({
+    GET: forms.index,
+    POST: forms.create,
   }),
-  "/examples/:id/delete": createRouteHandler({
-    POST: examples.destroy<"/examples/:id/delete">,
+  "/projects": createRouteHandler({
+    GET: projects.index,
+    POST: projects.create,
+  }),
+  "/projects/:id/delete": createRouteHandler({
+    POST: projects.destroy<"/projects/:id/delete">,
   }),
   "/login": createRouteHandler({
     GET: login.index,

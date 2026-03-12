@@ -1,36 +1,38 @@
-@import "tailwindcss";
-
 /* Page styles */
 @import "./pages/home.css";
-@import "./pages/about.css";
-@import "./pages/contact.css";
+@import "./pages/stack.css";
+@import "./pages/forms.css";
+@import "./pages/projects.css";
+@import "./pages/login.css";
+@import "./pages/admin.css";
 
 /* Component styles */
 @import "./components/layout.css";
 @import "./components/nav.css";
+@import "./components/flash.css";
+@import "./components/form-field.css";
+@import "./components/data-table.css";
+@import "./components/badge.css";
 
-/* Custom themes supported */
-@theme {
-  --color-mint-500: oklch(0.72 0.11 178);
-}
-
-/*
-  Main CSS entry point
-  - CSS variables for color palette
-  - Base font and element styles
-  - Import component and page styles below
-*/
 :root {
-  --color-bg: #f7f9fb;
-  --color-surface: #fff;
-  --color-primary: #2563eb;
-  --color-primary-light: #3b82f6;
-  --color-accent: #f59e42;
-  --color-text: #222;
-  --color-muted: #6b7280;
-  --radius: 0.75rem;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --font-main: "Inter", "Segoe UI", Arial, sans-serif;
+  --color-bg: #0a0a0b;
+  --color-surface: #141415;
+  --color-surface-hover: #1c1c1e;
+  --color-border: #222224;
+  --color-text: #ededef;
+  --color-text-secondary: #b4b5b9;
+  --color-text-tertiary: #8a8b8e;
+  --color-text-quaternary: #5c5d60;
+  --color-primary: #7c85f0;
+  --color-primary-hover: #9098f3;
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-warning: #fbbf24;
+  --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, monospace;
+  --radius: 0.5rem;
+  --shadow: none;
 }
 
 html {
@@ -61,13 +63,18 @@ h3,
 h4,
 h5,
 h6 {
-  font-weight: 700;
+  font-weight: 600;
   margin: 0 0 0.5em 0;
   line-height: 1.2;
 }
 
 h1 {
   font-size: 2.2rem;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  letter-spacing: -0.01em;
 }
 
 p {
@@ -77,30 +84,32 @@ p {
 a {
   color: var(--color-primary);
   text-decoration: none;
-  transition: color 0.15s;
+  transition: color 150ms ease;
 
   &:hover,
   &:focus {
-    color: var(--color-primary-light);
+    color: var(--color-primary-hover);
     text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
   }
 }
 
 button {
   font-family: inherit;
-  font-size: 1rem;
-  padding: 0.5em 1.2em;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
   border-radius: var(--radius);
   border: none;
   background: var(--color-primary);
   color: #fff;
   cursor: pointer;
-  box-shadow: var(--shadow);
-  transition: background 0.15s;
+  transition: all 150ms ease;
 
   &:hover,
   &:focus {
-    background: var(--color-primary-light);
+    background: var(--color-primary-hover);
   }
 }
 
@@ -111,10 +120,73 @@ img {
 
 .card {
   background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   display: inline-block;
   margin-bottom: 2rem;
-  padding: 1.5rem 2rem;
+  padding: 24px;
   width: 100%;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+
+  &:hover,
+  &:focus {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--color-danger);
+
+  &:hover,
+  &:focus {
+    background: rgba(248, 113, 113, 0.1);
+  }
+}
+
+input,
+textarea,
+select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 12px;
+  transition: border-color 150ms ease;
+
+  &::placeholder {
+    color: var(--color-text-quaternary);
+  }
+
+  &:focus {
+    border-color: var(--color-primary);
+    outline: none;
+  }
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--color-text-tertiary);
+}
+
+.text-quaternary {
+  color: var(--color-text-quaternary);
+}
+
+.lead {
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  line-height: 1.7;
 }

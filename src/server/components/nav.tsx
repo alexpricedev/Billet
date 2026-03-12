@@ -1,11 +1,20 @@
+import type { User } from "../services/users";
+import { CsrfField } from "./csrf-field";
+
 const navLinks = [
   { href: "/", label: "Home", name: "home" },
-  { href: "/about", label: "About", name: "about" },
-  { href: "/examples", label: "Examples", name: "examples" },
-  { href: "/contact", label: "Contact", name: "contact" },
+  { href: "/stack", label: "Stack", name: "stack" },
+  { href: "/projects", label: "CRUD", name: "projects" },
+  { href: "/forms", label: "Forms", name: "forms" },
 ];
 
-export const Nav = ({ page }: { page: string }) => (
+interface NavProps {
+  page: string;
+  user?: User | null;
+  csrfToken?: string;
+}
+
+export const Nav = ({ page, user, csrfToken }: NavProps) => (
   <nav data-component="nav" aria-label="Main navigation">
     <ul>
       {navLinks.map(({ href, label, name }) => (
@@ -20,5 +29,19 @@ export const Nav = ({ page }: { page: string }) => (
         </li>
       ))}
     </ul>
+    <div className="nav-auth">
+      {user ? (
+        <form method="post" action="/auth/logout">
+          <CsrfField token={csrfToken ?? null} />
+          <button type="submit" className="btn-ghost">
+            Logout
+          </button>
+        </form>
+      ) : (
+        <a href="/login" className="btn-ghost">
+          Login
+        </a>
+      )}
+    </div>
   </nav>
 );

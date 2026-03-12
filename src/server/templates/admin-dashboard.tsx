@@ -1,3 +1,5 @@
+import { Badge } from "@server/components/badge";
+import { DataTable } from "@server/components/data-table";
 import { Layout } from "@server/components/layouts";
 import type { SessionContext } from "@server/middleware/auth";
 import type { User } from "@server/services/users";
@@ -9,70 +11,55 @@ const formatDate = (date: Date): string =>
     year: "numeric",
   });
 
-const RoleBadge = ({ role }: { role: User["role"] }) => {
-  const styles =
-    role === "admin"
-      ? "bg-purple-100 text-purple-800"
-      : "bg-gray-100 text-gray-800";
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${styles}`}
-    >
-      {role}
-    </span>
-  );
-};
-
 export const AdminDashboard = (props: {
   auth: SessionContext;
   users: User[];
+  user: User | null;
+  csrfToken?: string;
 }) => (
-  <Layout title="Admin" name="admin">
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Admin</h1>
+  <Layout
+    title="Admin"
+    name="admin"
+    user={props.user}
+    csrfToken={props.csrfToken}
+  >
+    <div className="admin-content">
+      <div className="admin-header">
+        <h1>Admin</h1>
+        <p className="text-quaternary">Manage users and system settings</p>
+      </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="admin-table-wrap">
+        <DataTable>
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Joined
-              </th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {props.users.length === 0 ? (
               <tr>
-                <td
-                  colSpan={3}
-                  className="px-6 py-4 text-sm text-gray-500 text-center"
-                >
+                <td colSpan={3} className="admin-empty">
                   No users found.
                 </td>
               </tr>
             ) : (
               props.users.map((user) => (
                 <tr key={user.id}>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {user.email}
+                  <td className="admin-email">{user.email}</td>
+                  <td>
+                    <Badge variant={user.role === "admin" ? "admin" : "user"}>
+                      {user.role}
+                    </Badge>
                   </td>
-                  <td className="px-6 py-4 text-sm">
-                    <RoleBadge role={user.role} />
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {formatDate(user.created_at)}
-                  </td>
+                  <td className="admin-date">{formatDate(user.created_at)}</td>
                 </tr>
               ))
             )}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </div>
   </Layout>

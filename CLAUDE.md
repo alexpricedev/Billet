@@ -143,7 +143,7 @@ NEVER try to roll your own lint or test commands.
 src/
 ├── client/                        # Browser-side code
 │   ├── main.ts                    # Entry point — routes to page init functions
-│   ├── style.css                  # Global styles (Tailwind base)
+│   ├── style.css                  # Global styles (CSS entry point)
 │   ├── components/                # Reusable client components (CSS)
 │   │   ├── nav.css
 │   │   └── layout.css

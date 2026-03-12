@@ -50,6 +50,16 @@
       }
     },
     {
+      "includes": ["src/server/components/layouts.tsx"],
+      "linter": {
+        "rules": {
+          "security": {
+            "noDangerouslySetInnerHtml": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["src/server/database/cli.ts", "src/server/database/seed.ts", "src/server/test-utils/bootstrap.ts"],
       "linter": {
         "rules": {

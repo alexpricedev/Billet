@@ -3,29 +3,34 @@ import { getSessionContext, requireAuth } from "../../middleware/auth";
 import { csrfProtection } from "../../middleware/csrf";
 import { createCsrfToken } from "../../services/csrf";
 import {
-  createExample,
-  deleteExample,
-  getExamples,
-} from "../../services/example";
+  createProject,
+  deleteProject,
+  getProjects,
+} from "../../services/project";
 import { setSessionCookie } from "../../services/sessions";
-import type { ExamplesState } from "../../templates/examples";
-import { Examples } from "../../templates/examples";
+import type { ProjectsState } from "../../templates/projects";
+import { Projects } from "../../templates/projects";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 
-const { getFlash, setFlash } = stateHelpers<ExamplesState>();
+const { getFlash, setFlash } = stateHelpers<ProjectsState>();
 
-export const examples = {
+export const projects = {
   async index(req: BunRequest): Promise<Response> {
     const ctx = await getSessionContext(req);
-    const examples = await getExamples();
+    const projectList = await getProjects();
 
     if (ctx.requiresSetCookie && ctx.sessionId) {
       setSessionCookie(req, ctx.sessionId);
     }
 
-    if (!ctx.isAuthenticated || !ctx.sessionId) {
-      return render(<Examples examples={examples} isAuthenticated={false} />);
+    let navCsrfToken: string | undefined;
+    if (ctx.isAuthenticated && ctx.sessionId) {
+      navCsrfToken = await createCsrfToken(
+        ctx.sessionId,
+        "POST",
+        "/auth/logout",
+      );
     }
 
     const state = getFlash(req);
@@ -33,74 +38,76 @@ export const examples = {
     let createCsrfTokenValue: string | null = null;
     const deleteCsrfTokens: Record<number, string> = {};
 
-    createCsrfTokenValue = await createCsrfToken(
-      ctx.sessionId,
-      "POST",
-      "/examples",
-    );
-
-    for (const example of examples) {
-      deleteCsrfTokens[example.id] = await createCsrfToken(
+    if (ctx.sessionId) {
+      createCsrfTokenValue = await createCsrfToken(
         ctx.sessionId,
         "POST",
-        `/examples/${example.id}/delete`,
+        "/projects",
       );
     }
 
+    if (ctx.isAuthenticated && ctx.sessionId) {
+      for (const project of projectList) {
+        deleteCsrfTokens[project.id] = await createCsrfToken(
+          ctx.sessionId,
+          "POST",
+          `/projects/${project.id}/delete`,
+        );
+      }
+    }
+
     return render(
-      <Examples
+      <Projects
         createCsrfToken={createCsrfTokenValue}
         deleteCsrfTokens={deleteCsrfTokens}
-        examples={examples}
+        projects={projectList}
         isAuthenticated={ctx.isAuthenticated}
         state={state}
+        user={ctx.user}
+        csrfToken={navCsrfToken}
       />,
     );
   },
 
   async create(req: BunRequest): Promise<Response> {
-    // Require authentication
-    const authRedirect = await requireAuth(req);
-    if (authRedirect) {
-      return authRedirect;
+    const ctx = await getSessionContext(req);
+
+    if (!ctx.sessionId) {
+      return redirect("/projects");
     }
 
-    // CSRF protection
     const csrfResponse = await csrfProtection(req, {
       method: "POST",
-      path: "/examples",
+      path: "/projects",
     });
     if (csrfResponse) {
       return csrfResponse;
     }
 
     const formData = await req.formData();
-    const name = formData.get("name") as string;
+    const title = formData.get("title") as string;
 
-    // Early return for validation failures
-    if (!name || name.trim().length < 2) {
-      return redirect("/examples");
+    if (!title || title.trim().length < 2) {
+      return redirect("/projects");
     }
 
-    // Happy path - successful form submission
-    await createExample(name.trim());
+    const createdBy = ctx.user?.email ?? null;
+    await createProject(title.trim(), createdBy);
     setFlash(req, { state: "submission-success" });
-    return redirect("/examples");
+    return redirect("/projects");
   },
 
   async destroy<T extends `${string}:id${string}`>(
     req: BunRequest<T>,
   ): Promise<Response> {
-    // Require authentication
     const authRedirect = await requireAuth(req);
     if (authRedirect) {
       return authRedirect;
     }
 
-    // CSRF protection
     const csrfResponse = await csrfProtection(req, {
       method: "POST",
-      path: req.url, // Use the actual request path for CSRF validation
+      path: req.url,
     });
     if (csrfResponse) {
       return csrfResponse;
@@ -109,19 +116,17 @@ export const examples = {
     const idParam = req.params.id;
     const id = Number.parseInt(idParam, 10);
 
-    // Validate ID
     if (!idParam || Number.isNaN(id)) {
-      return redirect("/examples");
+      return redirect("/projects");
     }
 
-    // Attempt to delete the example
-    const deleted = await deleteExample(id);
+    const deleted = await deleteProject(id);
 
     if (!deleted) {
-      return redirect("/examples");
+      return redirect("/projects");
     }
 
     setFlash(req, { state: "deletion-success" });
-    return redirect("/examples");
+    return redirect("/projects");
   },
 };

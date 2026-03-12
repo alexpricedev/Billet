@@ -1,0 +1,119 @@
+[data-page="projects"] {
+  .project-list tr:hover td {
+    background: var(--color-surface-hover);
+  }
+
+  .delete-btn {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-danger);
+    font-size: 12px;
+    padding: 4px 10px;
+
+    &:hover,
+    &:focus {
+      background: rgba(248, 113, 113, 0.1);
+    }
+  }
+
+  .projects-header {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+
+    h2 {
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    @media (width <= 640px) {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+
+  .search-container {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+
+    @media (width <= 640px) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    input {
+      padding: 8px 14px;
+      width: 240px;
+
+      @media (width <= 640px) {
+        width: 100%;
+      }
+    }
+  }
+
+  .search-count {
+    font-size: 13px;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .project-form {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+
+    input {
+      flex: 1;
+
+      @media (width <= 640px) {
+        width: 100%;
+      }
+    }
+
+    button {
+      @media (width <= 640px) {
+        width: 100%;
+      }
+    }
+
+    @media (width <= 640px) {
+      flex-direction: column;
+    }
+  }
+
+  .delete-cell {
+    text-align: right;
+  }
+
+  .delete-form {
+    display: inline;
+  }
+
+  .api-section {
+    margin-top: 2.5rem;
+  }
+
+  .endpoint-path {
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .method-get {
+    color: var(--color-success);
+  }
+
+  .method-post {
+    color: var(--color-primary);
+  }
+
+  .method-put {
+    color: var(--color-warning);
+  }
+
+  .method-delete {
+    color: var(--color-danger);
+  }
+}

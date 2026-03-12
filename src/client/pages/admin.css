@@ -1,0 +1,45 @@
+[data-page="admin"] {
+  .admin-content {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .admin-header {
+    margin-bottom: 32px;
+
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+
+  .admin-table-wrap {
+    overflow-x: auto;
+  }
+
+  .data-table th {
+    padding: 10px 24px;
+    font-size: 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .data-table td {
+    padding: 14px 24px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .admin-email {
+    color: var(--color-text);
+  }
+
+  .admin-date {
+    color: var(--color-text-quaternary);
+  }
+
+  .admin-empty {
+    text-align: center;
+    color: var(--color-text-quaternary);
+  }
+}

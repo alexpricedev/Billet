@@ -1,13 +1,26 @@
-export function init() {
-  const button = document.getElementById("counter");
-  const countDisplay = document.getElementById("count");
-
-  let count = 0;
-
-  if (button && countDisplay) {
-    button.addEventListener("click", () => {
-      count++;
-      countDisplay.textContent = String(count);
-    });
+declare global {
+  interface Window {
+    lottie: {
+      loadAnimation(params: {
+        container: HTMLElement;
+        renderer: string;
+        loop: boolean;
+        autoplay: boolean;
+        path: string;
+      }): void;
+    };
   }
+}
+
+export function init() {
+  const container = document.getElementById("hero-lottie");
+  if (!container || !window.lottie) return;
+
+  window.lottie.loadAnimation({
+    container,
+    renderer: "svg",
+    loop: true,
+    autoplay: true,
+    path: "/cube.json",
+  });
 }

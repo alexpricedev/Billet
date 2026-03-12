@@ -1,20 +1,26 @@
 import type React from "react";
 
+import type { User } from "../services/users";
+import { Logo } from "./logo";
 import { Nav } from "./nav";
 
-type LayoutProps = {
+interface LayoutProps {
   title: string;
   name: string;
   children: React.ReactNode;
-};
+  user?: User | null;
+  csrfToken?: string;
+}
 
-/**
- * Main application layout with header, navigation, and footer
- * Use for: Authenticated app pages, public marketing pages
- */
-export function Layout({ title, name, children }: LayoutProps) {
+export function Layout({
+  title,
+  name,
+  children,
+  user,
+  csrfToken,
+}: LayoutProps) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ colorScheme: "dark" }}>
       <head>
         <meta charSet="utf-8" />
         <meta
@@ -23,33 +29,52 @@ export function Layout({ title, name, children }: LayoutProps) {
         />
         <title>{title}</title>
         <link rel="stylesheet" href="/assets/main.css" />
+        <script
+          type="importmap"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              imports: {
+                preact: "https://esm.sh/preact@10.28.4",
+                "preact/hooks": "https://esm.sh/preact@10.28.4/hooks",
+                "preact/jsx-dev-runtime":
+                  "https://esm.sh/preact@10.28.4/jsx-dev-runtime",
+                "preact/jsx-runtime":
+                  "https://esm.sh/preact@10.28.4/jsx-runtime",
+              },
+            }),
+          }}
+        />
       </head>
       <body data-page={name} data-component="layout">
         <header>
           <a href="/" className="logo">
-            <img src="/logo.png" alt="logo" />
+            <Logo />
+            <span>Billet</span>
           </a>
-          <Nav page={name} />
+          <Nav page={name} user={user} csrfToken={csrfToken} />
         </header>
         <main>{children}</main>
+        <footer>
+          <a href="https://github.com/alexpricedev/Billet">GitHub</a>
+          <span>
+            Built by <a href="https://alexprice.dev">alexprice.dev</a>
+          </span>
+        </footer>
+        <script src="https://unpkg.com/lottie-web@5/build/player/lottie_light.min.js" />
         <script type="module" src="/assets/main.js" />
       </body>
     </html>
   );
 }
 
-type BaseLayoutProps = {
+interface BaseLayoutProps {
   title: string;
   children: React.ReactNode;
-};
+}
 
-/**
- * Minimal layout without navigation or header
- * Use for: Authentication pages, error pages, standalone forms
- */
 export function BaseLayout({ title, children }: BaseLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ colorScheme: "dark" }}>
       <head>
         <meta charSet="utf-8" />
         <meta

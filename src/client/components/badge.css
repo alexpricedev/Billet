@@ -1,0 +1,18 @@
+.badge {
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+}
+
+.badge-admin {
+  background: rgba(124, 133, 240, 0.12);
+  color: var(--color-primary);
+}
+
+.badge-user {
+  background: var(--color-surface-hover);
+  color: var(--color-text-quaternary);
+}
