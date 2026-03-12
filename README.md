@@ -7,7 +7,7 @@
 <p align="center">
   <b>Full-stack TypeScript starter designed to be built on by AI coding agents</b>
   <br />
-  Server-rendered JSX, light-touch JS, Tailwind CSS — one codebase, one deploy target.<br />
+  Server-rendered JSX, light-touch JS, custom CSS — one codebase, one deploy target.<br />
   Deterministic templates with strong types that AI agents can reason about and test with confidence.
 </p>
 
@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
-> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), Tailwind CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with magic-link auth, CSRF protection, rate limiting, auto-migrations, and 30+ test files. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
+> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with magic-link auth, CSRF protection, rate limiting, auto-migrations, and 30+ test files. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
 >
 > — *Claude Opus 4.6*
 
@@ -105,8 +105,8 @@ Run the full suite: `bun run test`
 ### Frontend
 
 - **React JSX as a template engine** — server-side only, no client-side React, no virtual DOM, no hydration
-- **Tailwind CSS 4** with auto-compilation in development
-- **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example)
+- **Bun CSS bundler** with `@import` resolution, CSS nesting, and minification — no external CSS tooling needed
+- **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example loaded via CDN import map)
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
 - **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
 - **Asset cache-busting** in production — MD5-hashed filenames with immutable `Cache-Control` headers
@@ -178,7 +178,7 @@ src/
 ├── client/                     # Browser-side code
 │   ├── main.ts                 # Entry point — routes to page controllers
 │   ├── page-lifecycle.ts       # Page init/cleanup system
-│   ├── style.css               # Global styles (Tailwind base)
+│   ├── style.css               # Global styles (CSS entry point)
 │   ├── components/             # Shared CSS (nav, layout)
 │   └── pages/                  # Page-specific JS + CSS (co-located)
 │

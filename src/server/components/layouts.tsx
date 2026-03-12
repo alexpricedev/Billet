@@ -29,6 +29,21 @@ export function Layout({
         />
         <title>{title}</title>
         <link rel="stylesheet" href="/assets/main.css" />
+        <script
+          type="importmap"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              imports: {
+                preact: "https://esm.sh/preact@10.28.4",
+                "preact/hooks": "https://esm.sh/preact@10.28.4/hooks",
+                "preact/jsx-dev-runtime":
+                  "https://esm.sh/preact@10.28.4/jsx-dev-runtime",
+                "preact/jsx-runtime":
+                  "https://esm.sh/preact@10.28.4/jsx-runtime",
+              },
+            }),
+          }}
+        />
       </head>
       <body data-page={name} data-component="layout">
         <header>
@@ -45,6 +60,7 @@ export function Layout({
             Built by <a href="https://alexprice.dev">alexprice.dev</a>
           </span>
         </footer>
+        <script src="https://unpkg.com/lottie-web@5/build/player/lottie_light.min.js" />
         <script type="module" src="/assets/main.js" />
       </body>
     </html>

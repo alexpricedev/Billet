@@ -79,4 +79,56 @@
     margin: 0;
     white-space: nowrap;
   }
+
+  .project-form {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+
+    input {
+      flex: 1;
+    }
+  }
+
+  .delete-cell {
+    text-align: right;
+  }
+
+  .delete-form {
+    display: inline;
+  }
+
+  .api-section {
+    margin-top: 2.5rem;
+  }
+
+  .endpoint-table {
+    width: 100%;
+
+    td {
+      border-top: 1px solid var(--color-border);
+      padding: 10px 12px;
+    }
+  }
+
+  .endpoint-path {
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .method-get {
+    color: var(--color-success);
+  }
+
+  .method-post {
+    color: var(--color-primary);
+  }
+
+  .method-put {
+    color: var(--color-warning);
+  }
+
+  .method-delete {
+    color: var(--color-danger);
+  }
 }

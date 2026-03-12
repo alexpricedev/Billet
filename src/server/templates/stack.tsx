@@ -16,7 +16,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
       interactivity.
     </p>
 
-    <section style={{ marginTop: "2.5rem" }}>
+    <section>
       <h2>How data flows</h2>
       <p className="text-secondary">
         Every request follows the same three-step path. Services fetch or mutate
@@ -30,12 +30,12 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
   data                pass data in         return Response`}</pre>
     </section>
 
-    <section style={{ marginTop: "2.5rem" }}>
+    <section>
       <h2>Project structure</h2>
       <pre>{`src/
 ├── client/                  # Browser-side code
 │   ├── main.ts              # Entry — routes to page init fns
-│   ├── style.css            # Global styles (Tailwind base)
+│   ├── style.css            # Global styles (CSS entry point)
 │   ├── components/          # Shared CSS (nav, layout)
 │   └── pages/               # Page JS & CSS (co-located)
 │
@@ -55,7 +55,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
 └── types/                   # Global type declarations`}</pre>
     </section>
 
-    <section style={{ marginTop: "2.5rem" }}>
+    <section>
       <h2>Feedback stack</h2>
       <p className="text-secondary">
         Four layers of automated checks run before code reaches production.
@@ -71,12 +71,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
           <tr>
             <td>TypeScript strict mode</td>
             <td>
-              Type errors, null safety violations, implicit{" "}
-              <code
-                style={{ fontFamily: "var(--font-mono)", fontSize: "13px" }}
-              >
-                any
-              </code>
+              Type errors, null safety violations, implicit <code>any</code>
             </td>
           </tr>
           <tr>
@@ -103,7 +98,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
       </table>
     </section>
 
-    <section style={{ marginTop: "2.5rem" }}>
+    <section>
       <h2>Technology choices</h2>
       <p className="text-secondary">
         A small, deliberate set of tools chosen for speed, simplicity, and
@@ -126,8 +121,8 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
             <td>Primary data store with raw SQL via tagged templates</td>
           </tr>
           <tr>
-            <td>Tailwind CSS 4</td>
-            <td>Utility-first styling with CSS-native configuration</td>
+            <td>Bun CSS bundler</td>
+            <td>Native @import resolution, CSS nesting, and minification</td>
           </tr>
           <tr>
             <td>Preact</td>

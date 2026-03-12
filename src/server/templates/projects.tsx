@@ -48,11 +48,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
       )}
 
       <section className="card">
-        <form
-          method="POST"
-          action="/projects"
-          style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}
-        >
+        <form method="POST" action="/projects" className="project-form">
           <CsrfField token={props.createCsrfToken} />
           <input
             type="text"
@@ -60,7 +56,6 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
             placeholder="New project title"
             required
             minLength={2}
-            style={{ flex: 1 }}
           />
           <button type="submit">Add Project</button>
         </form>
@@ -107,11 +102,11 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
                   </td>
                   {props.isAuthenticated &&
                     props.deleteCsrfTokens[project.id] && (
-                      <td style={{ textAlign: "right" }}>
+                      <td className="delete-cell">
                         <form
                           method="POST"
                           action={`/projects/${project.id}/delete`}
-                          style={{ display: "inline" }}
+                          className="delete-form"
                         >
                           <CsrfField
                             token={props.deleteCsrfTokens[project.id]}
@@ -129,7 +124,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
         </div>
       )}
 
-      <section style={{ marginTop: "2.5rem" }}>
+      <section className="api-section">
         <h2>API Endpoints</h2>
         <p className="text-tertiary">
           The same service layer backs both the HTML forms above and the JSON
@@ -137,61 +132,41 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
           place.
         </p>
         <div className="card">
-          <table style={{ width: "100%" }}>
+          <table className="endpoint-table">
             <tbody>
               <tr>
                 <td>
-                  <span style={{ color: "var(--color-success)" }}>GET</span>
+                  <span className="method-get">GET</span>
                 </td>
-                <td
-                  style={{ fontFamily: "var(--font-mono)", fontSize: "13px" }}
-                >
-                  /api/projects
-                </td>
+                <td className="endpoint-path">/api/projects</td>
                 <td className="text-tertiary">List all projects</td>
               </tr>
               <tr>
                 <td>
-                  <span style={{ color: "var(--color-primary)" }}>POST</span>
+                  <span className="method-post">POST</span>
                 </td>
-                <td
-                  style={{ fontFamily: "var(--font-mono)", fontSize: "13px" }}
-                >
-                  /api/projects
-                </td>
+                <td className="endpoint-path">/api/projects</td>
                 <td className="text-tertiary">Create new project</td>
               </tr>
               <tr>
                 <td>
-                  <span style={{ color: "var(--color-success)" }}>GET</span>
+                  <span className="method-get">GET</span>
                 </td>
-                <td
-                  style={{ fontFamily: "var(--font-mono)", fontSize: "13px" }}
-                >
-                  /api/projects/:id
-                </td>
+                <td className="endpoint-path">/api/projects/:id</td>
                 <td className="text-tertiary">Get specific project</td>
               </tr>
               <tr>
                 <td>
-                  <span style={{ color: "var(--color-warning)" }}>PUT</span>
+                  <span className="method-put">PUT</span>
                 </td>
-                <td
-                  style={{ fontFamily: "var(--font-mono)", fontSize: "13px" }}
-                >
-                  /api/projects/:id
-                </td>
+                <td className="endpoint-path">/api/projects/:id</td>
                 <td className="text-tertiary">Update project</td>
               </tr>
               <tr>
                 <td>
-                  <span style={{ color: "var(--color-danger)" }}>DELETE</span>
+                  <span className="method-delete">DELETE</span>
                 </td>
-                <td
-                  style={{ fontFamily: "var(--font-mono)", fontSize: "13px" }}
-                >
-                  /api/projects/:id
-                </td>
+                <td className="endpoint-path">/api/projects/:id</td>
                 <td className="text-tertiary">Delete project</td>
               </tr>
             </tbody>

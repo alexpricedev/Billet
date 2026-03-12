@@ -17,7 +17,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         by AI coding agents
       </h1>
       <p className="hero-sub">
-        Server-rendered JSX, light-touch client JS, Tailwind CSS — one codebase,
+        Server-rendered JSX, light-touch client JS, custom CSS — one codebase,
         one test runner, one deploy target. Deterministic templates with strong
         types that agents can reason about and test with confidence.
       </p>
@@ -141,8 +141,8 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Frontend</h3>
           <p>
-            Server-rendered JSX, Tailwind CSS 4, opt-in client interactivity,
-            flash messages
+            Server-rendered JSX, custom CSS via Bun bundler, opt-in client
+            interactivity, flash messages
           </p>
         </div>
         <div className="feature-card">

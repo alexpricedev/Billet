@@ -1,30 +1,14 @@
-@import "tailwindcss";
-
 /* Page styles */
 @import "./pages/home.css";
 @import "./pages/stack.css";
 @import "./pages/forms.css";
 @import "./pages/projects.css";
+@import "./pages/login.css";
+@import "./pages/admin.css";
 
 /* Component styles */
 @import "./components/layout.css";
 @import "./components/nav.css";
-
-@theme {
-  --color-bg: #0a0a0b;
-  --color-surface: #141415;
-  --color-surface-hover: #1c1c1e;
-  --color-border: #222224;
-  --color-text: #ededef;
-  --color-text-secondary: #b4b5b9;
-  --color-text-tertiary: #8a8b8e;
-  --color-text-quaternary: #5c5d60;
-  --color-primary: #7c85f0;
-  --color-primary-hover: #9098f3;
-  --color-success: #34d399;
-  --color-danger: #f87171;
-  --color-warning: #fbbf24;
-}
 
 :root {
   --color-bg: #0a0a0b;

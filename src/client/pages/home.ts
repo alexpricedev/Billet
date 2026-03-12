@@ -1,10 +1,22 @@
-import lottie from "lottie-web";
+declare global {
+  interface Window {
+    lottie: {
+      loadAnimation(params: {
+        container: HTMLElement;
+        renderer: string;
+        loop: boolean;
+        autoplay: boolean;
+        path: string;
+      }): void;
+    };
+  }
+}
 
 export function init() {
   const container = document.getElementById("hero-lottie");
-  if (!container) return;
+  if (!container || !window.lottie) return;
 
-  lottie.loadAnimation({
+  window.lottie.loadAnimation({
     container,
     renderer: "svg",
     loop: true,
