@@ -26,16 +26,15 @@ export function ProjectSearch({ projects }: { projects: ProjectItem[] }) {
   }, [q]);
 
   return (
-    <div class="mb-4">
+    <div class="search-container">
       <input
         type="text"
         placeholder="Search projects..."
         value={query}
         onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
-        class="w-full px-3 py-2 border border-(--color-border) rounded-md focus:outline-none focus:ring-2 focus:ring-(--color-primary) focus:border-transparent"
       />
       {q && (
-        <p class="mt-2 text-sm text-(--color-text-tertiary)">
+        <p class="text-tertiary" style={{ fontSize: "13px", marginTop: "8px" }}>
           Showing {matchCount} of {projects.length}
         </p>
       )}
