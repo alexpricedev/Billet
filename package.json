@@ -21,6 +21,7 @@
     "check": "bun run lint && bun run typecheck",
     "generate:pepper": "bun -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     "seed": "bun run src/server/database/seed.ts",
+    "setup": "bun run setup.ts",
     "migrate:up": "bun run src/server/database/cli.ts up",
     "migrate:status": "bun run src/server/database/cli.ts status",
     "migrate:create": "bun run src/server/database/cli.ts create",
