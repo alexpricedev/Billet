@@ -11,3 +11,7 @@ export function toSlug(name: string): string {
 export function isValidDbUrl(url: string): boolean {
   return url.startsWith("postgresql://") || url.startsWith("postgres://");
 }
+
+export function generateEnvContent(dbUrl: string, pepper: string): string {
+  return `DATABASE_URL=${dbUrl}\nCRYPTO_PEPPER=${pepper}\nAPP_URL=http://localhost\n`;
+}
