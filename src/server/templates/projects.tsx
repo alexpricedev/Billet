@@ -87,6 +87,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
         </div>
       )}
 
+      <h2>Projects</h2>
       {props.projects.length === 0 ? (
         <p className="text-tertiary">No projects yet.</p>
       ) : (
