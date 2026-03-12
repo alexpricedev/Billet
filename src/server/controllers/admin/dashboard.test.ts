@@ -67,4 +67,23 @@ describe("Admin Dashboard Controller", () => {
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("/");
   });
+
+  test("renders users table with user data", async () => {
+    const adminUser = await findOrCreateUser("admin@example.com");
+    await db`UPDATE users SET role = 'admin' WHERE id = ${adminUser.id}`;
+    await findOrCreateUser("regular@example.com");
+    const sessionId = await createAuthenticatedSession(adminUser.id);
+
+    const request = createBunRequest("http://localhost:3000/admin", {
+      headers: { cookie: `session_id=${sessionId}` },
+    });
+
+    const response = await admin.index(request);
+    const html = await response.text();
+
+    expect(html).toContain("admin@example.com");
+    expect(html).toContain("regular@example.com");
+    expect(html).toContain("admin");
+    expect(html).toContain("user");
+  });
 });
