@@ -1,10 +1,35 @@
 [data-page="home"] {
-  h1 {
-    color: var(--color-primary);
-    margin-bottom: 1.5rem;
+  .hero {
+    text-align: center;
+    padding: 80px 0 64px;
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 600;
+      color: var(--color-text);
+      text-wrap: balance;
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      color: var(--color-text-tertiary);
+      font-size: 1.125rem;
+    }
   }
 
-  button {
-    margin-bottom: 1rem;
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+
+    @media (width >= 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .stat-badge {
+    color: var(--color-text-quaternary);
+    font-family: var(--font-mono);
+    font-size: 12px;
   }
 }

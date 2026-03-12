@@ -1,0 +1,42 @@
+[data-page="forms"] {
+  .form-card {
+    display: block;
+    margin: 0 auto;
+    max-width: 480px;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    label {
+      color: var(--color-text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+    }
+  }
+
+  .form-explainer {
+    color: var(--color-text-tertiary);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-top: 2rem;
+    text-align: center;
+
+    code {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      color: var(--color-text-secondary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 2px 6px;
+    }
+  }
+}

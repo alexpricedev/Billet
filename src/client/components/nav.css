@@ -1,7 +1,7 @@
 [data-component="nav"] {
   margin-left: 2rem;
 
-  @media (width <= 600px) {
+  @media (width <= 640px) {
     margin-left: 0;
   }
 
@@ -12,32 +12,28 @@
     margin: 0;
     padding: 0;
 
-    @media (width <= 600px) {
+    @media (width <= 640px) {
       gap: 0.75rem;
     }
 
     a {
-      border-radius: var(--radius);
-      color: var(--color-text);
+      color: var(--color-text-secondary);
+      font-size: 14px;
       font-weight: 500;
-      padding: 0.25em 0.5em;
-      position: relative;
       text-decoration: none;
-      transition:
-        background 0.15s,
-        color 0.15s;
+      transition: color 150ms ease;
 
       &:hover,
       &:focus {
-        background: var(--color-primary-light);
-        color: #fff;
+        color: var(--color-text);
+        background: none;
+        text-decoration: none;
       }
 
       &.active,
       &[aria-current="page"] {
-        background: var(--color-primary);
-        color: #fff;
-        font-weight: 700;
+        color: var(--color-text);
+        font-weight: 500;
       }
     }
   }

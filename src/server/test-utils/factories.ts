@@ -1,11 +1,11 @@
 import type { VisitorStats } from "../services/analytics";
-import type { Example } from "../services/example";
+import type { Project } from "../services/project";
 
-export const createMockExample = (
-  overrides: Partial<Example> = {},
-): Example => ({
+export const createMockProject = (
+  overrides: Partial<Project> = {},
+): Project => ({
   id: 1,
-  name: "Test Example",
+  title: "Test Project",
   ...overrides,
 });
 
