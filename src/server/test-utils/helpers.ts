@@ -23,9 +23,9 @@ export const cleanupTestData = async (db: SQL): Promise<void> => {
  * @param db - The database connection to use (should be the mocked testDb from each test file)
  */
 export const seedTestData = async (db: SQL): Promise<void> => {
-  await db`INSERT INTO project (title) VALUES (${"Test Project 1"})`;
-  await db`INSERT INTO project (title) VALUES (${"Test Project 2"})`;
-  await db`INSERT INTO project (title) VALUES (${"Test Project 3"})`;
+  await db`INSERT INTO project (title, created_by) VALUES (${"Test Project 1"}, ${"alice@example.com"})`;
+  await db`INSERT INTO project (title, created_by) VALUES (${"Test Project 2"}, ${null})`;
+  await db`INSERT INTO project (title, created_by) VALUES (${"Test Project 3"}, ${"bob@example.com"})`;
 };
 
 /**

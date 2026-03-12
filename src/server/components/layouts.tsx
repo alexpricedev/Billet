@@ -1,6 +1,7 @@
 import type React from "react";
 
 import type { User } from "../services/users";
+import { Logo } from "./logo";
 import { Nav } from "./nav";
 
 interface LayoutProps {
@@ -32,7 +33,7 @@ export function Layout({
       <body data-page={name} data-component="layout">
         <header>
           <a href="/" className="logo">
-            <img src="/logo.png" alt="logo" />
+            <Logo />
             <span>Billet</span>
           </a>
           <Nav page={name} user={user} csrfToken={csrfToken} />

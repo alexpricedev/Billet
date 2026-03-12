@@ -50,6 +50,15 @@ describe("Project Service with PostgreSQL", () => {
       expect(result[0].id).toBeLessThan(result[1].id);
       expect(result[1].id).toBeLessThan(result[2].id);
     });
+
+    test("returns created_by values", async () => {
+      await seedTestData(db);
+
+      const result = await getProjects();
+      expect(result[0].created_by).toBe("alice@example.com");
+      expect(result[1].created_by).toBeNull();
+      expect(result[2].created_by).toBe("bob@example.com");
+    });
   });
 
   describe("getProjectById", () => {
@@ -63,6 +72,7 @@ describe("Project Service with PostgreSQL", () => {
       expect(result).not.toBeNull();
       expect(result?.id).toBe(firstId);
       expect(result?.title).toBe("Test Project 1");
+      expect(result?.created_by).toBe("alice@example.com");
     });
 
     test("returns null when project not found", async () => {
@@ -77,8 +87,23 @@ describe("Project Service with PostgreSQL", () => {
 
       expect(result.id).toBeDefined();
       expect(result.title).toBe("New Test Project");
+      expect(result.created_by).toBeNull();
       expect(typeof result.id).toBe("number");
       expect(result.id).toBeGreaterThan(0);
+    });
+
+    test("creates project with created_by", async () => {
+      const result = await createProject("Auth Project", "user@example.com");
+
+      expect(result.title).toBe("Auth Project");
+      expect(result.created_by).toBe("user@example.com");
+    });
+
+    test("creates project with null created_by for guests", async () => {
+      const result = await createProject("Guest Project", null);
+
+      expect(result.title).toBe("Guest Project");
+      expect(result.created_by).toBeNull();
     });
 
     test("creates multiple projects with different ids", async () => {
@@ -107,6 +132,13 @@ describe("Project Service with PostgreSQL", () => {
       expect(updated).not.toBeNull();
       expect(updated?.id).toBe(created.id);
       expect(updated?.title).toBe("Updated Title");
+    });
+
+    test("preserves created_by on update", async () => {
+      const created = await createProject("Original", "user@example.com");
+      const updated = await updateProject(created.id, "Updated");
+
+      expect(updated?.created_by).toBe("user@example.com");
     });
 
     test("returns null when updating non-existent project", async () => {

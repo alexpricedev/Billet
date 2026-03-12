@@ -23,12 +23,12 @@ export const seedIfEmpty = async (): Promise<void> => {
   `;
 
   await db`
-    INSERT INTO project (title)
-    SELECT title FROM (VALUES
-      ('Hello World'),
-      ('Server-Side Rendering'),
-      ('Magic Link Auth')
-    ) AS v(title)
+    INSERT INTO project (title, created_by)
+    SELECT title, created_by FROM (VALUES
+      ('Hello World', 'alice@example.com'),
+      ('Server-Side Rendering', NULL),
+      ('Magic Link Auth', 'admin@example.com')
+    ) AS v(title, created_by)
     WHERE NOT EXISTS (SELECT 1 FROM project WHERE project.title = v.title)
   `;
 

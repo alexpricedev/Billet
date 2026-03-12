@@ -17,9 +17,9 @@
       gap: 0.5rem;
       text-decoration: none;
 
-      img {
-        height: 2.5rem;
-        width: auto;
+      svg {
+        width: 22px;
+        height: 22px;
       }
 
       span {

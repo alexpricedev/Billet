@@ -1,6 +1,5 @@
-<!-- LOGO -->
 <p align="center">
-  <img src="public/logo.png" alt="Billet Logo" width="180" />
+  <img src="public/logo.svg" alt="Billet Logo" width="48" />
 </p>
 
 <h1 align="center">Billet</h1>

@@ -27,7 +27,8 @@ describe("Home Controller", () => {
 
       expect(response.headers.get("content-type")).toBe("text/html");
 
-      expect(html).toContain("Built for AI agents");
+      expect(html).toContain("Designed to be built on");
+      expect(html).toContain("by AI coding agents");
       expect(html).toContain("Authentication");
       expect(html).toContain("Security");
       expect(html).toContain("Database");

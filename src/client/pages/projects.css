@@ -36,26 +36,31 @@
     }
   }
 
-  .search-container {
-    margin-bottom: 1.5rem;
+  .projects-header {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
 
-    input {
-      width: 100%;
-      padding: 10px 14px;
+    h2 {
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    @media (width <= 640px) {
+      align-items: flex-start;
+      flex-direction: column;
     }
   }
 
-  .auth-prompt {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-text-tertiary);
-    font-size: 14px;
-    padding: 24px;
-    text-align: center;
+  .search-container {
+    input {
+      padding: 8px 14px;
+      width: 240px;
 
-    a {
-      color: var(--color-primary);
-      font-weight: 500;
+      @media (width <= 640px) {
+        width: 100%;
+      }
     }
   }
 }

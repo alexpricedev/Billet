@@ -41,6 +41,7 @@
     "tailwindcss": "^4.1.13"
   },
   "dependencies": {
+    "lottie-web": "^5.13.0",
     "preact": "^10.28.4"
   }
 }

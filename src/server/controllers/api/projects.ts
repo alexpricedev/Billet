@@ -26,7 +26,7 @@ export const projectsApi = {
 
   async create(req: Request): Promise<Response> {
     const body = await req.json();
-    const project = await createProject(body.title);
+    const project = await createProject(body.title, null);
     return Response.json(project, { status: 201 });
   },
 

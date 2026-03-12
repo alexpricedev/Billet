@@ -1,4 +1,5 @@
 import { BaseLayout } from "../components/layouts";
+import { Logo } from "../components/logo";
 
 export interface LoginState {
   state?: "email-sent" | "validation-error";
@@ -25,12 +26,14 @@ export const Login = ({ state }: LoginProps) => {
       >
         <div style={{ width: "100%", maxWidth: "400px" }}>
           <div style={{ textAlign: "center", marginBottom: "32px" }}>
-            <a href="/" style={{ display: "inline-block" }}>
-              <img
-                src="/logo.png"
-                alt="Billet"
-                style={{ height: "32px", margin: "0 auto" }}
-              />
+            <a
+              href="/"
+              style={{
+                display: "inline-flex",
+                color: "var(--color-text)",
+              }}
+            >
+              <Logo />
             </a>
           </div>
 

@@ -117,7 +117,7 @@ describe("Projects API", () => {
 
       const data = await response.json();
       expect(data).toEqual(newProject);
-      expect(mockCreateProject).toHaveBeenCalledWith("New Project");
+      expect(mockCreateProject).toHaveBeenCalledWith("New Project", null);
     });
   });
 

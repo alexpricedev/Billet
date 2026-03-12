@@ -18,10 +18,10 @@ export function ProjectSearch({ projects }: { projects: ProjectItem[] }) {
     const list = document.getElementById("projects-list");
     if (!list) return;
 
-    const cards = Array.from(list.children) as HTMLElement[];
-    for (const card of cards) {
-      const match = !q || (card.textContent ?? "").toLowerCase().includes(q);
-      card.hidden = !match;
+    const rows = Array.from(list.querySelectorAll("tbody tr")) as HTMLElement[];
+    for (const row of rows) {
+      const match = !q || (row.textContent ?? "").toLowerCase().includes(q);
+      row.hidden = !match;
     }
   }, [q]);
 

@@ -8,20 +8,12 @@ export interface ProjectsState {
   state?: "submission-success" | "deletion-success";
 }
 
-type PublicProjectsProps = {
-  isAuthenticated: false;
-  projects: Project[];
-};
-
-type AuthProjectsProps = {
-  isAuthenticated: true;
+export type ProjectsProps = {
   projects: Project[];
   state: ProjectsState;
+  isAuthenticated: boolean;
   createCsrfToken: string | null;
   deleteCsrfTokens: Record<number, string>;
-};
-
-export type ProjectsProps = (PublicProjectsProps | AuthProjectsProps) & {
   user: User | null;
   csrfToken?: string;
 };
@@ -40,7 +32,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
         protection, and flash messages.
       </p>
 
-      {props.isAuthenticated && props.state?.state && (
+      {props.state?.state && (
         <div
           className={
             props.state.state === "submission-success"
@@ -55,39 +47,34 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
         </div>
       )}
 
-      <div
-        id="projects-search"
-        data-projects={JSON.stringify(
-          props.projects.map((p) => ({ id: p.id, title: p.title })),
-        )}
-      />
+      <section className="card">
+        <form
+          method="POST"
+          action="/projects"
+          style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}
+        >
+          <CsrfField token={props.createCsrfToken} />
+          <input
+            type="text"
+            name="title"
+            placeholder="New project title"
+            required
+            minLength={2}
+            style={{ flex: 1 }}
+          />
+          <button type="submit">Add Project</button>
+        </form>
+      </section>
 
-      {props.isAuthenticated ? (
-        <section className="card">
-          <form
-            method="POST"
-            action="/projects"
-            style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}
-          >
-            <CsrfField token={props.createCsrfToken} />
-            <input
-              type="text"
-              name="title"
-              placeholder="New project title"
-              required
-              minLength={2}
-              style={{ flex: 1 }}
-            />
-            <button type="submit">Add Project</button>
-          </form>
-        </section>
-      ) : (
-        <div className="auth-prompt">
-          <a href="/login">Sign in</a> to create projects.
-        </div>
-      )}
-
-      <h2>Projects</h2>
+      <div className="projects-header">
+        <h2>Projects</h2>
+        <div
+          id="projects-search"
+          data-projects={JSON.stringify(
+            props.projects.map((p) => ({ id: p.id, title: p.title })),
+          )}
+        />
+      </div>
       {props.projects.length === 0 ? (
         <p className="text-tertiary">No projects yet.</p>
       ) : (
@@ -96,6 +83,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
             <thead>
               <tr>
                 <th>Title</th>
+                <th>Created by</th>
                 {props.isAuthenticated && <th />}
               </tr>
             </thead>
@@ -103,6 +91,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
               {props.projects.map((project) => (
                 <tr key={project.id}>
                   <td>{project.title}</td>
+                  <td>{project.created_by ?? "Guest"}</td>
                   {props.isAuthenticated &&
                     props.deleteCsrfTokens[project.id] && (
                       <td style={{ textAlign: "right" }}>
