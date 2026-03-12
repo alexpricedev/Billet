@@ -68,7 +68,7 @@ describe("Projects Controller", () => {
       expect(mockGetProjects).toHaveBeenCalled();
       expect(response.headers.get("content-type")).toBe("text/html");
 
-      expect(html).toContain("Projects");
+      expect(html).toContain("CRUD");
       expect(html).toContain("Project 1");
       expect(html).toContain("Project 2");
       expect(html).toContain("Sign in");
@@ -87,7 +87,7 @@ describe("Projects Controller", () => {
       const response = await projects.index(request);
       const html = await response.text();
 
-      expect(html).toContain("Projects");
+      expect(html).toContain("CRUD");
       expect(html).toContain('name="_csrf"');
       expect(html).toContain("Add Project");
       expect(html).not.toContain("Sign in");

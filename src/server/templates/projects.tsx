@@ -29,12 +29,16 @@ export type ProjectsProps = (PublicProjectsProps | AuthProjectsProps) & {
 export const Projects = (props: ProjectsProps): JSX.Element => {
   return (
     <Layout
-      title="Projects - Billet"
+      title="CRUD - Billet"
       name="projects"
       user={props.user}
       csrfToken={props.csrfToken}
     >
-      <h1>Projects</h1>
+      <h1>CRUD</h1>
+      <p className="lead">
+        Create, read, update, and delete with server-rendered forms, CSRF
+        protection, and flash messages.
+      </p>
 
       {props.isAuthenticated && props.state?.state && (
         <div

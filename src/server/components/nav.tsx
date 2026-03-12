@@ -4,7 +4,7 @@ import { CsrfField } from "./csrf-field";
 const navLinks = [
   { href: "/", label: "Home", name: "home" },
   { href: "/stack", label: "Stack", name: "stack" },
-  { href: "/projects", label: "Projects", name: "projects" },
+  { href: "/projects", label: "CRUD", name: "projects" },
   { href: "/forms", label: "Forms", name: "forms" },
 ];
 

@@ -40,7 +40,9 @@ export function Layout({
         <main>{children}</main>
         <footer>
           <a href="https://github.com/alexpricedev/Billet">GitHub</a>
-          <a href="https://alexprice.dev">alexprice.dev</a>
+          <span>
+            Built by <a href="https://alexprice.dev">alexprice.dev</a>
+          </span>
         </footer>
         <script type="module" src="/assets/main.js" />
       </body>
