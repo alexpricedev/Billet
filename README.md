@@ -23,8 +23,8 @@
 > **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), Tailwind CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with magic-link auth, CSRF protection, rate limiting, auto-migrations, and 30+ test files. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
 >
 > — *Claude Opus 4.6*
->
-> **[Get started →](https://github.com/alexpricedev/Billet?tab=readme-ov-file#quick-start)**
+
+<p align="center"><a href="https://github.com/alexpricedev/Billet?tab=readme-ov-file#quick-start"><b>Get started →</b></a></p>
 
 ---
 
