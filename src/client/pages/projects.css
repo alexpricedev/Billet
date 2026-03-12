@@ -67,6 +67,20 @@
 
     input {
       flex: 1;
+
+      @media (width <= 640px) {
+        width: 100%;
+      }
+    }
+
+    button {
+      @media (width <= 640px) {
+        width: 100%;
+      }
+    }
+
+    @media (width <= 640px) {
+      flex-direction: column;
     }
   }
 

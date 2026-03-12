@@ -12,7 +12,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
       <div className="hero-lottie" id="hero-lottie" />
       <p className="hero-tag">Full-stack TypeScript starter</p>
       <h1>
-        Designed to be built on
+        Designed to be built&nbsp;on
         <br />
         by AI coding agents
       </h1>
