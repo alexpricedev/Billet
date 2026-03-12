@@ -1,15 +1,15 @@
-import { examplesApi, statsApi } from "../controllers/api";
+import { projectsApi, statsApi } from "../controllers/api";
 import { createRouteHandler } from "../utils/route-handler";
 
 export const apiRoutes = {
   "/api/stats": statsApi.index,
-  "/api/examples": createRouteHandler({
-    GET: examplesApi.index,
-    POST: examplesApi.create,
+  "/api/projects": createRouteHandler({
+    GET: projectsApi.index,
+    POST: projectsApi.create,
   }),
-  "/api/examples/:id": createRouteHandler({
-    GET: examplesApi.show,
-    PUT: examplesApi.update,
-    DELETE: examplesApi.destroy,
+  "/api/projects/:id": createRouteHandler({
+    GET: projectsApi.show,
+    PUT: projectsApi.update,
+    DELETE: projectsApi.destroy,
   }),
 };
