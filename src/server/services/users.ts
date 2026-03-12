@@ -1,8 +1,7 @@
+import type { User } from "./auth";
 import { db } from "./database";
 
-export type { User } from "./auth";
-
-import type { User } from "./auth";
+export type { User };
 
 export const getUsers = async (): Promise<User[]> => {
   const results = await db`

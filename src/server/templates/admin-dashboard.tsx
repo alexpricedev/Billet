@@ -1,6 +1,6 @@
 import { Layout } from "@server/components/layouts";
 import type { SessionContext } from "@server/middleware/auth";
-import type { User } from "@server/services/auth";
+import type { User } from "@server/services/users";
 
 const formatDate = (date: Date): string =>
   new Date(date).toLocaleDateString("en-US", {
