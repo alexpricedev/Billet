@@ -1,3 +1,5 @@
+import { Badge } from "@server/components/badge";
+import { DataTable } from "@server/components/data-table";
 import { Layout } from "@server/components/layouts";
 import type { SessionContext } from "@server/middleware/auth";
 import type { User } from "@server/services/users";
@@ -8,12 +10,6 @@ const formatDate = (date: Date): string =>
     day: "numeric",
     year: "numeric",
   });
-
-const RoleBadge = ({ role }: { role: User["role"] }) => (
-  <span className={`badge ${role === "admin" ? "badge-admin" : "badge-user"}`}>
-    {role}
-  </span>
-);
 
 export const AdminDashboard = (props: {
   auth: SessionContext;
@@ -34,7 +30,7 @@ export const AdminDashboard = (props: {
       </div>
 
       <div className="admin-table-wrap">
-        <table>
+        <DataTable>
           <thead>
             <tr>
               <th>Email</th>
@@ -54,14 +50,16 @@ export const AdminDashboard = (props: {
                 <tr key={user.id}>
                   <td className="admin-email">{user.email}</td>
                   <td>
-                    <RoleBadge role={user.role} />
+                    <Badge variant={user.role === "admin" ? "admin" : "user"}>
+                      {user.role}
+                    </Badge>
                   </td>
                   <td className="admin-date">{formatDate(user.created_at)}</td>
                 </tr>
               ))
             )}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </div>
   </Layout>

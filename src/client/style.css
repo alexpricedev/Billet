@@ -9,6 +9,10 @@
 /* Component styles */
 @import "./components/layout.css";
 @import "./components/nav.css";
+@import "./components/flash.css";
+@import "./components/form-field.css";
+@import "./components/data-table.css";
+@import "./components/badge.css";
 
 :root {
   --color-bg: #0a0a0b;
@@ -146,22 +150,6 @@ img {
   }
 }
 
-.flash-success {
-  border: 1px solid rgba(52, 211, 153, 0.25);
-  background: rgba(52, 211, 153, 0.08);
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  margin-bottom: 1rem;
-}
-
-.flash-error {
-  border: 1px solid rgba(248, 113, 113, 0.25);
-  background: rgba(248, 113, 113, 0.08);
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  margin-bottom: 1rem;
-}
-
 input,
 textarea,
 select {
@@ -182,15 +170,6 @@ select {
     border-color: var(--color-primary);
     outline: none;
   }
-}
-
-.badge {
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 9999px;
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
 }
 
 .text-secondary {

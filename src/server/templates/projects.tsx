@@ -1,5 +1,7 @@
 import type { JSX } from "react";
 import { CsrfField } from "../components/csrf-field";
+import { DataTable } from "../components/data-table";
+import { Flash } from "../components/flash";
 import { Layout } from "../components/layouts";
 import type { Project } from "../services/project";
 import type { User } from "../services/users";
@@ -33,18 +35,12 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
       </p>
 
       {props.state?.state && (
-        <div
-          className={
-            props.state.state === "submission-success"
-              ? "flash-success"
-              : "flash-success"
-          }
-        >
+        <Flash type="success">
           {props.state.state === "submission-success" &&
             "Project added successfully."}
           {props.state.state === "deletion-success" &&
             "Project deleted successfully."}
-        </div>
+        </Flash>
       )}
 
       <section className="card">
@@ -81,7 +77,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
         <p className="text-tertiary">No projects yet.</p>
       ) : (
         <div id="projects-list">
-          <table className="project-list">
+          <DataTable className="project-list">
             <thead>
               <tr>
                 <th>Title</th>
@@ -120,7 +116,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </div>
       )}
 
@@ -132,7 +128,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
           place.
         </p>
         <div className="card">
-          <table className="endpoint-table">
+          <DataTable className="endpoint-table">
             <tbody>
               <tr>
                 <td>
@@ -170,7 +166,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
                 <td className="text-tertiary">Delete project</td>
               </tr>
             </tbody>
-          </table>
+          </DataTable>
         </div>
       </section>
     </Layout>

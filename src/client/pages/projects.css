@@ -1,26 +1,6 @@
 [data-page="projects"] {
-  .project-list {
-    width: 100%;
-    border-collapse: collapse;
-
-    th {
-      color: var(--color-text-quaternary);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.05em;
-      padding: 8px 12px;
-      text-align: left;
-      text-transform: uppercase;
-    }
-
-    td {
-      border-top: 1px solid var(--color-border);
-      padding: 10px 12px;
-    }
-
-    tr:hover td {
-      background: var(--color-surface-hover);
-    }
+  .project-list tr:hover td {
+    background: var(--color-surface-hover);
   }
 
   .delete-btn {
@@ -100,15 +80,6 @@
 
   .api-section {
     margin-top: 2.5rem;
-  }
-
-  .endpoint-table {
-    width: 100%;
-
-    td {
-      border-top: 1px solid var(--color-border);
-      padding: 10px 12px;
-    }
   }
 
   .endpoint-path {

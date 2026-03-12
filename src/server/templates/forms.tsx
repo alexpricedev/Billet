@@ -1,4 +1,6 @@
 import { CsrfField } from "@server/components/csrf-field";
+import { Flash } from "@server/components/flash";
+import { FormField } from "@server/components/form-field";
 import { Layout } from "@server/components/layouts";
 import type { User } from "@server/services/users";
 
@@ -30,12 +32,12 @@ export const Forms = ({
     </p>
 
     {state?.state === "submission-success" && (
-      <div className="flash-success">
+      <Flash type="success">
         Submitted successfully
         {state.name && <> — {state.name}</>}
         {state.email && <> ({state.email})</>}
         {state.message && <>: &ldquo;{state.message}&rdquo;</>}
-      </div>
+      </Flash>
     )}
 
     <div className="forms-layout">
@@ -47,8 +49,7 @@ export const Forms = ({
         </p>
         <form method="POST" action="/forms">
           <CsrfField token={formCsrfToken} />
-          <div className="form-field">
-            <label htmlFor="name-input">Name</label>
+          <FormField label="Name" id="name-input">
             <input
               id="name-input"
               type="text"
@@ -57,25 +58,23 @@ export const Forms = ({
               name="name"
               minLength={3}
             />
-          </div>
-          <div className="form-field">
-            <label htmlFor="email-input">Email</label>
+          </FormField>
+          <FormField label="Email" id="email-input">
             <input
               id="email-input"
               type="email"
               placeholder="you@example.com"
               name="email"
             />
-          </div>
-          <div className="form-field">
-            <label htmlFor="message-input">Message</label>
+          </FormField>
+          <FormField label="Message" id="message-input">
             <textarea
               id="message-input"
               placeholder="Say something..."
               name="message"
               rows={3}
             />
-          </div>
+          </FormField>
           <button type="submit">Submit</button>
         </form>
       </section>

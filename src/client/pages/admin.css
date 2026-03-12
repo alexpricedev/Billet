@@ -18,26 +18,16 @@
     overflow-x: auto;
   }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
+  .data-table th {
+    padding: 10px 24px;
+    font-size: 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
 
-    th {
-      padding: 10px 24px;
-      text-align: left;
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--color-text-quaternary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    td {
-      padding: 14px 24px;
-      font-size: 14px;
-      border-bottom: 1px solid var(--color-border);
-    }
+  .data-table td {
+    padding: 14px 24px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--color-border);
   }
 
   .admin-email {
@@ -50,16 +40,6 @@
 
   .admin-empty {
     text-align: center;
-    color: var(--color-text-quaternary);
-  }
-
-  .badge-admin {
-    background: rgba(124, 133, 240, 0.12);
-    color: var(--color-primary);
-  }
-
-  .badge-user {
-    background: var(--color-surface-hover);
     color: var(--color-text-quaternary);
   }
 }

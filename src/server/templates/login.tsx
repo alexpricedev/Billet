@@ -1,3 +1,5 @@
+import { Flash } from "../components/flash";
+import { FormField } from "../components/form-field";
 import { BaseLayout } from "../components/layouts";
 import { Logo } from "../components/logo";
 
@@ -28,23 +30,22 @@ export const Login = ({ state }: LoginProps) => {
             </p>
 
             {state?.state === "email-sent" ? (
-              <div className="flash-success">
+              <Flash type="success">
                 <p>Check your email!</p>
                 <p>
                   We've sent you a magic link. Click it to sign in instantly.
                 </p>
                 <p>For testing: Check the server console for the magic link.</p>
-              </div>
+              </Flash>
             ) : (
               <form method="POST" action="/login">
                 {state?.state === "validation-error" && state.error && (
-                  <div className="flash-error">
+                  <Flash type="error">
                     <span>{state.error}</span>
-                  </div>
+                  </Flash>
                 )}
 
-                <div className="login-field">
-                  <label htmlFor="email">Email address</label>
+                <FormField label="Email address" id="email">
                   <input
                     id="email"
                     name="email"
@@ -53,7 +54,7 @@ export const Login = ({ state }: LoginProps) => {
                     required
                     placeholder="Enter your email"
                   />
-                </div>
+                </FormField>
 
                 <button type="submit" className="login-submit">
                   Send magic link

@@ -1,3 +1,4 @@
+import { DataTable } from "@server/components/data-table";
 import { Layout } from "@server/components/layouts";
 import type { User } from "@server/services/users";
 
@@ -60,7 +61,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
       <p className="text-secondary">
         Four layers of automated checks run before code reaches production.
       </p>
-      <table>
+      <DataTable>
         <thead>
           <tr>
             <th>Layer</th>
@@ -95,7 +96,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
             </td>
           </tr>
         </tbody>
-      </table>
+      </DataTable>
     </section>
 
     <section>
@@ -104,7 +105,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
         A small, deliberate set of tools chosen for speed, simplicity, and
         minimal abstraction.
       </p>
-      <table>
+      <DataTable>
         <thead>
           <tr>
             <th>Technology</th>
@@ -131,7 +132,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
             </td>
           </tr>
         </tbody>
-      </table>
+      </DataTable>
     </section>
   </Layout>
 );
