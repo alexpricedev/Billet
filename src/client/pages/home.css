@@ -9,13 +9,16 @@
     &::before {
       content: "";
       position: absolute;
-      inset: 0;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 480px;
+      height: 320px;
       background: radial-gradient(
-        ellipse 70% 60% at 50% 40%,
-        rgba(124, 133, 240, 0.3) 0%,
-        rgba(124, 133, 240, 0.12) 35%,
-        rgba(124, 133, 240, 0.04) 60%,
-        transparent 80%
+        ellipse,
+        rgba(124, 133, 240, 0.28) 0%,
+        rgba(124, 133, 240, 0.1) 40%,
+        transparent 70%
       );
       pointer-events: none;
     }
