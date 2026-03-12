@@ -2,18 +2,11 @@ import { Layout } from "@server/components/layouts";
 import type { User } from "@server/services/users";
 
 interface HomeProps {
-  visitorCount: number;
-  lastUpdated: Date;
   user: User | null;
   csrfToken?: string;
 }
 
-export const Home = ({
-  visitorCount,
-  lastUpdated,
-  user,
-  csrfToken,
-}: HomeProps) => (
+export const Home = ({ user, csrfToken }: HomeProps) => (
   <Layout title="Billet" name="home" user={user} csrfToken={csrfToken}>
     <section className="hero">
       <h1>Built for AI agents</h1>
@@ -32,10 +25,6 @@ export const Home = ({
           View Stack
         </a>
       </div>
-      <span className="stat-badge">
-        {visitorCount.toLocaleString()} visitors since{" "}
-        {lastUpdated.toLocaleDateString()}
-      </span>
     </section>
 
     <section className="features">
