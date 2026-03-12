@@ -148,8 +148,17 @@ function askProjectName(): string {
   while (true) {
     const name = ask("What would you like to call your project?");
     const trimmed = name.trim();
-    if (trimmed.length > 0) return trimmed;
-    console.log("Project name cannot be empty. Please try again.");
+    if (trimmed.length === 0) {
+      console.log("Project name cannot be empty. Please try again.");
+      continue;
+    }
+    if (toSlug(trimmed).length === 0) {
+      console.log(
+        "Project name must contain at least one letter or number. Please try again.",
+      );
+      continue;
+    }
+    return trimmed;
   }
 }
 
@@ -231,7 +240,7 @@ async function main(): Promise<void> {
     }
   }
 
-  // Step 5b: Rename in package.json (special handling for name field)
+  // Step 5c: Rename in package.json (special handling for name field)
   try {
     const pkgPath = resolve(".", "package.json");
     const pkgContent = readFileSync(pkgPath, "utf-8");
