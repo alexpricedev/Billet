@@ -220,7 +220,7 @@ Billet is a single Bun process — no containers, no serverless adapters, no pla
 
 ### Railway
 
-A `railway.json` is included with build and start commands pre-configured.
+A `railway.json` is included with build and start commands pre-configured. Deployments typically go live in under 60 seconds.
 
 1. Push to GitHub
 2. Create a new [Railway](https://railway.com?referralCode=XB1wns) project and connect your repo
