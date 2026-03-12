@@ -144,12 +144,25 @@ This is the [backpressure](#capture-your-backpressure) that keeps agents on the 
 
 ## Quick Start
 
+You'll need [Bun](https://bun.sh) and a local [PostgreSQL](https://www.postgresql.org/) instance running. If you need help getting PostgreSQL set up, ask Claude — it'll walk you through the install for your OS.
+
+Click **[Use this template](https://github.com/new?template_name=Billet&template_owner=alexpricedev)** on GitHub to create your own repo, then:
+
 ```bash
+git clone <your-new-repo-url>
+cd <your-project>
 bun install
+cp .env.example .env
+bun run generate:pepper      # copy the output into CRYPTO_PEPPER in .env
+```
+
+Add your `DATABASE_URL` to `.env` (e.g. `postgresql://localhost/myapp`), then:
+
+```bash
 bun run dev
 ```
 
-Then visit [http://localhost:3000](http://localhost:3000)
+Visit [http://localhost:3000](http://localhost:3000) — migrations run automatically on startup.
 
 ---
 
