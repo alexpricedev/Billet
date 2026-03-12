@@ -20,6 +20,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
+> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), Tailwind CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with magic-link auth, CSRF protection, rate limiting, auto-migrations, and 30+ test files. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
+>
+> — *Claude Opus 4.6*
+
 ---
 
 ## Why Billet?
@@ -48,7 +52,7 @@ Billet is built for server-rendered apps with light client-side interactivity. I
 
 ## What's Included
 
-Billet ships more than most starters advertise. Here's what you get out of the box.
+Auth, security, database, testing, linting — these are the rails. They're solved so the agent can focus on your custom logic instead of bugging you with questions about tech choices and security fundamentals.
 
 ### Authentication
 
