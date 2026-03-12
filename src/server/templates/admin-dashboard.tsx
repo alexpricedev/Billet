@@ -1,6 +1,7 @@
 import { Layout } from "@server/components/layouts";
 import type { SessionContext } from "@server/middleware/auth";
 import type { User } from "@server/services/users";
+import type React from "react";
 
 const formatDate = (date: Date): string =>
   new Date(date).toLocaleDateString("en-US", {
@@ -9,14 +10,36 @@ const formatDate = (date: Date): string =>
     year: "numeric",
   });
 
+const thStyle: React.CSSProperties = {
+  padding: "10px 24px",
+  textAlign: "left",
+  fontSize: "12px",
+  fontWeight: 500,
+  color: "var(--color-text-quaternary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  borderBottom: "1px solid var(--color-border)",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "14px 24px",
+  fontSize: "14px",
+  borderBottom: "1px solid var(--color-border)",
+};
+
 const RoleBadge = ({ role }: { role: User["role"] }) => {
-  const styles =
-    role === "admin"
-      ? "bg-purple-100 text-purple-800"
-      : "bg-gray-100 text-gray-800";
+  const isAdmin = role === "admin";
   return (
     <span
-      className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${styles}`}
+      className="badge"
+      style={{
+        background: isAdmin
+          ? "rgba(124, 133, 240, 0.12)"
+          : "var(--color-surface-hover)",
+        color: isAdmin
+          ? "var(--color-primary)"
+          : "var(--color-text-quaternary)",
+      }}
     >
       {role}
     </span>
@@ -26,32 +49,42 @@ const RoleBadge = ({ role }: { role: User["role"] }) => {
 export const AdminDashboard = (props: {
   auth: SessionContext;
   users: User[];
+  user: User | null;
+  csrfToken?: string;
 }) => (
-  <Layout title="Admin" name="admin">
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Admin</h1>
+  <Layout
+    title="Admin"
+    name="admin"
+    user={props.user}
+    csrfToken={props.csrfToken}
+  >
+    <div style={{ maxWidth: "960px", margin: "0 auto", padding: "0 24px" }}>
+      <div style={{ marginBottom: "32px" }}>
+        <h1>Admin</h1>
+        <p className="text-quaternary" style={{ margin: 0, fontSize: "14px" }}>
+          Manage users and system settings
+        </p>
+      </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Joined
-              </th>
+              <th style={thStyle}>Email</th>
+              <th style={thStyle}>Role</th>
+              <th style={thStyle}>Joined</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {props.users.length === 0 ? (
               <tr>
                 <td
                   colSpan={3}
-                  className="px-6 py-4 text-sm text-gray-500 text-center"
+                  style={{
+                    ...tdStyle,
+                    textAlign: "center",
+                    color: "var(--color-text-quaternary)",
+                  }}
                 >
                   No users found.
                 </td>
@@ -59,13 +92,18 @@ export const AdminDashboard = (props: {
             ) : (
               props.users.map((user) => (
                 <tr key={user.id}>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td style={{ ...tdStyle, color: "var(--color-text)" }}>
                     {user.email}
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  <td style={tdStyle}>
                     <RoleBadge role={user.role} />
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td
+                    style={{
+                      ...tdStyle,
+                      color: "var(--color-text-quaternary)",
+                    }}
+                  >
                     {formatDate(user.created_at)}
                   </td>
                 </tr>
