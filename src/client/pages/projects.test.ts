@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { init } from "./examples";
+import { init } from "./projects";
 
-describe("examples page init", () => {
+describe("projects page init", () => {
   beforeEach(() => {
     const mount = document.createElement("div");
-    mount.id = "examples-search";
-    mount.dataset.examples = JSON.stringify([{ id: 1, name: "Test Example" }]);
+    mount.id = "projects-search";
+    mount.dataset.projects = JSON.stringify([{ id: 1, title: "Test Project" }]);
     document.body.appendChild(mount);
   });
 
@@ -13,17 +13,17 @@ describe("examples page init", () => {
     document.body.innerHTML = "";
   });
 
-  test("mounts ExampleSearch into #examples-search", async () => {
+  test("mounts ProjectSearch into #projects-search", async () => {
     init();
 
     await new Promise((r) => setTimeout(r, 10));
 
-    const mount = document.getElementById("examples-search");
+    const mount = document.getElementById("projects-search");
     if (!mount) throw new Error("Mount not found");
     const input = mount.querySelector("input");
     expect(input).not.toBeNull();
     if (!input) throw new Error("Input not found");
-    expect(input.placeholder).toBe("Search examples...");
+    expect(input.placeholder).toBe("Search projects...");
   });
 
   test("does nothing when mount point is missing", () => {

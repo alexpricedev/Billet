@@ -1,12 +1,12 @@
 import { initializePage, registerPage } from "@client/page-lifecycle";
-import { init as initAbout } from "@client/pages/about";
-import { init as initContact } from "@client/pages/contact";
-import { init as initExamples } from "@client/pages/examples";
+import { init as initForms } from "@client/pages/forms";
 import { init as initHome } from "@client/pages/home";
+import { init as initProjects } from "@client/pages/projects";
+import { init as initStack } from "@client/pages/stack";
 
 registerPage("home", { init: initHome });
-registerPage("about", { init: initAbout });
-registerPage("contact", { init: initContact });
-registerPage("examples", { init: initExamples });
+registerPage("stack", { init: initStack });
+registerPage("forms", { init: initForms });
+registerPage("projects", { init: initProjects });
 
 initializePage(document.body.dataset.page);

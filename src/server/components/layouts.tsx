@@ -29,7 +29,7 @@ export function Layout({
         <title>{title}</title>
         <link rel="stylesheet" href="/assets/main.css" />
       </head>
-      <body data-page={name}>
+      <body data-page={name} data-component="layout">
         <header>
           <a href="/" className="logo">
             <img src="/logo.png" alt="logo" />

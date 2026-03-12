@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { init } from "./contact";
+import { init } from "./forms";
 
-describe("contact page init", () => {
+describe("forms page init", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <form>

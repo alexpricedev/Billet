@@ -1,15 +1,15 @@
 /** @jsxImportSource preact */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { render } from "preact";
-import { ExampleSearch } from "./example-search";
+import { ProjectSearch } from "./project-search";
 
-const examples = [
-  { id: 1, name: "Alpha" },
-  { id: 2, name: "Beta" },
-  { id: 3, name: "Gamma" },
+const projects = [
+  { id: 1, title: "Alpha" },
+  { id: 2, title: "Beta" },
+  { id: 3, title: "Gamma" },
 ];
 
-describe("ExampleSearch", () => {
+describe("ProjectSearch", () => {
   let container: HTMLDivElement;
 
   beforeEach(() => {
@@ -17,10 +17,10 @@ describe("ExampleSearch", () => {
     document.body.appendChild(container);
 
     const list = document.createElement("div");
-    list.id = "examples-list";
-    for (const ex of examples) {
+    list.id = "projects-list";
+    for (const p of projects) {
       const card = document.createElement("div");
-      card.textContent = ex.name;
+      card.textContent = p.title;
       list.appendChild(card);
     }
     document.body.appendChild(list);
@@ -31,21 +31,21 @@ describe("ExampleSearch", () => {
   });
 
   test("renders search input", () => {
-    render(<ExampleSearch examples={examples} />, container);
+    render(<ProjectSearch projects={projects} />, container);
     const input = container.querySelector("input");
     expect(input).not.toBeNull();
     if (!input) throw new Error("Input not found");
-    expect(input.placeholder).toBe("Search examples...");
+    expect(input.placeholder).toBe("Search projects...");
   });
 
   test("does not show count when query is empty", () => {
-    render(<ExampleSearch examples={examples} />, container);
+    render(<ProjectSearch projects={projects} />, container);
     const countText = container.querySelector("p");
     expect(countText).toBeNull();
   });
 
   test("filters and shows count when query is entered", async () => {
-    render(<ExampleSearch examples={examples} />, container);
+    render(<ProjectSearch projects={projects} />, container);
     const input = container.querySelector("input");
     if (!input) throw new Error("Input not found");
 
@@ -61,7 +61,7 @@ describe("ExampleSearch", () => {
   });
 
   test("hides non-matching cards in the server-rendered list", async () => {
-    render(<ExampleSearch examples={examples} />, container);
+    render(<ProjectSearch projects={projects} />, container);
     const input = container.querySelector("input");
     if (!input) throw new Error("Input not found");
 
@@ -70,7 +70,7 @@ describe("ExampleSearch", () => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    const listEl = document.getElementById("examples-list");
+    const listEl = document.getElementById("projects-list");
     if (!listEl) throw new Error("List not found");
     const cards = listEl.children;
     expect((cards[0] as HTMLElement).hidden).toBe(true);
@@ -79,7 +79,7 @@ describe("ExampleSearch", () => {
   });
 
   test("shows all cards when query is cleared", async () => {
-    render(<ExampleSearch examples={examples} />, container);
+    render(<ProjectSearch projects={projects} />, container);
     const input = container.querySelector("input");
     if (!input) throw new Error("Input not found");
 
@@ -91,7 +91,7 @@ describe("ExampleSearch", () => {
     input.dispatchEvent(new Event("input", { bubbles: true }));
     await new Promise((r) => setTimeout(r, 10));
 
-    const listEl = document.getElementById("examples-list");
+    const listEl = document.getElementById("projects-list");
     if (!listEl) throw new Error("List not found");
     const cards = listEl.children;
     for (const card of Array.from(cards)) {
