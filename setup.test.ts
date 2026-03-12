@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { toSlug } from "./setup";
+import { isValidDbUrl, toSlug } from "./setup";
 
 describe("toSlug", () => {
   test("converts display name to kebab-case slug", () => {
@@ -28,5 +28,23 @@ describe("toSlug", () => {
 
   test("removes leading and trailing hyphens", () => {
     expect(toSlug("-My App-")).toBe("my-app");
+  });
+});
+
+describe("isValidDbUrl", () => {
+  test("accepts postgresql:// URLs", () => {
+    expect(isValidDbUrl("postgresql://user:pass@localhost:5432/mydb")).toBe(true);
+  });
+  test("accepts postgres:// URLs", () => {
+    expect(isValidDbUrl("postgres://user:pass@localhost:5432/mydb")).toBe(true);
+  });
+  test("rejects empty string", () => {
+    expect(isValidDbUrl("")).toBe(false);
+  });
+  test("rejects non-postgres URLs", () => {
+    expect(isValidDbUrl("mysql://localhost/mydb")).toBe(false);
+  });
+  test("rejects random text", () => {
+    expect(isValidDbUrl("not a url")).toBe(false);
   });
 });
