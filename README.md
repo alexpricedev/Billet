@@ -157,6 +157,19 @@ Click **[Use this template](https://github.com/new?template_name=Billet&template
 git clone <your-new-repo-url>
 cd <your-project>
 bun install
+```
+
+### First-time setup
+
+Open [`START_PROMPT.md`](START_PROMPT.md) with your AI coding agent. It will walk through creating your `.env` files, renaming the project, stripping the Billet starter content, and verifying everything works.
+
+Once setup is complete you can delete `START_PROMPT.md`.
+
+### Manual setup
+
+If you'd prefer to set up manually:
+
+```bash
 cp .env.example .env
 bun run generate:pepper      # copy the output into CRYPTO_PEPPER in .env
 ```
