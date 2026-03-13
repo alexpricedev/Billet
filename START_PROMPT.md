@@ -2,7 +2,7 @@
 
 Follow these steps to make this project your own. Ask me for a project name and a PostgreSQL connection URL before you start.
 
-## 1. Create `.env`
+## 1. Create `.env` and `.env.test`
 
 Generate a fresh `CRYPTO_PEPPER` using `crypto.randomBytes(32).toString('hex')` and write a `.env` file:
 
@@ -13,6 +13,14 @@ APP_URL=http://localhost
 ```
 
 If they don't have a PostgreSQL database yet, tell them they can create one locally with `CREATE DATABASE "<project-slug>";` and their URL will look like `postgresql://user:password@localhost:5432/<project-slug>`. Or they can ask you to set one up for them.
+
+Also create `.env.test` for the test suite. This can use the same database URL (tests run migrations in a transaction that rolls back) but needs its own pepper:
+
+```
+DATABASE_URL=<same postgres url>
+CRYPTO_PEPPER=test-pepper-do-not-use-in-production
+APP_URL=http://localhost
+```
 
 ## 2. Rename the project
 
@@ -100,4 +108,4 @@ Replace any remaining "Billet" references in the kept sections with the project 
 
 ## 7. Verify
 
-Run `bun run check` to make sure there are no lint or type errors from the changes. Start the dev server with `bun run dev` and check it works at http://localhost:3000.
+Run `bun run check` to make sure there are no lint or type errors from the changes. Then run `bun run test` to confirm all tests pass. Start the dev server with `bun run dev` and check it works at http://localhost:3000.
