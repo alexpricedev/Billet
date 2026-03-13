@@ -76,6 +76,7 @@ Remove the stack page and all its associated files:
 - `src/server/routes/app.tsx` — remove the `/stack` route entry and its import
 - `src/server/components/nav.tsx` — remove the stack nav link
 - `src/client/main.ts` — remove the stack import and `registerPage` call
+- `src/client/style.css` — remove the `@import "./pages/stack.css"` line
 
 ## 6. Clean up the README
 
