@@ -26,7 +26,6 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 | `SECURITY.md` | "Billet" → display name in prose |
 | `src/server/templates/login.tsx` | Page title |
 | `src/server/templates/home.tsx` | Page title |
-| `src/server/templates/stack.tsx` | Page title and lead paragraph |
 | `src/server/templates/forms.tsx` | Page title |
 | `src/server/templates/projects.tsx` | Page title |
 | `src/server/components/layouts.tsx` | Logo text in `<span>Billet</span>` |
@@ -50,11 +49,23 @@ The home page (`src/server/templates/home.tsx`) is currently a marketing landing
 
 Replace this with a simple welcome page for their project. Keep it minimal — just a heading with the project name and a short description. They'll build their own home page from here.
 
-## 5. Rewrite the stack page
+## 5. Delete the stack page
 
-The stack page (`src/server/templates/stack.tsx`) describes Billet's architecture. The content is useful reference but the lead paragraph specifically names Billet. Either:
-- Update the lead paragraph to use their project name instead, or
-- Simplify the page to just show the tech stack table without the Billet-specific framing
+Remove the stack page and all its associated files:
+
+**Delete these files:**
+- `src/server/templates/stack.tsx`
+- `src/server/controllers/app/stack.tsx`
+- `src/client/pages/stack.ts`
+- `src/client/pages/stack.css`
+- `src/client/pages/stack.test.ts`
+
+**Remove references from:**
+- `src/server/controllers/app/index.ts` — remove the `stack` barrel export
+- `src/server/controllers/app/static.test.ts` — remove the stack test case
+- `src/server/routes/app.tsx` — remove the `/stack` route entry and its import
+- `src/server/components/nav.tsx` — remove the stack nav link
+- `src/client/main.ts` — remove the stack import and `registerPage` call
 
 ## 6. Clean up the README
 
