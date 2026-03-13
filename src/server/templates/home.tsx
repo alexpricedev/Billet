@@ -28,7 +28,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
       </p>
       <div className="hero-actions">
         <a
-          href="https://github.com/new?template_name=Billet&template_owner=alexpricedev"
+          href="https://github.com/alexpricedev/Billet?tab=readme-ov-file#quick-start"
           className="btn-primary"
         >
           Get Started
