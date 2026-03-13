@@ -14,13 +14,15 @@ APP_URL=http://localhost
 
 If they don't have a PostgreSQL database yet, tell them they can create one locally with `CREATE DATABASE "<project-slug>";` and their URL will look like `postgresql://user:password@localhost:5432/<project-slug>`. Or they can ask you to set one up for them.
 
-Also create `.env.test` for the test suite. This can use the same database URL (tests run migrations in a transaction that rolls back) but needs its own pepper:
+Also create `.env.test` for the test suite. Use a separate test database (append `-test` to the database name) to avoid interfering with development data:
 
 ```
-DATABASE_URL=<same postgres url>
+DATABASE_URL=<their postgres url but with -test appended to the database name>
 CRYPTO_PEPPER=test-pepper-do-not-use-in-production
 APP_URL=http://localhost
 ```
+
+They'll need to create this database too (e.g. `CREATE DATABASE "<project-slug>-test";`).
 
 ## 2. Rename the project
 
