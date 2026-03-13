@@ -16,8 +16,8 @@
       height: 420px;
       background: radial-gradient(
         ellipse,
-        rgba(124, 133, 240, 0.28) 0%,
-        rgba(124, 133, 240, 0.1) 40%,
+        rgba(124, 133, 240, 0.15) 0%,
+        rgba(124, 133, 240, 0.05) 40%,
         transparent 70%
       );
       pointer-events: none;
@@ -45,7 +45,8 @@
     width: 120px;
     height: 120px;
     margin: 0 auto 2rem;
-    opacity: 0.55;
+    opacity: 0;
+    transition: opacity 0.4s ease;
     filter: brightness(1.2) drop-shadow(0 0 24px rgba(124, 133, 240, 0.2));
 
     svg path {

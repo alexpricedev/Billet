@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { afterAll, describe, expect, mock, test } from "bun:test";
 import { createMockVisitorStats } from "../../test-utils/factories";
 
 // Mock the analytics service
@@ -11,6 +11,10 @@ mock.module("../../services/analytics", () => ({
 import { statsApi } from "./stats";
 
 describe("Stats API", () => {
+  afterAll(() => {
+    mock.restore();
+  });
+
   describe("GET /api/stats", () => {
     test("returns visitor stats as JSON", () => {
       const mockStats = createMockVisitorStats({

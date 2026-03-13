@@ -32,6 +32,7 @@ describe("Forms Controller", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
 
   const createTestSession = async () => {

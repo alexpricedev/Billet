@@ -1,26 +1,32 @@
-import { describe, expect, mock, test } from "bun:test";
-
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { SQL } from "bun";
 import { createBunRequest } from "../../test-utils/bun-request";
+import { cleanupTestData } from "../../test-utils/helpers";
 
-mock.module("../../middleware/auth", () => ({
-  getSessionContext: () =>
-    Promise.resolve({
-      sessionId: null,
-      user: null,
-      isGuest: false,
-      isAuthenticated: false,
-      requiresSetCookie: false,
-    }),
-}));
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required for tests");
+}
+const connection = new SQL(process.env.DATABASE_URL);
 
-mock.module("../../services/csrf", () => ({
-  createCsrfToken: () => Promise.resolve("mock-csrf-token"),
+mock.module("../../services/database", () => ({
+  get db() {
+    return connection;
+  },
 }));
 
 import { forms } from "./forms";
 import { stack } from "./stack";
 
 describe("Static Page Controllers", () => {
+  beforeEach(async () => {
+    await cleanupTestData(connection);
+  });
+
+  afterAll(async () => {
+    await connection.end();
+    mock.restore();
+  });
+
   describe("Stack Controller", () => {
     test("renders stack page", async () => {
       const req = createBunRequest("http://localhost:3000/stack");

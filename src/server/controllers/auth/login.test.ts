@@ -26,6 +26,7 @@ describe("Login Controller", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
 
   describe("GET /login", () => {

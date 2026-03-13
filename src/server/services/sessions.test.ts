@@ -29,6 +29,7 @@ const db = connection;
 
 afterAll(async () => {
   await connection.end();
+  mock.restore();
 });
 
 beforeEach(async () => {

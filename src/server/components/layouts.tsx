@@ -1,8 +1,13 @@
 import type React from "react";
 
+import { getAssetUrl } from "../services/assets";
 import type { User } from "../services/users";
 import { Logo } from "./logo";
 import { Nav } from "./nav";
+
+const SITE_URL = "https://billet.alexprice.dev";
+const SITE_DESCRIPTION =
+  "Full-stack TypeScript starter — designed to be built on by AI coding agents";
 
 interface LayoutProps {
   title: string;
@@ -28,7 +33,17 @@ export function Layout({
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <title>{title}</title>
-        <link rel="stylesheet" href="/assets/main.css" />
+        <meta name="description" content={SITE_DESCRIPTION} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={SITE_DESCRIPTION} />
+        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
+        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={SITE_DESCRIPTION} />
+        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
+        <link rel="stylesheet" href={getAssetUrl("/assets/main.css")} />
         <script
           type="importmap"
           dangerouslySetInnerHTML={{
@@ -60,8 +75,11 @@ export function Layout({
             Built by <a href="https://alexprice.dev">alexprice.dev</a>
           </span>
         </footer>
-        <script src="https://unpkg.com/lottie-web@5/build/player/lottie_light.min.js" />
-        <script type="module" src="/assets/main.js" />
+        <script
+          async
+          src="https://unpkg.com/lottie-web@5/build/player/lottie_light.min.js"
+        />
+        <script type="module" src={getAssetUrl("/assets/main.js")} />
       </body>
     </html>
   );
@@ -82,7 +100,7 @@ export function BaseLayout({ title, children }: BaseLayoutProps) {
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <title>{title}</title>
-        <link rel="stylesheet" href="/assets/main.css" />
+        <link rel="stylesheet" href={getAssetUrl("/assets/main.css")} />
       </head>
       <body>{children}</body>
     </html>

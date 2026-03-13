@@ -26,6 +26,7 @@ describe("Admin Dashboard Controller", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
 
   test("renders admin dashboard for admin user", async () => {

@@ -11,6 +11,6 @@ export const redirect = (url: string, status = 303) =>
   new Response("", { status, headers: { Location: url } });
 
 export const render = (element: JSX.Element): Response =>
-  new Response(renderToString(element), {
+  new Response(`<!DOCTYPE html>${renderToString(element)}`, {
     headers: { "Content-Type": "text/html", ...securityHeaders },
   });

@@ -29,6 +29,7 @@ describe("CSRF Service", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
   const createTestSession = async (
     email = `test-${Date.now()}-${Math.random()}@example.com`,

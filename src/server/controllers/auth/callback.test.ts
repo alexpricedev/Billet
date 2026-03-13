@@ -25,6 +25,7 @@ describe("Callback Controller", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
 
   describe("GET /auth/callback", () => {

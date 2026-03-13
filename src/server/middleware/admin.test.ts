@@ -29,6 +29,7 @@ describe("Admin Middleware", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
 
   test("returns authorized with session context for admin user", async () => {

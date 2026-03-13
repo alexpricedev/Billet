@@ -7,7 +7,12 @@ interface HomeProps {
 }
 
 export const Home = ({ user, csrfToken }: HomeProps) => (
-  <Layout title="Billet" name="home" user={user} csrfToken={csrfToken}>
+  <Layout
+    title="Billet — The AI-native TypeScript starter"
+    name="home"
+    user={user}
+    csrfToken={csrfToken}
+  >
     <section className="hero">
       <div className="hero-lottie" id="hero-lottie" />
       <p className="hero-tag">Full-stack TypeScript starter</p>

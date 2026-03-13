@@ -63,6 +63,7 @@ describe("Logout Controller", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
 
   describe("POST /auth/logout", () => {

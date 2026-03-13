@@ -1,22 +1,31 @@
-import { describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { SQL } from "bun";
 import { createBunRequest } from "../../test-utils/bun-request";
+import { cleanupTestData } from "../../test-utils/helpers";
 
-const mockGetSessionContext = mock(() => ({
-  sessionId: null,
-  sessionHash: null,
-  sessionType: null,
-  user: null,
-  isGuest: true,
-  isAuthenticated: false,
-  requiresSetCookie: false,
-}));
-mock.module("../../middleware/auth", () => ({
-  getSessionContext: mockGetSessionContext,
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required for tests");
+}
+const connection = new SQL(process.env.DATABASE_URL);
+
+mock.module("../../services/database", () => ({
+  get db() {
+    return connection;
+  },
 }));
 
 import { home } from "./home";
 
 describe("Home Controller", () => {
+  beforeEach(async () => {
+    await cleanupTestData(connection);
+  });
+
+  afterAll(async () => {
+    await connection.end();
+    mock.restore();
+  });
+
   describe("GET /", () => {
     test("renders home page with hero and feature grid", async () => {
       const request = createBunRequest("http://localhost:3000/", {
@@ -27,7 +36,7 @@ describe("Home Controller", () => {
 
       expect(response.headers.get("content-type")).toBe("text/html");
 
-      expect(html).toContain("Designed to be built on");
+      expect(html).toContain("Designed to be built\u00A0on");
       expect(html).toContain("by AI coding agents");
       expect(html).toContain("Authentication");
       expect(html).toContain("Security");

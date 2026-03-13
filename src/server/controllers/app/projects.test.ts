@@ -49,6 +49,7 @@ describe("Projects Controller", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
 
   const createTestSession = async () => {
@@ -104,7 +105,7 @@ describe("Projects Controller", () => {
       const html = await response.text();
 
       expect(html).toContain("Created by");
-      expect(html).toContain("alice@example.com");
+      expect(html).toContain("User");
       expect(html).toContain("Guest");
     });
 

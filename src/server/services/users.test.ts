@@ -24,6 +24,7 @@ describe("Users Service", () => {
 
   afterAll(async () => {
     await connection.end();
+    mock.restore();
   });
 
   test("returns empty array when no users exist", async () => {

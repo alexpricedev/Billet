@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { Project } from "../../services/project";
 import { createMockProject } from "../../test-utils/factories";
 import { createMockRequest } from "../../test-utils/setup";
@@ -24,6 +24,10 @@ mock.module("../../services/project", () => ({
 import { projectsApi } from "./projects";
 
 describe("Projects API", () => {
+  afterAll(() => {
+    mock.restore();
+  });
+
   beforeEach(() => {
     // Reset all mocks
     mockGetProjects.mockClear();
