@@ -13,7 +13,7 @@ await seedIfEmpty();
 await initAssets();
 
 const server = Bun.serve({
-  port: process.env.PORT || 3000,
+  port: Number(process.env.PORT),
   idleTimeout: 30,
   routes: {
     ...appRoutes,
