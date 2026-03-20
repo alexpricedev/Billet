@@ -45,8 +45,8 @@ describe("Email Service", () => {
 
       expect(message.to).toEqual(data.to);
       expect(message.subject).toBe("Your magic link to sign in");
-      expect(message.from.email).toBe("test@test.com");
-      expect(message.from.name).toBe("Test");
+      expect(message.from.email).toBe(process.env.FROM_EMAIL as string);
+      expect(message.from.name).toBe(process.env.FROM_NAME as string);
     });
 
     test("includes magic link URL in HTML content", async () => {
@@ -61,7 +61,9 @@ describe("Email Service", () => {
       const message = mockProvider.sentMessages[0];
       expect(message.html).toContain(data.magicLinkUrl);
       expect(message.html).toContain("10 minutes");
-      expect(message.html).toContain("Sign in to Test");
+      expect(message.html).toContain(
+        `Sign in to ${process.env.APP_NAME as string}`,
+      );
     });
 
     test("includes magic link URL in text content", async () => {
@@ -174,7 +176,7 @@ describe("Email Service", () => {
       const html = message.html;
 
       expect(html).toContain("<!DOCTYPE html>");
-      expect(html).toContain("Test");
+      expect(html).toContain(process.env.APP_NAME as string);
       expect(html).toContain("Sign in to your account");
       expect(html).toContain(data.magicLinkUrl);
       expect(html).toContain("20 minutes");
@@ -194,7 +196,7 @@ describe("Email Service", () => {
       expect(message.text).toBeDefined();
       const text = message.text as string;
 
-      expect(text).toContain("Sign in to Test");
+      expect(text).toContain(`Sign in to ${process.env.APP_NAME as string}`);
       expect(text).toContain(data.magicLinkUrl);
       expect(text).toContain("30 minutes");
       expect(text).toContain("If you didn't request this email");
