@@ -25,8 +25,8 @@ export class EmailService {
   constructor(private provider: EmailProvider) {}
 
   async sendMagicLink(data: MagicLinkEmailData): Promise<void> {
-    const fromEmail = process.env.FROM_EMAIL || "test@test.com";
-    const fromName = process.env.FROM_NAME || "Test";
+    const fromEmail = process.env.FROM_EMAIL as string;
+    const fromName = process.env.FROM_NAME as string;
 
     const message: EmailMessage = {
       to: data.to,
@@ -49,12 +49,12 @@ export class EmailService {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign in to ${process.env.APP_NAME || "Test"}</title>
+  <title>Sign in to ${process.env.APP_NAME as string}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
-      <h1 style="color: #2563eb; margin: 0;">${process.env.APP_NAME || "Test"}</h1>
+      <h1 style="color: #2563eb; margin: 0;">${process.env.APP_NAME as string}</h1>
     </div>
     
     <div style="background: #f8fafc; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
@@ -66,7 +66,7 @@ export class EmailService {
       <div style="text-align: center; margin: 30px 0;">
         <a href="${data.magicLinkUrl}" 
            style="display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 500;">
-          Sign in to ${process.env.APP_NAME || "Test"}
+          Sign in to ${process.env.APP_NAME as string}
         </a>
       </div>
       
@@ -85,7 +85,7 @@ export class EmailService {
   }
 
   private renderMagicLinkText(data: MagicLinkEmailData): string {
-    return `Sign in to ${process.env.APP_NAME || "Test"}
+    return `Sign in to ${process.env.APP_NAME as string}
 
 Click the link below to sign in to your account:
 ${data.magicLinkUrl}
@@ -104,6 +104,11 @@ const providerFactories: Record<string, () => EmailProvider> = {
       require("./email-providers/console") as typeof import("./email-providers/console");
     return new ConsoleLogProvider();
   },
+  resend: () => {
+    const { ResendProvider } =
+      require("./email-providers/resend") as typeof import("./email-providers/resend");
+    return new ResendProvider(process.env.RESEND_API_KEY as string);
+  },
 };
 
 export function registerEmailProvider(
@@ -115,7 +120,7 @@ export function registerEmailProvider(
 
 export const getEmailService = (): EmailService => {
   if (!emailServiceInstance) {
-    const providerName = process.env.EMAIL_PROVIDER || "console";
+    const providerName = process.env.EMAIL_PROVIDER as string;
     const factory = providerFactories[providerName];
 
     if (!factory) {
