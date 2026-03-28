@@ -43,6 +43,24 @@ export function Layout({
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={SITE_DESCRIPTION} />
         <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/favicon-32x32.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="16x16"
+          href="/favicon-16x16.png"
+        />
+        <link rel="manifest" href="/site.webmanifest" />
         <link rel="stylesheet" href={getAssetUrl("/assets/main.css")} />
         <script
           type="importmap"
@@ -100,6 +118,24 @@ export function BaseLayout({ title, children }: BaseLayoutProps) {
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <title>{title}</title>
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/favicon-32x32.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="16x16"
+          href="/favicon-16x16.png"
+        />
+        <link rel="manifest" href="/site.webmanifest" />
         <link rel="stylesheet" href={getAssetUrl("/assets/main.css")} />
       </head>
       <body>{children}</body>
