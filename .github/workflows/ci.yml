@@ -50,7 +50,6 @@ jobs:
       PORT: "3000"
       APP_NAME: San Jose
       APP_URL: http://localhost:3000
-      APP_ORIGIN: ""
       EMAIL_PROVIDER: console
       FROM_EMAIL: test@example.com
       FROM_NAME: Test

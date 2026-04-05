@@ -249,7 +249,6 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 | `DATABASE_URL` | Yes | PostgreSQL connection string — auto-set when you link Railway's PostgreSQL plugin to your service |
 | `CRYPTO_PEPPER` | Yes | Secret key for session tokens — run `bun run generate:pepper` to get one (see below) |
 | `APP_URL` | Yes | Your app's public URL — you'll get this from Railway after your first deploy (e.g. `https://my-app.up.railway.app`) |
-| `APP_ORIGIN` | No | Expected origin for CSRF validation — defaults to request host if not set |
 | `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
 
 > **Generating `CRYPTO_PEPPER`:** This is a secret key used to secure session tokens. Run `bun run generate:pepper` to get a value. Use a different value for each environment (development, production, etc).

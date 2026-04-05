@@ -20,7 +20,6 @@ Also create `.env.test` for the test suite. Use a separate test database (append
 DATABASE_URL=<their postgres url but with -test appended to the database name>
 CRYPTO_PEPPER=test-pepper-do-not-use-in-production
 APP_URL=http://localhost
-APP_ORIGIN=
 ```
 
 They'll need to create this database too (e.g. `CREATE DATABASE "<project-slug>-test";`).
