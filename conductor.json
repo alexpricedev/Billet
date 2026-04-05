@@ -1,0 +1,6 @@
+{
+    "scripts": {
+        "setup": "bun install",
+        "run": "main_dir=\"$(cd \"$(git rev-parse --git-common-dir)/..\" && pwd)\" && cp \"$main_dir/.env\" \"$main_dir/.env.test\" . && bun install"
+    }
+}
