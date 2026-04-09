@@ -27,23 +27,17 @@ describe("Home Controller", () => {
   });
 
   describe("GET /", () => {
-    test("renders home page with hero and feature grid", async () => {
+    test("renders home page wrapped in the layout", async () => {
       const request = createBunRequest("http://localhost:3000/", {
         method: "GET",
       });
       const response = await home.index(request);
       const html = await response.text();
 
+      expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toBe("text/html");
-
-      expect(html).toContain("Designed to be built\u00A0on");
-      expect(html).toContain("by AI coding agents");
-      expect(html).toContain("Authentication");
-      expect(html).toContain("Security");
-      expect(html).toContain("Database");
-      expect(html).toContain("Testing");
-      expect(html).toContain("Frontend");
-      expect(html).toContain("Code Quality");
+      expect(html).toContain('data-page="home"');
+      expect(html).toContain("<main>");
     });
   });
 });

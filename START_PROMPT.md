@@ -71,11 +71,6 @@ The home page (`src/server/templates/home.tsx`) is currently a marketing landing
 
 Replace this with a simple welcome page for their project. Keep it minimal — just a heading with the project name and a short description. They'll build their own home page from here.
 
-Also update the matching test and CSS:
-
-- `src/server/controllers/app/home.test.ts` — its assertions reference the old marketing copy (`"Designed to be built on"`, `"Authentication"`, `"Security"`, etc). Replace them with assertions for the new minimal content (e.g. the project name and description).
-- `src/client/pages/home.css` — trim the CSS blocks tied to the removed sections (`.etymology`, `.story`, `.story-grid`, `.backpressure`, `.backpressure-intro`, `.feedback-stack`, `.stack-row`, `.stack-layer`, `.stack-catches`, `.features`, `.features-lead`, `.feature-card`, `.feature-grid`, `.hero-lottie`, `.hero-tag`, `.hero-actions`). Keep `.hero` and `.hero-sub` styles for the new hero.
-
 ## 5. Delete the stack page
 
 Remove the stack page and all its associated files:
