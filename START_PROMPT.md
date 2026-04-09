@@ -4,13 +4,20 @@ Follow these steps to make this project your own. Ask me for a project name and 
 
 ## 1. Create `.env` and `.env.test`
 
-Generate a fresh `CRYPTO_PEPPER` using `crypto.randomBytes(32).toString('hex')` and write a `.env` file:
+Generate a fresh `CRYPTO_PEPPER` using `crypto.randomBytes(32).toString('hex')` and write a `.env` file. All eight variables below are required — the server validates them on startup via `src/server/utils/env.ts` and will refuse to boot if any are missing:
 
 ```
 DATABASE_URL=<their postgres url>
 CRYPTO_PEPPER=<generated>
-APP_URL=http://localhost
+PORT=3000
+APP_URL=http://localhost:3000
+APP_NAME=<Project Name>
+EMAIL_PROVIDER=console
+FROM_EMAIL=noreply@example.com
+FROM_NAME=<Project Name>
 ```
+
+> **Note:** `APP_URL` must include the port (`:3000`). CSRF origin validation compares the request `Origin` header against `APP_URL` and will reject form submissions if they don't match exactly.
 
 If they don't have a PostgreSQL database yet, tell them they can create one locally with `CREATE DATABASE "<project-slug>";` and their URL will look like `postgresql://user:password@localhost:5432/<project-slug>`. Or they can ask you to set one up for them.
 
@@ -19,7 +26,12 @@ Also create `.env.test` for the test suite. Use a separate test database (append
 ```
 DATABASE_URL=<their postgres url but with -test appended to the database name>
 CRYPTO_PEPPER=test-pepper-do-not-use-in-production
-APP_URL=http://localhost
+PORT=3000
+APP_URL=http://localhost:3000
+APP_NAME=<Project Name>
+EMAIL_PROVIDER=console
+FROM_EMAIL=noreply@example.com
+FROM_NAME=<Project Name>
 ```
 
 They'll need to create this database too (e.g. `CREATE DATABASE "<project-slug>-test";`).
@@ -58,6 +70,11 @@ The home page (`src/server/templates/home.tsx`) is currently a marketing landing
 - A "features" section listing what's included
 
 Replace this with a simple welcome page for their project. Keep it minimal — just a heading with the project name and a short description. They'll build their own home page from here.
+
+Also update the matching test and CSS:
+
+- `src/server/controllers/app/home.test.ts` — its assertions reference the old marketing copy (`"Designed to be built on"`, `"Authentication"`, `"Security"`, etc). Replace them with assertions for the new minimal content (e.g. the project name and description).
+- `src/client/pages/home.css` — trim the CSS blocks tied to the removed sections (`.etymology`, `.story`, `.story-grid`, `.backpressure`, `.backpressure-intro`, `.feedback-stack`, `.stack-row`, `.stack-layer`, `.stack-catches`, `.features`, `.features-lead`, `.feature-card`, `.feature-grid`, `.hero-lottie`, `.hero-tag`, `.hero-actions`). Keep `.hero` and `.hero-sub` styles for the new hero.
 
 ## 5. Delete the stack page
 
