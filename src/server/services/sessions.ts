@@ -23,7 +23,8 @@ export interface SessionContext {
 const GUEST_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const AUTH_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
-export const SESSION_COOKIE_NAME = "session_id";
+export const SESSION_COOKIE_NAME =
+  process.env.SESSION_COOKIE_NAME ?? "session_id";
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",

@@ -19,6 +19,8 @@ FROM_NAME=<Project Name>
 
 > **Note:** `APP_URL` must include the port (`:3000`). CSRF origin validation compares the request `Origin` header against `APP_URL` and will reject form submissions if they don't match exactly.
 
+> **Tip:** If they're likely to run multiple billet apps on `localhost` at once (different ports), also set `SESSION_COOKIE_NAME=<project-slug>_session` in `.env`. Browsers scope cookies by hostname, not port, so the default `session_id` cookie collides across projects and they'll get logged out of one whenever they visit another.
+
 If they don't have a PostgreSQL database yet, tell them they can create one locally with `CREATE DATABASE "<project-slug>";` and their URL will look like `postgresql://user:password@localhost:5432/<project-slug>`. Or they can ask you to set one up for them.
 
 Also create `.env.test` for the test suite. Use a separate test database (append `-test` to the database name) to avoid interfering with development data:
