@@ -220,6 +220,15 @@ src/
 
 ---
 
+## Works well with
+
+A couple of small, zero-dependency packages built alongside Billet that drop straight in:
+
+- **[billet-cookie-consent](https://github.com/alexpricedev/billet-cookie-consent)** — GDPR-friendly cookie consent banner. Lightweight, framework-agnostic, designed to slot into a server-rendered template.
+- **[log-digest](https://github.com/alexpricedev/log-digest)** — In-memory log buffer with a pluggable digest sink. Batches `error` / `warn` / `info` entries and hands them off on an interval to email, Slack, or any custom sink — a lightweight alternative to a full observability stack for a single Bun process.
+
+---
+
 ## Contributing
 
 Contributions are welcome! Please open issues or PRs.
