@@ -1,17 +1,20 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
+import {
+  cleanupCurrentPage,
+  initializePage,
+  registerPage,
+} from "./page-lifecycle";
 
 afterEach(() => {
-  // Re-import to get fresh module state each test
-  mock.module("./page-lifecycle", () => import("./page-lifecycle"));
+  // Reset the active-page state between tests. The module keeps its registry
+  // and current-page pointer at module scope, so clear the pointer here rather
+  // than re-importing the module (a self-referential mock.module factory busy-
+  // loops the resolver on some bun versions).
+  cleanupCurrentPage();
 });
 
-async function freshModule() {
-  return await import("./page-lifecycle");
-}
-
 describe("registerPage + initializePage", () => {
-  test("calls init on a registered page", async () => {
-    const { registerPage, initializePage } = await freshModule();
+  test("calls init on a registered page", () => {
     const init = mock(() => {});
     registerPage("dashboard", { init });
 
@@ -20,21 +23,17 @@ describe("registerPage + initializePage", () => {
     expect(init).toHaveBeenCalledTimes(1);
   });
 
-  test("does nothing for undefined page name", async () => {
-    const { initializePage } = await freshModule();
+  test("does nothing for undefined page name", () => {
     expect(() => initializePage(undefined)).not.toThrow();
   });
 
-  test("does nothing for unregistered page name", async () => {
-    const { initializePage } = await freshModule();
+  test("does nothing for unregistered page name", () => {
     expect(() => initializePage("nonexistent")).not.toThrow();
   });
 });
 
 describe("cleanupCurrentPage", () => {
-  test("calls cleanup on the current page", async () => {
-    const { registerPage, initializePage, cleanupCurrentPage } =
-      await freshModule();
+  test("calls cleanup on the current page", () => {
     const cleanup = mock(() => {});
     registerPage("dashboard", { init: () => {}, cleanup });
 
@@ -44,23 +43,18 @@ describe("cleanupCurrentPage", () => {
     expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
-  test("does nothing when no page is active", async () => {
-    const { cleanupCurrentPage } = await freshModule();
+  test("does nothing when no page is active", () => {
     expect(() => cleanupCurrentPage()).not.toThrow();
   });
 
-  test("does nothing when page has no cleanup", async () => {
-    const { registerPage, initializePage, cleanupCurrentPage } =
-      await freshModule();
+  test("does nothing when page has no cleanup", () => {
     registerPage("simple", { init: () => {} });
 
     initializePage("simple");
     expect(() => cleanupCurrentPage()).not.toThrow();
   });
 
-  test("clears current page after cleanup", async () => {
-    const { registerPage, initializePage, cleanupCurrentPage } =
-      await freshModule();
+  test("clears current page after cleanup", () => {
     const cleanup = mock(() => {});
     registerPage("dashboard", { init: () => {}, cleanup });
 
