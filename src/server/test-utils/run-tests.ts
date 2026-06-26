@@ -33,7 +33,13 @@ const timings: { file: string; ms: number }[] = [];
 
 for (const file of files) {
   const proc = Bun.spawn(["bun", "test", "--no-coverage", file], {
-    env: { ...process.env, NODE_ENV: "test" },
+    // Pin the session cookie name: tests hardcode `session_id=`, so a custom
+    // SESSION_COOKIE_NAME in a developer's .env must not leak in and break them.
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      SESSION_COOKIE_NAME: "session_id",
+    },
     stdout: "pipe",
     stderr: "pipe",
   });
