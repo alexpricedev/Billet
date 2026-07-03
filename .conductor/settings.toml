@@ -1,0 +1,10 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+setup = "main_dir=\"$(cd \"$(git rev-parse --git-common-dir)/..\" && pwd)\" && cp \"$main_dir/.env\" \"$main_dir/.env.test\" . && bun install"
+
+[tasks.Run]
+available_in = "local"
+command = "bun run dev"
+default = true
+icon = "play"
