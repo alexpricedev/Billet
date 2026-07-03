@@ -23,6 +23,13 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
 
+    // Lightweight liveness check for the platform healthcheck. Intentionally
+    // does not touch the DB — a transient DB blip should not cause the host to
+    // cycle the instance.
+    if (url.pathname === "/health") {
+      return new Response("ok", { status: 200 });
+    }
+
     if (url.pathname.startsWith("/assets/")) {
       const cached = handleAssetRequest(url);
       if (cached) return cached;
