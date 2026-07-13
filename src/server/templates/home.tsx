@@ -19,7 +19,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
       <div className="hero-lottie" id="hero-lottie" />
       <a
         className="hero-announce"
-        href="https://github.com/alexpricedev/Billet/commits/main"
+        href="https://github.com/alexpricedev/Billet/pull/31"
       >
         <svg
           className="hero-announce-icon"
