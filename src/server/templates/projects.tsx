@@ -24,6 +24,8 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
   return (
     <Layout
       title="CRUD - Billet"
+      description="Create, read, update, and delete records with server-rendered forms, CSRF protection, and flash messages."
+      canonicalPath="/projects"
       name="projects"
       user={props.user}
       csrfToken={props.csrfToken}

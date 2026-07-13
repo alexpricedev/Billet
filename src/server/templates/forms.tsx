@@ -24,7 +24,14 @@ export const Forms = ({
   formCsrfToken,
   state,
 }: FormsProps) => (
-  <Layout title="Forms - Billet" name="forms" user={user} csrfToken={csrfToken}>
+  <Layout
+    title="Forms - Billet"
+    description="Server-rendered form patterns in Billet — CSRF protection, validation, and post-redirect-get flash messages."
+    canonicalPath="/forms"
+    name="forms"
+    user={user}
+    csrfToken={csrfToken}
+  >
     <h1>Form Patterns</h1>
     <p className="lead">
       Interactive forms with validation, CSRF protection, and flash messages

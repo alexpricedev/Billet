@@ -9,6 +9,8 @@ interface HomeProps {
 export const Home = ({ user, csrfToken }: HomeProps) => (
   <Layout
     title="Billet — The AI-native TypeScript starter"
+    description="Full-stack TypeScript starter for AI coding agents — server-rendered JSX, custom CSS, and PostgreSQL via Bun in a single deploy target."
+    canonicalPath="/"
     name="home"
     user={user}
     csrfToken={csrfToken}
