@@ -17,6 +17,32 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
   >
     <section className="hero">
       <div className="hero-lottie" id="hero-lottie" />
+      <a
+        className="hero-announce"
+        href="https://github.com/alexpricedev/Billet/commits/main"
+      >
+        <svg
+          className="hero-announce-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
+        </svg>
+        <span className="hero-announce-text">
+          New: first-class SEO defaults
+        </span>
+        <span className="hero-announce-arrow" aria-hidden="true">
+          →
+        </span>
+      </a>
       <p className="hero-tag">Full-stack TypeScript starter</p>
       <h1>
         Designed to be built&nbsp;on

@@ -264,6 +264,8 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 
 > **Email deliverability:** When sending real mail via Resend, follow [runbooks/EMAIL.md](runbooks/EMAIL.md) to set up SPF, DKIM, and DMARC — without it, magic links land in spam.
 
+> **SEO:** Before your first deploy, set `SITE_URL` (and the `Sitemap:` line in `public/robots.txt`) to your production domain — see [runbooks/SEO.md](runbooks/SEO.md) for the canonical-URL config, sitemap, indexing policy, and verification steps.
+
 ### Database
 
 Billet uses PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency. Migrations run automatically on server startup — pending migrations are applied before the server accepts requests. If a migration fails, the server won't start (fail-safe).

@@ -53,6 +53,9 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 | `src/server/templates/forms.tsx` | Page title |
 | `src/server/templates/projects.tsx` | Page title |
 | `src/server/components/layouts.tsx` | Logo text in `<span>Billet</span>` |
+| `src/server/services/seo.ts` | `SITE_NAME` and `SITE_DESCRIPTION` → project name and description |
+
+> **Note:** `src/server/services/seo.ts` also defines `SITE_URL` (currently `https://billet.alexprice.dev`), the canonical origin used for `<link rel="canonical">`, Open Graph tags, the XML sitemap, and JSON-LD across every page. `public/robots.txt` has a matching hardcoded `Sitemap:` URL. Point both at your own production domain before deploying — see [runbooks/SEO.md](runbooks/SEO.md) §1.
 
 ## 3. Remove original repo references
 
