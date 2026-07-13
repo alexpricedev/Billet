@@ -343,4 +343,96 @@
       grid-template-columns: repeat(3, 1fr);
     }
   }
+
+  /* ── Spec standard ───────────────────────────────────── */
+  /* Bordered amber box echoing the hero announce banner for visual coherence. */
+
+  .spec {
+    margin: 2rem 0 4rem;
+    padding: 2rem;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: var(--radius);
+    background: rgba(245, 158, 11, 0.06);
+
+    @media (width >= 768px) {
+      padding: 2.5rem;
+    }
+  }
+
+  .spec-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+
+    h2 {
+      margin-bottom: 0;
+    }
+  }
+
+  .spec-icon {
+    flex-shrink: 0;
+    color: #f59e0b;
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
+  }
+
+  .spec-lead {
+    max-width: 640px;
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    margin-bottom: 2rem;
+
+    a {
+      color: #fbbf24;
+      text-decoration: underline;
+    }
+  }
+
+  /* Tint the reused feedback-stack rows into the amber theme. */
+  .spec .feedback-stack {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .spec .stack-row {
+    background: transparent;
+    border-bottom-color: rgba(245, 158, 11, 0.18);
+
+    /* Static rows — override the feedback-stack hover, they're not links. */
+    &:hover {
+      background: transparent;
+    }
+  }
+
+  .spec .stack-layer {
+    color: #fbbf24;
+  }
+
+  .spec-note {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .spec-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #f59e0b;
+    text-decoration: none;
+
+    span {
+      transition: transform 150ms ease;
+    }
+
+    &:hover {
+      text-decoration: none;
+
+      span {
+        transform: translateX(3px);
+      }
+    }
+  }
 }

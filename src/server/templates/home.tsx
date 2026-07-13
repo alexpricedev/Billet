@@ -19,7 +19,9 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
       <div className="hero-lottie" id="hero-lottie" />
       <a
         className="hero-announce"
-        href="https://github.com/alexpricedev/Billet/pull/31"
+        href="https://specification.website"
+        target="_blank"
+        rel="noopener noreferrer"
       >
         <svg
           className="hero-announce-icon"
@@ -37,7 +39,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
           <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
         </svg>
         <span className="hero-announce-text">
-          New: first-class SEO defaults
+          New: now built to the <u>specification.website</u> standard
         </span>
         <span className="hero-announce-arrow" aria-hidden="true">
           →
@@ -153,8 +155,8 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Security</h3>
           <p>
-            CSRF protection, rate limiting, session fixation prevention,
-            security headers
+            CSRF protection, rate limiting, a Content Security Policy, HSTS, and
+            security headers on every response
           </p>
         </div>
         <div className="feature-card">
@@ -167,7 +169,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Testing</h3>
           <p>
-            220+ tests, deterministic templates, real database testing, no
+            270+ tests, deterministic templates, real database testing, no
             browser simulation
           </p>
         </div>
@@ -186,6 +188,84 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
           </p>
         </div>
       </div>
+    </section>
+
+    <section className="spec">
+      <div className="spec-header">
+        <svg
+          className="spec-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 21V7" />
+          <path d="m16 12 2 2 4-4" />
+          <path d="M22 6V4a1 1 0 0 0-1-1h-5a4 4 0 0 0-4 4 4 4 0 0 0-4-4H3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6a1 1 0 0 0 1-1v-1.3" />
+        </svg>
+        <h2>Built to a public standard</h2>
+      </div>
+      <p className="spec-lead text-secondary">
+        <a
+          href="https://specification.website"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          specification.website
+        </a>{" "}
+        is an open, platform-agnostic checklist of the technical features a good
+        website should have — 168 specs across foundations, SEO, accessibility,
+        security, performance, and more. Billet works through it section by
+        section, so the boring-but-critical baseline is in place before you
+        write a line of product code.
+      </p>
+      <div className="feedback-stack">
+        <div className="stack-row">
+          <span className="stack-layer">Foundations</span>
+          <span className="stack-catches">
+            Doctype, charset, viewport, canonical URLs, Open Graph, favicons,
+            theme-color
+          </span>
+        </div>
+        <div className="stack-row">
+          <span className="stack-layer">SEO</span>
+          <span className="stack-catches">
+            robots.txt, XML sitemap, JSON-LD, per-page metadata, an explicit
+            indexing policy
+          </span>
+        </div>
+        <div className="stack-row">
+          <span className="stack-layer">Accessibility</span>
+          <span className="stack-catches">
+            Semantic landmarks, labelled forms, focus rings, reduced motion,
+            captioned tables
+          </span>
+        </div>
+        <div className="stack-row">
+          <span className="stack-layer">Security</span>
+          <span className="stack-catches">
+            Security headers on every response, a Content Security Policy, HSTS,
+            security.txt, Subresource Integrity, Clear-Site-Data
+          </span>
+        </div>
+      </div>
+      <p className="spec-note text-tertiary">
+        Performance, privacy, resilience, and internationalisation are next.
+      </p>
+      <a
+        className="spec-cta"
+        href="https://specification.website"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Read the full standard <span aria-hidden="true">→</span>
+      </a>
     </section>
   </Layout>
 );

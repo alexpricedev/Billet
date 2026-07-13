@@ -94,3 +94,12 @@ CSRF protection applies to: POST, PUT, PATCH, DELETE
 - **Session Management**: HMAC-protected IDs, secure cookies, 30-day expiration
 - **Input Validation**: Type-safe forms, parameterized queries, XSS prevention
 - **Environment Security**: Crypto pepper, environment isolation, no secret logging
+
+## HTTP Headers, CSP & Transport
+
+The defensive HTTP baseline — security headers on every response, an enforcing
+Content Security Policy, HSTS, `/.well-known/security.txt`, Subresource
+Integrity, and the deploy/DNS steps — lives in
+[`runbooks/SECURITY.md`](runbooks/SECURITY.md). Read it before your first deploy:
+the `security.txt` contact address needs setting, and TLS/HSTS-preload/CAA/DNSSEC
+are host- and registrar-level steps.

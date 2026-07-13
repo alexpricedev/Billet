@@ -71,7 +71,7 @@ A complete magic-link email auth flow: users enter their email, receive a login 
 - **Rate limiting** middleware with configurable sliding-window limits per IP
 - **Session fixation prevention** — sessions are regenerated on login
 - **Environment validation** at startup — the server fails fast with clear error messages if required variables are missing
-- **Response hardening** with security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
+- **Response hardening** — security headers on every response (nosniff, frame/clickjacking protection, an enforcing Content Security Policy, Permissions-Policy, HSTS in production), plus `/.well-known/security.txt` and Subresource Integrity on third-party scripts — see [runbooks/SECURITY.md](runbooks/SECURITY.md)
 
 ### Database
 
@@ -100,6 +100,7 @@ Run the full suite: `bun run test`
 - **Biome** linting with zero-warning enforcement (`--max-warnings 0`) — no `any` types, no `console` statements, no unused variables
 - **TypeScript** strict mode with `noUnusedLocals` and `noUnusedParameters`
 - **Husky** pre-commit hooks that run lint and typecheck before every commit
+- **GitHub Actions CI** — lint, build, and the full test suite run on every PR (`.github/workflows/ci.yml`); gate merges behind them with required status checks (see [runbooks/CI.md](runbooks/CI.md))
 - **Structured logging** via `src/server/services/logger.ts` — replaces `console.*` with levelled output (info, warn, error)
 
 ### Frontend
@@ -266,6 +267,10 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 > **Email deliverability:** When sending real mail via Resend, follow [runbooks/EMAIL.md](runbooks/EMAIL.md) to set up SPF, DKIM, and DMARC — without it, magic links land in spam.
 
 > **SEO:** Before your first deploy, set `SITE_URL` (and the `Sitemap:` line in `public/robots.txt`) to your production domain — see [runbooks/SEO.md](runbooks/SEO.md) for the canonical-URL config, sitemap, indexing policy, and verification steps.
+
+> **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
+
+> **CI & merge protection:** CI runs on every PR, but check results are advisory until you require them. A fork doesn't inherit branch protection, so nothing stops an auto-merge (GitHub's or Conductor's) from merging a red build — enable required status checks once per repo. See [runbooks/CI.md](runbooks/CI.md).
 
 ### Database
 
