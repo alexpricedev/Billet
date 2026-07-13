@@ -92,6 +92,9 @@ describe("Logout Controller", () => {
 
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/login");
+      expect(response.headers.get("clear-site-data")).toBe(
+        '"cookies", "storage"',
+      );
 
       const setCookie = findSetCookie(request, "session_id");
       expect(setCookie).toBeTruthy();

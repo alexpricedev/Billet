@@ -80,6 +80,8 @@ Replace this with a simple welcome page for their project. Keep it minimal — j
 
 > **Accessibility:** Billet ships a WCAG-aligned baseline (labelled forms, keyboard focus rings, reduced motion, announced flash messages, captioned tables). Once you replace the placeholder theme with your own design language, **colour contrast and forced-colours support become your responsibility** — a framework can't decide your palette. See [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md) for what's handled, what's yours, and how to verify.
 
+> **Security:** Billet applies security headers, a Content Security Policy, HSTS, Subresource Integrity, and a Clear-Site-Data wipe on logout automatically. Two things need you: set `SECURITY_CONTACT` in your env (the `security.txt` reporting address — it defaults to a placeholder), and if you drop the Lottie hero above, its unpkg script in `src/server/components/layouts.tsx` goes too — one less third-party origin to trust. See [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC deploy steps.
+
 ## 5. Delete the stack page
 
 Remove the stack page and all its associated files:

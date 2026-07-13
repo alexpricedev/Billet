@@ -25,9 +25,15 @@ export const logout = {
 
     clearSessionCookie(req);
 
+    // Clear-Site-Data tells the browser to wipe cookies and client storage for
+    // this origin on sign-out — defence in depth beyond deleting the session
+    // cookie, in case a page cached auth state in localStorage/sessionStorage.
     return new Response("", {
       status: 303,
-      headers: { Location: "/login" },
+      headers: {
+        Location: "/login",
+        "Clear-Site-Data": '"cookies", "storage"',
+      },
     });
   },
 };

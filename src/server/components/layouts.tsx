@@ -147,7 +147,9 @@ export function Layout({
         </footer>
         <script
           async
-          src="https://unpkg.com/lottie-web@5/build/player/lottie_light.min.js"
+          src="https://unpkg.com/lottie-web@5.13.0/build/player/lottie_light.min.js"
+          integrity="sha384-Gr3FGWSrOz4fzm9bvrWwhuQH87JMUCLlOTaHhpddbnlHHWCZPxMeQ3KUPsomzIii"
+          crossOrigin="anonymous"
         />
         <script type="module" src={getAssetUrl("/assets/main.js")} />
       </body>
