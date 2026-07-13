@@ -189,5 +189,64 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         </div>
       </div>
     </section>
+
+    <section className="spec">
+      <h2>Built to a public standard</h2>
+      <p className="spec-lead text-secondary">
+        <a
+          href="https://specification.website"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          specification.website
+        </a>{" "}
+        is an open, platform-agnostic checklist of the technical features a good
+        website should have — 168 specs across foundations, SEO, accessibility,
+        security, performance, and more. Billet works through it section by
+        section, so the boring-but-critical baseline is in place before you
+        write a line of product code.
+      </p>
+      <div className="feedback-stack">
+        <div className="stack-row">
+          <span className="stack-layer">Foundations</span>
+          <span className="stack-catches">
+            Doctype, charset, viewport, canonical URLs, Open Graph, favicons,
+            theme-color
+          </span>
+        </div>
+        <div className="stack-row">
+          <span className="stack-layer">SEO</span>
+          <span className="stack-catches">
+            robots.txt, XML sitemap, JSON-LD, per-page metadata, an explicit
+            indexing policy
+          </span>
+        </div>
+        <div className="stack-row">
+          <span className="stack-layer">Accessibility</span>
+          <span className="stack-catches">
+            Semantic landmarks, labelled forms, focus rings, reduced motion,
+            captioned tables
+          </span>
+        </div>
+        <div className="stack-row">
+          <span className="stack-layer">Security</span>
+          <span className="stack-catches">
+            Security headers on every response, a Content Security Policy, HSTS,
+            security.txt, Subresource Integrity, Clear-Site-Data
+          </span>
+        </div>
+      </div>
+      <p className="spec-note text-tertiary">
+        Performance, privacy, resilience, and internationalisation are next.
+      </p>
+      <a
+        className="spec-cta"
+        href="https://specification.website"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Read the full standard <span aria-hidden="true">→</span>
+      </a>
+    </section>
   </Layout>
 );
