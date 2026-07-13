@@ -357,10 +357,23 @@
     @media (width >= 768px) {
       padding: 2.5rem;
     }
+  }
+
+  .spec-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
 
     h2 {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0;
     }
+  }
+
+  .spec-icon {
+    flex-shrink: 0;
+    color: #f59e0b;
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
   }
 
   .spec-lead {
