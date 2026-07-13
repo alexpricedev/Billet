@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import {
   type EmailMessage,
   type EmailProvider,
@@ -93,6 +93,65 @@ describe("Email Service", () => {
       const message = mockProvider.sentMessages[0];
       expect(message.to.email).toBe("noname@example.com");
       expect(message.to.name).toBeUndefined();
+    });
+
+    test("adds a unique X-Entity-Ref-ID header to each magic link email", async () => {
+      await emailService.sendMagicLink({
+        to: { email: "user@example.com" },
+        magicLinkUrl: "https://example.com/magic?token=a",
+        expiryMinutes: 15,
+      });
+      await emailService.sendMagicLink({
+        to: { email: "user@example.com" },
+        magicLinkUrl: "https://example.com/magic?token=b",
+        expiryMinutes: 15,
+      });
+
+      const refs = mockProvider.sentMessages.map(
+        (m) => m.headers?.["X-Entity-Ref-ID"],
+      );
+      expect(refs.every((r) => typeof r === "string" && r.length > 0)).toBe(
+        true,
+      );
+      expect(new Set(refs).size).toBe(2);
+    });
+
+    test("omits Reply-To when REPLY_TO_EMAIL is unset", async () => {
+      const original = process.env.REPLY_TO_EMAIL;
+      delete process.env.REPLY_TO_EMAIL;
+
+      await emailService.sendMagicLink({
+        to: { email: "user@example.com" },
+        magicLinkUrl: "https://example.com/magic",
+        expiryMinutes: 15,
+      });
+
+      expect(mockProvider.sentMessages[0].replyTo).toBeUndefined();
+
+      if (original !== undefined) {
+        process.env.REPLY_TO_EMAIL = original;
+      }
+    });
+
+    test("sets Reply-To when REPLY_TO_EMAIL is set", async () => {
+      const original = process.env.REPLY_TO_EMAIL;
+      process.env.REPLY_TO_EMAIL = "support@yourdomain.com";
+
+      await emailService.sendMagicLink({
+        to: { email: "user@example.com" },
+        magicLinkUrl: "https://example.com/magic",
+        expiryMinutes: 15,
+      });
+
+      expect(mockProvider.sentMessages[0].replyTo?.email).toBe(
+        "support@yourdomain.com",
+      );
+
+      if (original === undefined) {
+        delete process.env.REPLY_TO_EMAIL;
+      } else {
+        process.env.REPLY_TO_EMAIL = original;
+      }
     });
 
     test("uses environment variables for from address when available", async () => {
@@ -236,5 +295,97 @@ describe("ConsoleLogProvider", () => {
     expect(output).toContain("Test Subject");
     expect(output).toContain("<p>Test HTML</p>");
     expect(output).toContain("Test text");
+  });
+
+  test("logs Reply-To and Headers when present", async () => {
+    const { ConsoleLogProvider } = await import("./email-providers/console");
+    const provider = new ConsoleLogProvider();
+
+    const originalLog = console.log;
+    const logCalls: string[] = [];
+    console.log = (message: string) => {
+      logCalls.push(message);
+    };
+
+    const message: EmailMessage = {
+      to: { email: "test@example.com" },
+      from: { email: "from@example.com" },
+      replyTo: { email: "support@yourdomain.com" },
+      headers: { "X-Entity-Ref-ID": "abc-123" },
+      subject: "Test Subject",
+      html: "<p>Test HTML</p>",
+    };
+
+    await provider.send(message);
+
+    console.log = originalLog;
+
+    const output = logCalls[0];
+    expect(output).toContain("Reply-To: support@yourdomain.com");
+    expect(output).toContain("Headers: X-Entity-Ref-ID: abc-123");
+  });
+});
+
+describe("ResendProvider", () => {
+  type SentPayload = {
+    from: string;
+    to: string;
+    replyTo?: string;
+    headers?: Record<string, string>;
+  };
+
+  const loadProvider = async (
+    capture: (payload: SentPayload) => void,
+  ): Promise<typeof import("./email-providers/resend").ResendProvider> => {
+    mock.module("resend", () => ({
+      Resend: class {
+        emails = {
+          send: async (payload: SentPayload) => {
+            capture(payload);
+            return { data: { id: "test" }, error: null };
+          },
+        };
+      },
+    }));
+    const mod = await import("./email-providers/resend");
+    return mod.ResendProvider;
+  };
+
+  test("forwards replyTo and headers to the Resend client", async () => {
+    let sent: SentPayload | undefined;
+    const ResendProvider = await loadProvider((p) => {
+      sent = p;
+    });
+    const provider = new ResendProvider("re_test_key");
+
+    await provider.send({
+      to: { email: "user@example.com" },
+      from: { email: "hello@billet.example", name: "Billet" },
+      replyTo: { email: "support@billet.example" },
+      headers: { "X-Entity-Ref-ID": "ref-1" },
+      subject: "Hello",
+      html: "<p>Hi</p>",
+    });
+
+    expect(sent?.replyTo).toBe("support@billet.example");
+    expect(sent?.headers).toEqual({ "X-Entity-Ref-ID": "ref-1" });
+    expect(sent?.from).toBe("Billet <hello@billet.example>");
+  });
+
+  test("RFC 5322-quotes a From display name containing a comma", async () => {
+    let sent: SentPayload | undefined;
+    const ResendProvider = await loadProvider((p) => {
+      sent = p;
+    });
+    const provider = new ResendProvider("re_test_key");
+
+    await provider.send({
+      to: { email: "user@example.com" },
+      from: { email: "hello@billet.example", name: "Billet, Inc." },
+      subject: "Hello",
+      html: "<p>Hi</p>",
+    });
+
+    expect(sent?.from).toBe('"Billet, Inc." <hello@billet.example>');
   });
 });

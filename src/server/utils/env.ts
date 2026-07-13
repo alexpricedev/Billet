@@ -33,5 +33,20 @@ export function validateEnv(): void {
     process.exit(1);
   }
 
+  if (
+    process.env.EMAIL_PROVIDER === "resend" &&
+    (process.env.FROM_EMAIL as string).endsWith("@example.com")
+  ) {
+    log.error(
+      "env",
+      "FROM_EMAIL is still the @example.com placeholder — Resend will reject it or it will land in spam",
+    );
+    log.error(
+      "env",
+      "Set FROM_EMAIL to an address on a Resend-verified domain (see runbooks/EMAIL.md)",
+    );
+    process.exit(1);
+  }
+
   log.info("env", "Environment variables validated");
 }
