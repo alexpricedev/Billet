@@ -76,6 +76,10 @@ The home page (`src/server/templates/home.tsx`) is currently a marketing landing
 
 Replace this with a simple welcome page for their project. Keep it minimal — just a heading with the project name and a short description. They'll build their own home page from here.
 
+> **Note:** The home page currently loads a looping Lottie hero animation (`src/client/pages/home.ts`, gated behind `prefers-reduced-motion`). If your welcome page drops the animation, remove that init logic and the `/cube.json` asset too.
+
+> **Accessibility:** Billet ships a WCAG-aligned baseline (labelled forms, keyboard focus rings, reduced motion, announced flash messages, captioned tables). Once you replace the placeholder theme with your own design language, **colour contrast and forced-colours support become your responsibility** — a framework can't decide your palette. See [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md) for what's handled, what's yours, and how to verify.
+
 ## 5. Delete the stack page
 
 Remove the stack page and all its associated files:

@@ -13,11 +13,16 @@ declare global {
 }
 
 function startAnimation(container: HTMLElement) {
+  // Respect the OS "reduce motion" setting: render a static first frame instead
+  // of an endlessly looping animation for users prone to motion sickness.
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
   window.lottie.loadAnimation({
     container,
     renderer: "svg",
-    loop: true,
-    autoplay: true,
+    loop: !reduceMotion,
+    autoplay: !reduceMotion,
     path: "/cube.json",
   });
   container.style.opacity = "0.55";

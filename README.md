@@ -109,6 +109,7 @@ Run the full suite: `bun run test`
 - **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example loaded via CDN import map)
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
 - **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
+- **Accessibility baseline** — semantic landmarks, labelled form controls, a keyboard focus ring, reduced-motion support, announced flash messages, and captioned data tables out of the box — see [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md)
 - **Asset cache-busting** in production — MD5-hashed filenames with immutable `Cache-Control` headers
 
 ---
