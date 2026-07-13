@@ -14,7 +14,11 @@ export interface LoginProps {
 
 export const Login = ({ state }: LoginProps) => {
   return (
-    <BaseLayout title="Login - Billet">
+    <BaseLayout
+      title="Login - Billet"
+      description="Log in to Billet with a magic link — no passwords to remember."
+      canonicalPath="/login"
+    >
       <main className="login-page">
         <div className="login-wrapper">
           <div className="login-header">

@@ -8,7 +8,14 @@ interface StackProps {
 }
 
 export const Stack = ({ user, csrfToken }: StackProps) => (
-  <Layout title="Stack - Billet" name="stack" user={user} csrfToken={csrfToken}>
+  <Layout
+    title="Stack - Billet"
+    description="The Billet stack — Bun, server-rendered JSX, custom CSS, and PostgreSQL in one process with one test runner and one deploy target."
+    canonicalPath="/stack"
+    name="stack"
+    user={user}
+    csrfToken={csrfToken}
+  >
     <h1>The Stack</h1>
     <p className="lead">
       Billet is a server-rendered TypeScript starter built on Bun. Templates are

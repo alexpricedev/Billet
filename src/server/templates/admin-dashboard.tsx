@@ -19,6 +19,8 @@ export const AdminDashboard = (props: {
 }) => (
   <Layout
     title="Admin"
+    description="Billet admin dashboard — role-protected routes and server-rendered views."
+    canonicalPath="/admin"
     name="admin"
     user={props.user}
     csrfToken={props.csrfToken}
