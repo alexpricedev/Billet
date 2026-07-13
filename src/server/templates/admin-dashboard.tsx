@@ -33,12 +33,12 @@ export const AdminDashboard = (props: {
       </div>
 
       <div className="admin-table-wrap">
-        <DataTable>
+        <DataTable caption="Users">
           <thead>
             <tr>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Joined</th>
+              <th scope="col">Email</th>
+              <th scope="col">Role</th>
+              <th scope="col">Joined</th>
             </tr>
           </thead>
           <tbody>

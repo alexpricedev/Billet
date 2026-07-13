@@ -53,7 +53,11 @@ export function ProjectSearch({ projects }: { projects: ProjectItem[] }) {
       <p class="search-count text-tertiary">
         Showing {matchCount} of {projects.length}
       </p>
+      <label htmlFor="project-search-input" class="sr-only">
+        Search projects
+      </label>
       <input
+        id="project-search-input"
         type="text"
         placeholder="Search projects..."
         value={query}

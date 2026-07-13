@@ -48,6 +48,49 @@ html {
   box-sizing: inherit;
 }
 
+/* Visually hide content while keeping it available to assistive tech. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Keyboard focus ring — high-contrast, only on keyboard/AT focus (not mouse
+   clicks), so removing it from any control requires an explicit override. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  /* Browsers round the outline to follow border-radius, even on inline links. */
+  border-radius: 4px;
+}
+
+/* Give plain (non-button) inline links horizontal breathing room inside the
+   ring. outline-offset is uniform, so we add inline padding and cancel it with
+   an equal negative margin to avoid shifting surrounding text. */
+a:not([class]):focus-visible {
+  padding-inline: 0.4em;
+  margin-inline: -0.4em;
+}
+
+/* Honour the OS "reduce motion" setting — near-instant animations/transitions
+   for users prone to vestibular distress, migraines, or seizures. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   font-family: var(--font-main);
   margin: 0;
@@ -158,7 +201,8 @@ select {
   border-radius: var(--radius);
   color: var(--color-text);
   font-family: inherit;
-  font-size: 14px;
+  /* 16px keeps iOS Safari from zooming the viewport on focus. */
+  font-size: 16px;
   padding: 8px 12px;
   transition: border-color 150ms ease;
 
@@ -166,9 +210,8 @@ select {
     color: var(--color-text-quaternary);
   }
 
-  &:focus {
+  &:focus-visible {
     border-color: var(--color-primary);
-    outline: none;
   }
 }
 

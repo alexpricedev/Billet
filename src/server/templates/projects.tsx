@@ -48,7 +48,11 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
       <section className="card">
         <form method="POST" action="/projects" className="project-form">
           <CsrfField token={props.createCsrfToken} />
+          <label htmlFor="project-title" className="sr-only">
+            Project title
+          </label>
           <input
+            id="project-title"
             type="text"
             name="title"
             placeholder="New project title"
@@ -79,12 +83,16 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
         <p className="text-tertiary">No projects yet.</p>
       ) : (
         <div id="projects-list">
-          <DataTable className="project-list">
+          <DataTable className="project-list" caption="Projects">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Created by</th>
-                {props.isAuthenticated && <th />}
+                <th scope="col">Title</th>
+                <th scope="col">Created by</th>
+                {props.isAuthenticated && (
+                  <th scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -130,7 +138,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
           place.
         </p>
         <div className="card">
-          <DataTable className="endpoint-table">
+          <DataTable className="endpoint-table" caption="API endpoints">
             <tbody>
               <tr>
                 <td>
