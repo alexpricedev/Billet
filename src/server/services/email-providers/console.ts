@@ -8,6 +8,18 @@ export class ConsoleLogProvider implements EmailProvider {
       "================================",
       `To: ${message.to.name ? `${message.to.name} <${message.to.email}>` : message.to.email}`,
       `From: ${message.from.name ? `${message.from.name} <${message.from.email}>` : message.from.email}`,
+      ...(message.replyTo
+        ? [
+            `Reply-To: ${message.replyTo.name ? `${message.replyTo.name} <${message.replyTo.email}>` : message.replyTo.email}`,
+          ]
+        : []),
+      ...(message.headers
+        ? [
+            `Headers: ${Object.entries(message.headers)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ")}`,
+          ]
+        : []),
       `Subject: ${message.subject}`,
       "",
       "HTML Content:",

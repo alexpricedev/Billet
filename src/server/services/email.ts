@@ -6,9 +6,11 @@ export interface EmailAddress {
 export interface EmailMessage {
   to: EmailAddress;
   from: EmailAddress;
+  replyTo?: EmailAddress;
   subject: string;
   html: string;
   text?: string;
+  headers?: Record<string, string>;
 }
 
 export interface EmailProvider {
@@ -27,6 +29,7 @@ export class EmailService {
   async sendMagicLink(data: MagicLinkEmailData): Promise<void> {
     const fromEmail = process.env.FROM_EMAIL as string;
     const fromName = process.env.FROM_NAME as string;
+    const replyTo = process.env.REPLY_TO_EMAIL;
 
     const message: EmailMessage = {
       to: data.to,
@@ -34,6 +37,10 @@ export class EmailService {
         email: fromEmail,
         name: fromName,
       },
+      ...(replyTo ? { replyTo: { email: replyTo } } : {}),
+      // Unique per send so Gmail doesn't collapse consecutive magic links into
+      // one thread — the recipient always sees the newest link.
+      headers: { "X-Entity-Ref-ID": crypto.randomUUID() },
       subject: "Your magic link to sign in",
       html: this.renderMagicLinkTemplate(data),
       text: this.renderMagicLinkText(data),
