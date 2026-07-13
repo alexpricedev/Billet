@@ -123,6 +123,26 @@ A full-stack TypeScript app built with Bun.
 
 Replace any remaining "Billet" references in the kept sections with the project name.
 
-## 7. Verify
+## 7. License (ask first)
+
+Ask them: **"Do you want to keep the MIT license, or remove it?"**
+
+If they want to **keep** it, leave everything as-is and skip to Verify.
+
+If they want to **remove** it:
+
+- Delete the `LICENSE` file.
+- In `README.md`, remove the License badge near the top (the `<a href="LICENSE">...MIT...</a>` line) and the `## License` section near the bottom.
+- Add a short note in the README (in place of the removed `## License` section) stating the project is unlicensed / all rights reserved, e.g.:
+
+  ```markdown
+  ## License
+
+  This project is not currently licensed for public use. All rights reserved.
+  ```
+
+  (Or let them tell you a different license to swap in.)
+
+## 8. Verify
 
 Run `bun run check` to make sure there are no lint or type errors from the changes. Then run `bun run test` to confirm all tests pass. Start the dev server with `bun run dev` and check it works at http://localhost:3000.
