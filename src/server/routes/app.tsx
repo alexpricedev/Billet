@@ -1,9 +1,10 @@
-import { forms, home, projects, stack } from "../controllers/app";
+import { forms, home, projects, sitemap, stack } from "../controllers/app";
 import { callback, login, logout } from "../controllers/auth";
 import { createRouteHandler } from "../utils/route-handler";
 
 export const appRoutes = {
   "/": home.index,
+  "/sitemap.xml": sitemap.index,
   "/stack": stack.index,
   "/forms": createRouteHandler({
     GET: forms.index,

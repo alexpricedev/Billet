@@ -18,6 +18,7 @@ export const Login = ({ state }: LoginProps) => {
       title="Login - Billet"
       description="Log in to Billet with a magic link — no passwords to remember."
       canonicalPath="/login"
+      noindex
     >
       <main className="login-page">
         <div className="login-wrapper">
@@ -28,7 +29,7 @@ export const Login = ({ state }: LoginProps) => {
           </div>
 
           <div className="login-card">
-            <h2 className="login-title">Sign in to your account</h2>
+            <h1 className="login-title">Sign in to your account</h1>
             <p className="login-subtitle">
               We'll send you a magic link to sign in instantly
             </p>

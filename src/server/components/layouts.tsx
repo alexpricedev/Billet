@@ -1,13 +1,14 @@
 import type React from "react";
 
 import { getAssetUrl } from "../services/assets";
+import {
+  SITE_DESCRIPTION,
+  SITE_URL,
+  siteStructuredData,
+} from "../services/seo";
 import type { User } from "../services/users";
 import { Logo } from "./logo";
 import { Nav } from "./nav";
-
-const SITE_URL = "https://billet.alexprice.dev";
-const SITE_DESCRIPTION =
-  "Full-stack TypeScript starter — designed to be built on by AI coding agents";
 
 // The site is dark-only (see `colorScheme: "dark"` on <html>), so theme-color
 // matches --color-bg from style.css rather than shipping light/dark variants.
@@ -20,11 +21,17 @@ interface HeadMetaProps {
   title: string;
   description: string;
   canonicalPath?: string;
+  noindex?: boolean;
 }
 
 // Shared <head> essentials for both Layout and BaseLayout, so the two can't
 // drift out of sync (e.g. one missing the description or canonical tag).
-function HeadMeta({ title, description, canonicalPath }: HeadMetaProps) {
+function HeadMeta({
+  title,
+  description,
+  canonicalPath,
+  noindex,
+}: HeadMetaProps) {
   return (
     <>
       <meta charSet="utf-8" />
@@ -34,6 +41,7 @@ function HeadMeta({ title, description, canonicalPath }: HeadMetaProps) {
       />
       <title>{title}</title>
       <meta name="description" content={description} />
+      {noindex && <meta name="robots" content="noindex, nofollow" />}
       <meta name="color-scheme" content="dark" />
       <meta name="theme-color" content={THEME_COLOR} />
       <link rel="canonical" href={canonicalUrl(canonicalPath)} />
@@ -69,6 +77,7 @@ interface LayoutProps {
   csrfToken?: string;
   description?: string;
   canonicalPath?: string;
+  noindex?: boolean;
 }
 
 export function Layout({
@@ -79,6 +88,7 @@ export function Layout({
   csrfToken,
   description = SITE_DESCRIPTION,
   canonicalPath,
+  noindex,
 }: LayoutProps) {
   return (
     <html lang="en" style={{ colorScheme: "dark" }}>
@@ -87,6 +97,7 @@ export function Layout({
           title={title}
           description={description}
           canonicalPath={canonicalPath}
+          noindex={noindex}
         />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
@@ -97,6 +108,12 @@ export function Layout({
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
+        {!noindex && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: siteStructuredData() }}
+          />
+        )}
         <script
           type="importmap"
           dangerouslySetInnerHTML={{
@@ -143,6 +160,7 @@ interface BaseLayoutProps {
   children: React.ReactNode;
   description?: string;
   canonicalPath?: string;
+  noindex?: boolean;
 }
 
 export function BaseLayout({
@@ -150,6 +168,7 @@ export function BaseLayout({
   children,
   description = SITE_DESCRIPTION,
   canonicalPath,
+  noindex,
 }: BaseLayoutProps) {
   return (
     <html lang="en" style={{ colorScheme: "dark" }}>
@@ -158,6 +177,7 @@ export function BaseLayout({
           title={title}
           description={description}
           canonicalPath={canonicalPath}
+          noindex={noindex}
         />
       </head>
       <body>{children}</body>

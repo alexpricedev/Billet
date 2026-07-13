@@ -23,6 +23,17 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
 
+    // Canonicalise trailing slashes: every path has exactly one URL. Requests
+    // for "/stack/" 308-redirect to "/stack" (preserving the query string) so
+    // crawlers never index duplicate slashed/unslashed variants.
+    if (url.pathname !== "/" && url.pathname.endsWith("/")) {
+      const canonical = url.pathname.replace(/\/+$/, "");
+      return new Response(null, {
+        status: 308,
+        headers: { Location: canonical + url.search },
+      });
+    }
+
     // Lightweight liveness check for the platform healthcheck. Intentionally
     // does not touch the DB — a transient DB blip should not cause the host to
     // cycle the instance.
