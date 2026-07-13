@@ -17,7 +17,12 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
   >
     <section className="hero">
       <div className="hero-lottie" id="hero-lottie" />
-      <a className="hero-announce" href="https://specification.website">
+      <a
+        className="hero-announce"
+        href="https://specification.website"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         <svg
           className="hero-announce-icon"
           xmlns="http://www.w3.org/2000/svg"
