@@ -345,10 +345,18 @@
   }
 
   /* ── Spec standard ───────────────────────────────────── */
+  /* Bordered amber box echoing the hero announce banner for visual coherence. */
 
   .spec {
-    padding: 4rem 0;
-    border-top: 1px solid var(--color-border);
+    margin: 2rem 0 4rem;
+    padding: 2rem;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: var(--radius);
+    background: rgba(245, 158, 11, 0.06);
+
+    @media (width >= 768px) {
+      padding: 2.5rem;
+    }
 
     h2 {
       margin-bottom: 0.5rem;
@@ -362,9 +370,28 @@
     margin-bottom: 2rem;
 
     a {
-      color: var(--color-primary);
+      color: #fbbf24;
       text-decoration: underline;
     }
+  }
+
+  /* Tint the reused feedback-stack rows into the amber theme. */
+  .spec .feedback-stack {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .spec .stack-row {
+    background: transparent;
+    border-bottom-color: rgba(245, 158, 11, 0.18);
+
+    &:hover {
+      background: rgba(245, 158, 11, 0.08);
+    }
+  }
+
+  .spec .stack-layer {
+    color: #fbbf24;
   }
 
   .spec-note {
@@ -379,7 +406,7 @@
     gap: 6px;
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--color-primary);
+    color: #f59e0b;
     text-decoration: none;
 
     span {
