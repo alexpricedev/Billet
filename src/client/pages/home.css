@@ -398,8 +398,9 @@
     background: transparent;
     border-bottom-color: rgba(245, 158, 11, 0.18);
 
+    /* Static rows — override the feedback-stack hover, they're not links. */
     &:hover {
-      background: rgba(245, 158, 11, 0.08);
+      background: transparent;
     }
   }
 
