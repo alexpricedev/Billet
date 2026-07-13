@@ -56,7 +56,7 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
 │   ├── templates/           # Full-page JSX templates
 │   ├── components/          # Reusable server JSX
 │   ├── services/            # Business logic & data
-│   ├── middleware/          # Auth, CSRF
+│   ├── middleware/          # Auth, CSRF, rate limiting
 │   ├── utils/               # Shared helpers
 │   └── database/            # Migrations
 │

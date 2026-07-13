@@ -19,7 +19,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
       <div className="hero-lottie" id="hero-lottie" />
       <a
         className="hero-announce"
-        href="https://github.com/alexpricedev/Billet/pull/31"
+        href="https://github.com/alexpricedev/Billet/pull/33"
       >
         <svg
           className="hero-announce-icon"
@@ -36,9 +36,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         >
           <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
         </svg>
-        <span className="hero-announce-text">
-          New: first-class SEO defaults
-        </span>
+        <span className="hero-announce-text">New: hardened HTTP security</span>
         <span className="hero-announce-arrow" aria-hidden="true">
           →
         </span>
@@ -153,8 +151,8 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Security</h3>
           <p>
-            CSRF protection, rate limiting, session fixation prevention,
-            security headers
+            CSRF protection, rate limiting, a Content Security Policy, HSTS, and
+            security headers on every response
           </p>
         </div>
         <div className="feature-card">
@@ -167,7 +165,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Testing</h3>
           <p>
-            220+ tests, deterministic templates, real database testing, no
+            270+ tests, deterministic templates, real database testing, no
             browser simulation
           </p>
         </div>
