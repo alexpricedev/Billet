@@ -57,6 +57,8 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 
 > **Note:** `src/server/services/seo.ts` also defines `SITE_URL` (currently `https://billet.alexprice.dev`), the canonical origin used for `<link rel="canonical">`, Open Graph tags, the XML sitemap, and JSON-LD across every page. `public/robots.txt` has a matching hardcoded `Sitemap:` URL. Point both at your own production domain before deploying — see [runbooks/SEO.md](runbooks/SEO.md) §1.
 
+> **Note:** `SITE_NAME` also feeds the web app manifest (`/site.webmanifest` — the installed-app name/short name, built by `buildWebManifest()` in `seo.ts`) and the `X-Redirect-By` response header stamped on every redirect. Both are generated from that one constant, so renaming `SITE_NAME` renames them automatically — "Billet" never gets stuck in the installed-app name or redirect attribution. The manifest still references the icon files in `public/` (`android-chrome-192x192.png`, `android-chrome-512x512.png`, favicons, `apple-touch-icon.png`); swap those for your own artwork, and for a crisp Android adaptive icon provide a safe-zone-padded maskable variant (the 512px icon is reused as the maskable one by default).
+
 ## 3. Remove original repo references
 
 These are links specific to the original Billet repository. Remove or update them:

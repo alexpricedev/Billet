@@ -1,0 +1,50 @@
+[data-page="error"] {
+  & > main {
+    text-align: center;
+  }
+
+  .error-page {
+    margin: 0 auto;
+    max-width: 32rem;
+    padding-block: 3rem;
+  }
+
+  .error-status {
+    color: var(--color-text-quaternary);
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin: 0;
+  }
+
+  .error-page h1 {
+    margin-top: 0.5rem;
+  }
+
+  .error-actions {
+    margin-top: 2rem;
+  }
+
+  /* .btn-primary is scoped to the home hero, so give the error CTA the same
+     filled-primary treatment here (it's an anchor, not a <button>). */
+  .error-actions .btn-primary {
+    align-items: center;
+    background: var(--color-primary);
+    border-radius: var(--radius);
+    color: #fff;
+    display: inline-flex;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 22px;
+    text-decoration: none;
+    transition: all 150ms ease;
+
+    &:hover,
+    &:focus {
+      background: var(--color-primary-hover);
+      color: #fff;
+      text-decoration: none;
+    }
+  }
+}

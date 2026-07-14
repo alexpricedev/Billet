@@ -3,6 +3,7 @@ import type React from "react";
 import { getAssetUrl } from "../services/assets";
 import {
   SITE_DESCRIPTION,
+  SITE_NAME,
   SITE_URL,
   siteStructuredData,
 } from "../services/seo";
@@ -151,12 +152,7 @@ export function Layout({
           <Nav page={name} user={user} csrfToken={csrfToken} />
         </header>
         <main>{children}</main>
-        <footer>
-          <a href="https://github.com/alexpricedev/Billet">GitHub</a>
-          <span>
-            Built by <a href="https://alexprice.dev">alexprice.dev</a>
-          </span>
-        </footer>
+        <SiteFooter />
         <script
           async
           src="https://unpkg.com/lottie-web@5.13.0/build/player/lottie_light.min.js"
@@ -164,6 +160,52 @@ export function Layout({
           crossOrigin="anonymous"
         />
         <script type="module" src={getAssetUrl("/assets/main.js")} />
+      </body>
+    </html>
+  );
+}
+
+// Shared site footer for the full Layout and the ErrorLayout, so the repo-specific
+// links (see START_PROMPT.md §3) live in one place.
+function SiteFooter() {
+  return (
+    <footer>
+      <a href="https://github.com/alexpricedev/Billet">GitHub</a>
+      <span>
+        Built by <a href="https://alexprice.dev">alexprice.dev</a>
+      </span>
+    </footer>
+  );
+}
+
+interface ErrorLayoutProps {
+  title: string;
+  children: React.ReactNode;
+  nav?: boolean;
+}
+
+// Layout for error and maintenance pages (404, 500, 503). Deliberately ships NO
+// client JavaScript — no importmap, Lottie, or main bundle — so the page renders
+// instantly and stays legible even when the app is degraded or offline, the
+// spec's resilience baseline for error and 503 responses. Reuses the same
+// header/footer chrome as `Layout` for continuity, and is always noindex so
+// crawlers never treat an error body as real content.
+export function ErrorLayout({ title, children, nav = true }: ErrorLayoutProps) {
+  return (
+    <html lang="en" style={{ colorScheme: "dark" }}>
+      <head>
+        <HeadMeta title={title} description={SITE_DESCRIPTION} noindex />
+      </head>
+      <body data-page="error" data-component="layout">
+        <header>
+          <a href="/" className="logo">
+            <Logo />
+            <span>{SITE_NAME}</span>
+          </a>
+          {nav && <Nav page="" user={null} />}
+        </header>
+        <main>{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );

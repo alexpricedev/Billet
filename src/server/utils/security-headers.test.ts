@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { SITE_NAME } from "../services/seo";
 import { createBunRequest } from "../test-utils/bun-request";
 import {
+  handleGuarded,
   SECURITY_HEADERS,
   secureRoutes,
   withSecurityHeaders,
@@ -65,6 +67,88 @@ describe("withSecurityHeaders", () => {
     // Tests run with NODE_ENV=test, so the strict-transport header is withheld
     // to avoid pinning localhost to HTTPS.
     expect(SECURITY_HEADERS["Strict-Transport-Security"]).toBeUndefined();
+  });
+
+  test("signs a redirect with X-Redirect-By", () => {
+    const res = withSecurityHeaders(
+      new Response(null, { status: 308, headers: { Location: "/canonical" } }),
+    );
+
+    expect(res.headers.get("X-Redirect-By")).toBe(SITE_NAME);
+  });
+
+  test("does not add X-Redirect-By to a non-redirect response", () => {
+    const res = withSecurityHeaders(new Response("ok"));
+
+    expect(res.headers.get("X-Redirect-By")).toBeNull();
+  });
+});
+
+describe("handleGuarded", () => {
+  test("serves a styled 500 without leaking the error when the producer throws", async () => {
+    const req = createBunRequest("http://localhost:3000/boom");
+    const res = await handleGuarded(req, () => {
+      throw new Error("db exploded at /secret/path.ts:42");
+    });
+
+    expect(res.status).toBe(500);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    const body = await res.text();
+    expect(body).toContain("Something went wrong");
+    expect(body).not.toContain("db exploded");
+    // Still runs through the header pipeline.
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  test("passes a successful response through unchanged", async () => {
+    const req = createBunRequest("http://localhost:3000/ok");
+    const res = await handleGuarded(req, () => new Response("hi"));
+
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("hi");
+  });
+
+  test("serves a 503 with Retry-After when maintenance mode is on", async () => {
+    const previous = process.env.MAINTENANCE_MODE;
+    process.env.MAINTENANCE_MODE = "true";
+    try {
+      const req = createBunRequest("http://localhost:3000/anything");
+      const res = await handleGuarded(
+        req,
+        () => new Response("should not run"),
+      );
+
+      expect(res.status).toBe(503);
+      expect(res.headers.get("Retry-After")).toBe("3600");
+      expect(await res.text()).toContain("be right back");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.MAINTENANCE_MODE;
+      } else {
+        process.env.MAINTENANCE_MODE = previous;
+      }
+    }
+  });
+
+  test("keeps the health check alive during maintenance", async () => {
+    const previous = process.env.MAINTENANCE_MODE;
+    process.env.MAINTENANCE_MODE = "true";
+    try {
+      const req = createBunRequest("http://localhost:3000/health");
+      const res = await handleGuarded(
+        req,
+        () => new Response("ok", { status: 200 }),
+      );
+
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe("ok");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.MAINTENANCE_MODE;
+      } else {
+        process.env.MAINTENANCE_MODE = previous;
+      }
+    }
   });
 });
 

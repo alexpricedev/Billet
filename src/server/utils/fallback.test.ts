@@ -39,10 +39,14 @@ describe("handleFallback", () => {
     expect(await res.text()).toBe("Asset not found");
   });
 
-  test("returns 404 for an unknown path", async () => {
-    const res = await req("/nope/not-a-real-file.txt");
+  test("returns a styled HTML 404 page for an unknown path", async () => {
+    const res = await req("/nope/not-a-real-file");
 
     expect(res.status).toBe(404);
-    expect(await res.text()).toBe("Not found");
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    const body = await res.text();
+    expect(body).toContain("Page not found");
+    // No implementation detail leaks and the page offers a way forward.
+    expect(body).toContain('href="/"');
   });
 });

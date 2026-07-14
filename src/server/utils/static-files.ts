@@ -3,7 +3,7 @@
 // validator, and answers conditional requests with a 304. Fingerprinted bundles
 // take the immutable path in services/assets.ts instead.
 
-// public/ assets (favicons, og-image, manifest, cube.json) are not
+// public/ assets (favicons, og-image, cube.json) are not
 // fingerprinted, so they revalidate rather than caching forever: a short max-age
 // with stale-while-revalidate/stale-if-error for resilience under load or origin
 // errors.

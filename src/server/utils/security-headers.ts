@@ -1,5 +1,9 @@
 import type { BunRequest } from "bun";
+import { log } from "../services/logger";
+import { SITE_NAME } from "../services/seo";
 import { withCompression } from "./compression";
+import { render500 } from "./errors";
+import { maintenanceResponse } from "./maintenance";
 
 // Single source of truth for the security headers sent on every response —
 // HTML, JSON, redirects, static files, and errors alike. Applied centrally
@@ -101,6 +105,14 @@ export const withSecurityHeaders = (res: Response): Response => {
   if (!res.headers.has("Link")) {
     res.headers.set("Link", DISCOVERY_LINK_HEADER);
   }
+  // Sign every redirect with the software that issued it, so anyone tracing a
+  // redirect chain can see which layer to fix (spec: resilience/redirect-by).
+  // Gating on Location covers every redirect source — the `redirect()` helper,
+  // the trailing-slash 308, and the inline 303s in the auth/admin middleware —
+  // without each having to remember to set it.
+  if (res.headers.has("Location") && !res.headers.has("X-Redirect-By")) {
+    res.headers.set("X-Redirect-By", SITE_NAME);
+  }
   return res;
 };
 
@@ -118,16 +130,40 @@ export const finalizeResponse = async (
   return withSecurityHeaders(compressed);
 };
 
+// Run a response producer through the full request pipeline: honour maintenance
+// mode, catch any uncaught error as a styled 500 (never leaking a stack trace),
+// then `finalizeResponse`. Both the routed handlers (via `secureRoutes`) and the
+// `fetch` fallback go through this, so no path can bypass the guards or headers.
+export const handleGuarded = async <R extends Request>(
+  req: R,
+  produce: (req: R) => Response | Promise<Response>,
+): Promise<Response> => {
+  const maintenance = maintenanceResponse(req);
+  if (maintenance) return finalizeResponse(req, maintenance);
+
+  try {
+    return await finalizeResponse(req, await produce(req));
+  } catch (error) {
+    const { pathname } = new URL(req.url);
+    log.error(
+      "server",
+      `Unhandled error on ${req.method} ${pathname}: ${error}`,
+    );
+    return finalizeResponse(req, render500());
+  }
+};
+
 type RouteHandler = (req: BunRequest) => Response | Promise<Response>;
 
-// Wrap a Bun `routes` map so every handler's response runs through
-// `finalizeResponse` before it leaves the server.
+// Wrap a Bun `routes` map so every handler runs through the guarded pipeline
+// (maintenance mode, 500 fallback, compression, security headers) before its
+// response leaves the server.
 export const secureRoutes = <T extends Record<string, RouteHandler>>(
   routes: T,
 ): T => {
   const wrapped: Record<string, RouteHandler> = {};
   for (const [path, handler] of Object.entries(routes)) {
-    wrapped[path] = async (req) => finalizeResponse(req, await handler(req));
+    wrapped[path] = (req) => handleGuarded(req, handler);
   }
   return wrapped as T;
 };
