@@ -82,6 +82,8 @@ Replace this with a simple welcome page for their project. Keep it minimal — j
 
 > **Security:** Billet applies security headers, a Content Security Policy, HSTS, Subresource Integrity, and a Clear-Site-Data wipe on logout automatically. Two things need you: set `SECURITY_CONTACT` in your env (the `security.txt` reporting address — it defaults to a placeholder), and if you drop the Lottie hero above, its unpkg script in `src/server/components/layouts.tsx` goes too — one less third-party origin to trust. See [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC deploy steps.
 
+> **Privacy:** Billet is privacy-clean by default — no analytics, no trackers, only strictly-necessary cookies — so **no cookie banner is legally required** as shipped. The moment you add analytics, ads, or third-party embeds, you must add an opt-in consent banner and a privacy policy. See [runbooks/PRIVACY.md](runbooks/PRIVACY.md) for wiring `@alexpricedev/billet-cookie-consent`, the required policy disclosures, GPC handling, and third-party-script hygiene.
+
 ## 5. Delete the stack page
 
 Remove the stack page and all its associated files:
