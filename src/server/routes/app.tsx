@@ -1,7 +1,9 @@
 import {
   forms,
   home,
+  llmsTxt,
   projects,
+  robotsTxt,
   securityTxt,
   sitemap,
   stack,
@@ -11,7 +13,9 @@ import { createRouteHandler } from "../utils/route-handler";
 
 export const appRoutes = {
   "/": home.index,
+  "/robots.txt": robotsTxt.index,
   "/sitemap.xml": sitemap.index,
+  "/llms.txt": llmsTxt.index,
   "/.well-known/security.txt": securityTxt.index,
   "/stack": stack.index,
   "/forms": createRouteHandler({

@@ -58,6 +58,17 @@ const PERMISSIONS_POLICY = [
   "xr-spatial-tracking=()",
 ].join(", ");
 
+// Discovery Link header — advertises the site's machine-readable resources on
+// every response so agents and crawlers that never parse our HTML can still
+// find them (see spec: agent-readiness/link-headers). Relative refs resolve
+// against the request URL, keeping this host-agnostic. All rel values are
+// IANA-registered: `describedby`, `sitemap`, and `security` (RFC 9116).
+export const DISCOVERY_LINK_HEADER = [
+  '</llms.txt>; rel="describedby"; type="text/markdown"',
+  '</sitemap.xml>; rel="sitemap"; type="application/xml"',
+  '</.well-known/security.txt>; rel="security"; type="text/plain"',
+].join(", ");
+
 export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
@@ -84,6 +95,10 @@ export const withSecurityHeaders = (res: Response): Response => {
     if (!res.headers.has(name)) {
       res.headers.set(name, value);
     }
+  }
+  // Advertise discovery resources unless a route set its own Link header.
+  if (!res.headers.has("Link")) {
+    res.headers.set("Link", DISCOVERY_LINK_HEADER);
   }
   return res;
 };

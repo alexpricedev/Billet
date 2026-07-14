@@ -25,6 +25,54 @@ ${urls}
 `;
 };
 
+// Named AI crawlers we call out explicitly in robots.txt so the allow posture
+// is unambiguous rather than only implied by the wildcard group. In robots.txt
+// a named user-agent group fully replaces the wildcard for that agent, so each
+// named group repeats the same Disallow rules.
+const AI_CRAWLERS = [
+  "GPTBot",
+  "OAI-SearchBot",
+  "ChatGPT-User",
+  "ClaudeBot",
+  "Claude-Web",
+  "Google-Extended",
+  "Applebot-Extended",
+  "PerplexityBot",
+  "CCBot",
+] as const;
+
+// Private surfaces kept out of every crawler's reach.
+const ROBOTS_DISALLOW = ["/admin", "/api/", "/auth/"] as const;
+
+// Content-Signal (an emerging IETF AI Preferences / IAB Tech Lab proposal)
+// declares downstream-use consent explicitly for crawlers that honour it.
+const CONTENT_SIGNAL = "Content-Signal: search=yes, ai-input=yes, ai-train=yes";
+
+// Builds the /robots.txt body. Billet is designed to be built on by AI coding
+// agents, so the posture is deliberately open: search engines and the major AI
+// crawlers are all allowed, with only private surfaces disallowed.
+export const buildRobotsTxt = (): string => {
+  const group = (agents: readonly string[]): string =>
+    [
+      ...agents.map((agent) => `User-agent: ${agent}`),
+      "Allow: /",
+      ...ROBOTS_DISALLOW.map((path) => `Disallow: ${path}`),
+      CONTENT_SIGNAL,
+    ].join("\n");
+
+  return [
+    "# Billet is designed to be built on by AI coding agents, so search engines",
+    "# and AI crawlers are welcome. Only private surfaces are disallowed.",
+    "",
+    group(["*"]),
+    "",
+    group(AI_CRAWLERS),
+    "",
+    `Sitemap: ${absolute("/sitemap.xml")}`,
+    "",
+  ].join("\n");
+};
+
 // Site-level JSON-LD (WebSite + Organization) injected into every public page's
 // <head>. Gives search engines and AI agents a machine-readable description of
 // the site using the schema.org vocabulary.
