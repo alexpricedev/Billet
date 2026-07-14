@@ -73,6 +73,44 @@ export const buildRobotsTxt = (): string => {
   ].join("\n");
 };
 
+// Web app manifest (spec: resilience/pwa-manifest). `name`/`short_name` follow
+// SITE_NAME so a fork is never stuck advertising "Billet" as its installed-app
+// name — updating the one constant renames it everywhere. Colours match the
+// dark theme (--color-bg in style.css / THEME_COLOR in layouts.tsx). The 512px
+// icon doubles as the maskable icon; swap in a purpose-built, safe-zone-padded
+// asset if you need edge-to-edge Android adaptive icons.
+export const buildWebManifest = (): string =>
+  JSON.stringify({
+    name: SITE_NAME,
+    short_name: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    start_url: "/",
+    scope: "/",
+    display: "standalone",
+    theme_color: "#0a0a0b",
+    background_color: "#0a0a0b",
+    icons: [
+      {
+        src: "/android-chrome-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/android-chrome-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/android-chrome-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+    ],
+  });
+
 // Site-level JSON-LD (WebSite + Organization) injected into every public page's
 // <head>. Gives search engines and AI agents a machine-readable description of
 // the site using the schema.org vocabulary.

@@ -1,4 +1,5 @@
 import { handleAssetRequest } from "../services/assets";
+import { render404 } from "./errors";
 import { serveFile } from "./static-files";
 
 // Catch-all handler for requests not matched by a declared route: trailing-slash
@@ -41,5 +42,6 @@ export const handleFallback = async (req: Request): Promise<Response> => {
     if (await file.exists()) return serveFile(req, file);
   }
 
-  return new Response("Not found", { status: 404 });
+  // No route, no static file: a real 404 with the styled, navigable error page.
+  return render404();
 };
