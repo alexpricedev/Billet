@@ -262,10 +262,14 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
             URLs
           </span>
         </div>
+        <div className="stack-row">
+          <span className="stack-layer">Performance</span>
+          <span className="stack-catches">
+            Brotli and gzip compression, fingerprinted immutable assets, ETag
+            revalidation with 304s, preconnect resource hints, minified bundles
+          </span>
+        </div>
       </div>
-      <p className="spec-note text-tertiary">
-        Performance, privacy, resilience, and internationalisation are next.
-      </p>
       <a
         className="spec-cta"
         href="https://specification.website"
