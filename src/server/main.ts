@@ -5,9 +5,8 @@ import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
 import { handleAssetRequest, initAssets } from "./services/assets";
 import { log } from "./services/logger";
-import { withCompression } from "./utils/compression";
 import { validateEnv } from "./utils/env";
-import { secureRoutes, withSecurityHeaders } from "./utils/security-headers";
+import { finalizeResponse, secureRoutes } from "./utils/security-headers";
 
 validateEnv();
 await runMigrations();
@@ -22,7 +21,8 @@ const serveFile = (file: Bun.BunFile): Response =>
   new Response(file, { headers: { "Content-Type": file.type } });
 
 // Fallback handler for everything not matched by a declared route. Returns a
-// bare Response; the `fetch` wrapper below decorates it with security headers.
+// bare Response; the `fetch` wrapper below runs it through `finalizeResponse`
+// (compression + security headers) before it leaves the server.
 const handleFallback = async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
 
@@ -70,9 +70,7 @@ const server = Bun.serve({
     ...apiRoutes,
   }),
   async fetch(req) {
-    return withSecurityHeaders(
-      await withCompression(req, await handleFallback(req)),
-    );
+    return finalizeResponse(req, await handleFallback(req));
   },
 });
 

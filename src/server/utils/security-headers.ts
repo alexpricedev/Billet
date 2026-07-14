@@ -104,18 +104,30 @@ export const withSecurityHeaders = (res: Response): Response => {
   return res;
 };
 
+// The pipeline every response passes through on its way out — the single place
+// that owns the order of response transforms. Each step takes the request and
+// the response-so-far and returns the next response. Compress first (it rewrites
+// the body), then stamp the security headers on the result. New transforms
+// (ETag, Server-Timing, …) are added here, in order, rather than nested at the
+// call sites.
+export const finalizeResponse = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
+  const compressed = await withCompression(req, res);
+  return withSecurityHeaders(compressed);
+};
+
 type RouteHandler = (req: BunRequest) => Response | Promise<Response>;
 
-// Wrap a Bun `routes` map so every handler's response is compressed (when the
-// client accepts it) and decorated with the security headers before it leaves
-// the server.
+// Wrap a Bun `routes` map so every handler's response runs through
+// `finalizeResponse` before it leaves the server.
 export const secureRoutes = <T extends Record<string, RouteHandler>>(
   routes: T,
 ): T => {
   const wrapped: Record<string, RouteHandler> = {};
   for (const [path, handler] of Object.entries(routes)) {
-    wrapped[path] = async (req) =>
-      withSecurityHeaders(await withCompression(req, await handler(req)));
+    wrapped[path] = async (req) => finalizeResponse(req, await handler(req));
   }
   return wrapped as T;
 };
