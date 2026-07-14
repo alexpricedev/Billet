@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "bun run build:client && bun run build:css",
-    "build:client": "bun build ./src/client/main.ts --outdir ./dist/assets --external preact --external preact/hooks --external preact/jsx-dev-runtime --external preact/jsx-runtime",
+    "build:client": "bun build ./src/client/main.ts --outdir ./dist/assets --minify --external preact --external preact/hooks --external preact/jsx-dev-runtime --external preact/jsx-runtime",
     "build:css": "bun build ./src/client/style.css --outdir ./dist/assets --entry-naming main.css --minify",
     "start": "bun run src/server/main.ts",
     "dev": "bun run dev:client & bun run dev:server & bun run dev:css",
