@@ -7,18 +7,12 @@ import { handleAssetRequest, initAssets } from "./services/assets";
 import { log } from "./services/logger";
 import { validateEnv } from "./utils/env";
 import { finalizeResponse, secureRoutes } from "./utils/security-headers";
+import { serveFile } from "./utils/static-files";
 
 validateEnv();
 await runMigrations();
 await seedIfEmpty();
 await initAssets();
-
-// Serve a static file with its Content-Type set explicitly. Bun infers the type
-// from the file extension, but only at native serialization time — so it is not
-// visible on the JS `Headers` object that the compression middleware inspects.
-// Setting it here lets text assets (SVG, JSON, webmanifest) be compressed.
-const serveFile = (file: Bun.BunFile): Response =>
-  new Response(file, { headers: { "Content-Type": file.type } });
 
 // Fallback handler for everything not matched by a declared route. Returns a
 // bare Response; the `fetch` wrapper below runs it through `finalizeResponse`
@@ -49,13 +43,13 @@ const handleFallback = async (req: Request): Promise<Response> => {
     if (cached) return cached;
 
     const file = Bun.file(`dist${url.pathname}`);
-    if (await file.exists()) return serveFile(file);
+    if (await file.exists()) return serveFile(req, file);
     return new Response("Asset not found", { status: 404 });
   }
 
   if (url.pathname.startsWith("/")) {
     const file = Bun.file(`public${url.pathname}`);
-    if (await file.exists()) return serveFile(file);
+    if (await file.exists()) return serveFile(req, file);
   }
 
   return new Response("Not found", { status: 404 });
