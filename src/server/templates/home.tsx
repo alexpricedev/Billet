@@ -78,7 +78,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
       </aside>
       <div className="story-grid">
         <div>
-          <h3 className="section-label">The problem</h3>
+          <h2 className="section-label">The problem</h2>
           <p className="text-secondary">
             Left to their own choices, AI coding agents reach for what they know
             best: React with Next.js. The result is a thick-frontend app split
@@ -88,7 +88,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
           </p>
         </div>
         <div>
-          <h3 className="section-label">The approach</h3>
+          <h2 className="section-label">The approach</h2>
           <p className="text-secondary">
             Single-instance server rendering with light-touch client JavaScript.
             Templates are deterministic functions of their props — given the

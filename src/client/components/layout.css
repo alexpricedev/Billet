@@ -53,7 +53,7 @@
 
   & > footer {
     border-top: 1px solid var(--color-border);
-    color: var(--color-text-quaternary);
+    color: var(--color-text-tertiary);
     display: flex;
     font-size: 13px;
     gap: 1.5rem;
@@ -62,7 +62,7 @@
   }
 
   & > footer a {
-    color: var(--color-text-quaternary);
+    color: var(--color-text-tertiary);
   }
 
   & > footer a:hover,
