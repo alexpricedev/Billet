@@ -22,7 +22,7 @@
   --color-text: #ededef;
   --color-text-secondary: #b4b5b9;
   --color-text-tertiary: #8a8b8e;
-  --color-text-quaternary: #5c5d60;
+  --color-text-quaternary: #78797c;
   --color-primary: #7c85f0;
   --color-primary-hover: #9098f3;
   --color-success: #34d399;
@@ -40,6 +40,9 @@ html {
   box-sizing: border-box;
   color: var(--color-text);
   font-size: 16px;
+  /* Reserve the scrollbar's space so pages that grow past one viewport don't
+     shift horizontally when the scrollbar appears (classic scrollbars only). */
+  scrollbar-gutter: stable;
 }
 
 *,
@@ -94,7 +97,12 @@ a:not([class]):focus-visible {
 body {
   font-family: var(--font-main);
   margin: 0;
+  /* 100vh first as the fallback; 100dvh tracks the actually-visible viewport on
+     mobile so the page isn't sized to include a retracted browser toolbar. */
   min-height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: dvh override is a
+     deliberate progressive-enhancement fallback over the vh baseline. */
+  min-height: 100dvh;
   background: var(--color-bg);
   color: var(--color-text);
   line-height: 1.6;

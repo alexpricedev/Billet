@@ -99,6 +99,18 @@ export function Layout({
           canonicalPath={canonicalPath}
           noindex={noindex}
         />
+        {/* Preact (via the importmap below) loads from esm.sh and Lottie from
+            unpkg. Preconnect opens the TLS connection while the HTML parses so
+            the first cross-origin fetch doesn't pay the handshake; dns-prefetch
+            is the cheaper fallback for browsers that ignore preconnect. */}
+        <link rel="preconnect" href="https://esm.sh" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://unpkg.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://esm.sh" />
+        <link rel="dns-prefetch" href="https://unpkg.com" />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:image" content={`${SITE_URL}/og-image.png`} />

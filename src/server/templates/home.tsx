@@ -78,7 +78,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
       </aside>
       <div className="story-grid">
         <div>
-          <h3 className="section-label">The problem</h3>
+          <h2 className="section-label">The problem</h2>
           <p className="text-secondary">
             Left to their own choices, AI coding agents reach for what they know
             best: React with Next.js. The result is a thick-frontend app split
@@ -88,7 +88,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
           </p>
         </div>
         <div>
-          <h3 className="section-label">The approach</h3>
+          <h2 className="section-label">The approach</h2>
           <p className="text-secondary">
             Single-instance server rendering with light-touch client JavaScript.
             Templates are deterministic functions of their props — given the
@@ -169,7 +169,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Testing</h3>
           <p>
-            270+ tests, deterministic templates, real database testing, no
+            300+ tests, deterministic templates, real database testing, no
             browser simulation
           </p>
         </div>
@@ -262,10 +262,14 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
             URLs
           </span>
         </div>
+        <div className="stack-row">
+          <span className="stack-layer">Performance</span>
+          <span className="stack-catches">
+            Brotli and gzip compression, fingerprinted immutable assets, ETag
+            revalidation with 304s, preconnect resource hints, minified bundles
+          </span>
+        </div>
       </div>
-      <p className="spec-note text-tertiary">
-        Performance, privacy, resilience, and internationalisation are next.
-      </p>
       <a
         className="spec-cta"
         href="https://specification.website"
