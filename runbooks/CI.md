@@ -60,14 +60,48 @@ JSON
 - **`enforce_admins: true`** — the required checks apply to _everyone_, including
   repo admins and the token an auto-merge acts under. This is the part that
   actually stops a premature merge. Trade-off: you can't hand-override a red
-  build without lifting it first (see §4).
+  build without lifting it first (see §5).
 - **`strict: false`** — merge as soon as checks are green. Set `true` to also
   require the branch be up to date with `main` first (safer, but forces a
   rebase/re-run whenever `main` moves).
 - **No required reviews** — this gates on CI only; it doesn't add an approval
   requirement.
 
-## 3. Verify
+## 3. Enable auto-merge (optional)
+
+Once §2 is in place, GitHub's native **auto-merge** becomes safe: you arm a PR
+up front and GitHub merges it the moment every required check goes green,
+without you babysitting the build. Like branch protection, it's a **repo
+setting a fork does not inherit** — new clones ship with it off.
+
+It's a two-layer feature:
+
+**Layer 1 — allow it on the repo** (Settings → General → Pull Requests →
+"Allow auto-merge"), or via API:
+
+```bash
+gh api -X PATCH repos/{owner}/{repo} -F allow_auto_merge=true
+```
+
+**Layer 2 — arm it on a PR.** This is what invokes the `enablePullRequestAutoMerge`
+GraphQL mutation under the hood:
+
+```bash
+gh pr merge <number> --auto --squash   # --squash: the repo allows squash + rebase, not merge commits
+```
+
+The PR then reports `mergeStateStatus: BLOCKED` until the required contexts
+report success, at which point GitHub merges it automatically. With
+`delete_branch_on_merge` already enabled, the branch is cleaned up on merge too.
+
+- **Auto-merge without §2 is pointless — and risky.** If no checks are required,
+  there's nothing to wait on: GitHub either merges immediately or rejects the
+  `--auto` request. The required-checks gate is what makes "merge when green"
+  mean anything.
+- **Disable the capability** with `-F allow_auto_merge=false`; **cancel** a single
+  armed PR with `gh pr merge <number> --disable-auto`.
+
+## 4. Verify
 
 A PR whose required checks haven't all passed reports `BLOCKED`:
 
@@ -80,7 +114,7 @@ gh pr view <number> --json mergeable,mergeStateStatus
 `mergeable: MERGEABLE` only means "no merge conflicts" — it's `mergeStateStatus`
 that reflects the check gate.
 
-## 4. Adjust or remove
+## 5. Adjust or remove
 
 ```bash
 # Let admins hand-override a red build (turn enforce-admins off):
@@ -93,7 +127,7 @@ gh api -X POST repos/{owner}/{repo}/branches/main/protection/enforce_admins
 gh api -X DELETE repos/{owner}/{repo}/branches/main/protection
 ```
 
-## 5. Gotchas
+## 6. Gotchas
 
 - **Branch protection is a GitHub repo setting, not code.** It lives on the
   remote, not in this repository, so it is not copied when someone forks or
