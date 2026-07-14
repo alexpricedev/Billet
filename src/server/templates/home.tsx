@@ -254,6 +254,14 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
             security.txt, Subresource Integrity, Clear-Site-Data
           </span>
         </div>
+        <div className="stack-row">
+          <span className="stack-layer">Agent readiness</span>
+          <span className="stack-catches">
+            An llms.txt index, AI-crawler rules and Content-Signal in
+            robots.txt, machine-readable Link headers, structured data, stable
+            URLs
+          </span>
+        </div>
       </div>
       <p className="spec-note text-tertiary">
         Performance, privacy, resilience, and internationalisation are next.
