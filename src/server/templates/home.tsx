@@ -169,7 +169,7 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Testing</h3>
           <p>
-            270+ tests, deterministic templates, real database testing, no
+            300+ tests, deterministic templates, real database testing, no
             browser simulation
           </p>
         </div>
