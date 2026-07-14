@@ -29,6 +29,23 @@ describe("withSecurityHeaders", () => {
     expect(csp).toContain("upgrade-insecure-requests");
   });
 
+  test("advertises discovery resources via a Link header", () => {
+    const res = withSecurityHeaders(new Response("ok"));
+    const link = res.headers.get("Link") ?? "";
+
+    expect(link).toContain('</llms.txt>; rel="describedby"');
+    expect(link).toContain('</sitemap.xml>; rel="sitemap"');
+    expect(link).toContain('</.well-known/security.txt>; rel="security"');
+  });
+
+  test("does not clobber a Link header a response already set", () => {
+    const res = withSecurityHeaders(
+      new Response("ok", { headers: { Link: "<https://x.test>; rel=next" } }),
+    );
+
+    expect(res.headers.get("Link")).toBe("<https://x.test>; rel=next");
+  });
+
   test("does not clobber headers a response already set", () => {
     const res = withSecurityHeaders(
       new Response("ok", {
