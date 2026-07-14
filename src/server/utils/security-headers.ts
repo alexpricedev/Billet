@@ -1,4 +1,5 @@
 import type { BunRequest } from "bun";
+import { withCompression } from "./compression";
 
 // Single source of truth for the security headers sent on every response —
 // HTML, JSON, redirects, static files, and errors alike. Applied centrally
@@ -105,14 +106,16 @@ export const withSecurityHeaders = (res: Response): Response => {
 
 type RouteHandler = (req: BunRequest) => Response | Promise<Response>;
 
-// Wrap a Bun `routes` map so every handler's response is decorated with the
-// security headers before it leaves the server.
+// Wrap a Bun `routes` map so every handler's response is compressed (when the
+// client accepts it) and decorated with the security headers before it leaves
+// the server.
 export const secureRoutes = <T extends Record<string, RouteHandler>>(
   routes: T,
 ): T => {
   const wrapped: Record<string, RouteHandler> = {};
   for (const [path, handler] of Object.entries(routes)) {
-    wrapped[path] = async (req) => withSecurityHeaders(await handler(req));
+    wrapped[path] = async (req) =>
+      withSecurityHeaders(await withCompression(req, await handler(req)));
   }
   return wrapped as T;
 };
