@@ -150,6 +150,23 @@ This is the [backpressure](#capture-your-backpressure) that keeps agents on the 
 
 ---
 
+## Built to a public standard
+
+[**specification.website**](https://specification.website) is an open, platform-agnostic checklist of the technical features a good website should have — 168 specs across foundations, SEO, accessibility, security, performance, and more. Billet works through it section by section, so the boring-but-critical baseline is in place before you write a line of product code.
+
+| Section | What Billet covers |
+|---|---|
+| **Foundations** | Doctype, charset, viewport, canonical URLs, Open Graph, favicons, theme-color |
+| **SEO** | robots.txt, XML sitemap, JSON-LD, per-page metadata, an explicit indexing policy |
+| **Accessibility** | Semantic landmarks, labelled forms, focus rings, reduced motion, captioned tables |
+| **Security** | Security headers on every response, a Content Security Policy, HSTS, security.txt, Subresource Integrity, Clear-Site-Data |
+| **Agent readiness** | An llms.txt index, AI-crawler rules and Content-Signal in robots.txt, machine-readable Link headers, structured data, stable URLs |
+| **Performance** | Brotli and gzip compression, fingerprinted immutable assets, ETag revalidation with 304s, preconnect resource hints, minified bundles |
+
+[Read the full standard →](https://specification.website)
+
+---
+
 ## Quick Start
 
 You'll need [Bun](https://bun.sh) and a local [PostgreSQL](https://www.postgresql.org/) instance running. If you need help getting PostgreSQL set up, ask Claude — it'll walk you through the install for your OS.
