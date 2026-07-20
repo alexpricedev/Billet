@@ -37,6 +37,8 @@ Billet takes the opposite approach. It's a single-instance server-rendered app w
 
 This isn't a limitation. It's a deliberate architectural choice that plays to AI's strengths: strong type information to reason about, functional input/output patterns, and a feedback loop (write code → run tests → see results) that works in seconds, not minutes.
 
+> 📝 For the longer story behind why Billet works this way — the fat front-end, RLS, and the case for a real server — read [**Boring on purpose**](https://alexprice.dev/writing/boring-on-purpose).
+
 ### Capture your backpressure
 
 AI agents work best when they get told they're wrong immediately. Not by you — by the toolchain. Type errors, failing tests, lint warnings, broken builds — that's [backpressure](https://latentpatterns.com/principles), and it's the single most important thing you can invest in when working with agents. Every automated check that catches a mistake is one less time you have to context-switch back in to fix something a machine should have caught.
