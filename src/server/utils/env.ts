@@ -48,5 +48,12 @@ export function validateEnv(): void {
     process.exit(1);
   }
 
+  // CAPTCHA_ENABLED is optional and self-contained: the proof-of-work captcha signs
+  // challenges with the already-required CRYPTO_PEPPER, so there is no new secret to
+  // conditionally require. Just surface that it's on.
+  if (process.env.CAPTCHA_ENABLED === "true") {
+    log.info("env", "Login captcha enabled (proof-of-work)");
+  }
+
   log.info("env", "Environment variables validated");
 }

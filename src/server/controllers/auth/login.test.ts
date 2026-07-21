@@ -1,9 +1,37 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { SQL } from "bun";
+import { clearRateLimitLog } from "../../middleware/rate-limit";
+import { clearUsedChallenges, issueChallenge } from "../../services/captcha";
 import type { LoginState } from "../../templates/login";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { cleanupTestData } from "../../test-utils/helpers";
 import { stateHelpers } from "../../utils/state";
+
+// Solve a challenge the way the client would, for the captcha-enabled tests.
+const solveChallenge = (
+  challenge: ReturnType<typeof issueChallenge>,
+): string => {
+  let answer = 0;
+  for (let n = 0; n <= challenge.maxnumber; n++) {
+    if (
+      createHash("sha256").update(`${challenge.salt}${n}`).digest("hex") ===
+      challenge.challenge
+    ) {
+      answer = n;
+      break;
+    }
+  }
+  return Buffer.from(
+    JSON.stringify({
+      salt: challenge.salt,
+      challenge: challenge.challenge,
+      expires: challenge.expires,
+      signature: challenge.signature,
+      number: answer,
+    }),
+  ).toString("base64");
+};
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for tests");
@@ -22,6 +50,9 @@ import { login } from "./login";
 describe("Login Controller", () => {
   beforeEach(async () => {
     await cleanupTestData(db);
+    // Guards share process-wide state; reset so tests don't leak into each other.
+    clearRateLimitLog();
+    clearUsedChallenges();
   });
 
   afterAll(async () => {
@@ -230,6 +261,111 @@ describe("Login Controller", () => {
         WHERE user_id = ${(user[0] as any).id} AND type = 'magic_link'
       `;
       expect(tokens).toHaveLength(1);
+    });
+  });
+
+  describe("POST /login bot defense", () => {
+    test("silently discards a submission with the honeypot filled", async () => {
+      const formData = new FormData();
+      formData.append("email", "bot@example.com");
+      formData.append("company_website", "http://spam.example");
+
+      const request = createBunRequest("http://localhost:3000/login", {
+        method: "POST",
+        body: formData,
+      });
+
+      const response = await login.create(request);
+
+      // Feigns success so the bot gets no signal...
+      expect(response.status).toBe(303);
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toContain("email-sent");
+
+      // ...but creates no user and issues no magic link.
+      const users =
+        await db`SELECT id FROM users WHERE email = 'bot@example.com'`;
+      expect(users).toHaveLength(0);
+    });
+
+    test("returns 429 once the per-IP rate limit is exceeded", async () => {
+      const send = () => {
+        const formData = new FormData();
+        formData.append("email", "flood@example.com");
+        return login.create(
+          createBunRequest("http://localhost:3000/login", {
+            method: "POST",
+            body: formData,
+          }),
+        );
+      };
+
+      // Limit is 5 per window; the 6th request is throttled.
+      for (let i = 0; i < 5; i++) {
+        expect((await send()).status).toBe(303);
+      }
+      expect((await send()).status).toBe(429);
+    });
+
+    describe("with captcha enabled", () => {
+      const original = process.env.CAPTCHA_ENABLED;
+      const originalDifficulty = process.env.CAPTCHA_DIFFICULTY;
+
+      beforeEach(() => {
+        process.env.CAPTCHA_ENABLED = "true";
+        process.env.CAPTCHA_DIFFICULTY = "2000";
+      });
+
+      afterAll(() => {
+        if (original === undefined) delete process.env.CAPTCHA_ENABLED;
+        else process.env.CAPTCHA_ENABLED = original;
+        if (originalDifficulty === undefined)
+          delete process.env.CAPTCHA_DIFFICULTY;
+        else process.env.CAPTCHA_DIFFICULTY = originalDifficulty;
+      });
+
+      test("rejects a missing or invalid captcha solution", async () => {
+        const formData = new FormData();
+        formData.append("email", "human@example.com");
+        // No captcha_solution field.
+
+        const request = createBunRequest("http://localhost:3000/login", {
+          method: "POST",
+          body: formData,
+        });
+
+        const response = await login.create(request);
+
+        expect(response.status).toBe(303);
+        const setCookie = findSetCookie(request, "flash_state");
+        expect(setCookie).toContain("validation-error");
+        expect(setCookie).toContain("Verification failed");
+
+        const users =
+          await db`SELECT id FROM users WHERE email = 'human@example.com'`;
+        expect(users).toHaveLength(0);
+      });
+
+      test("issues the magic link when the captcha is solved", async () => {
+        const formData = new FormData();
+        formData.append("email", "human@example.com");
+        formData.append("captcha_solution", solveChallenge(issueChallenge()));
+
+        const request = createBunRequest("http://localhost:3000/login", {
+          method: "POST",
+          body: formData,
+        });
+
+        const response = await login.create(request);
+
+        expect(response.status).toBe(303);
+        const setCookie = findSetCookie(request, "flash_state");
+        expect(setCookie).toContain("email-sent");
+
+        const users =
+          await db`SELECT id FROM users WHERE email = 'human@example.com'`;
+        expect(users).toHaveLength(1);
+      });
     });
   });
 });
