@@ -35,9 +35,12 @@ export const CaptchaWidget = ({
         data-maxnumber={String(challenge.maxnumber)}
         data-signature={challenge.signature}
         className="captcha-widget"
-        aria-live="polite"
       >
-        <span className="captcha-status">Verifying you're human…</span>
+        {/* No visible label — the proof of work runs silently. Kept as a
+            screen-reader-only live region so assistive tech still gets feedback. */}
+        <span className="captcha-status sr-only" aria-live="polite">
+          Verifying you're human…
+        </span>
       </div>
       <input type="hidden" name={CAPTCHA_SOLUTION_FIELD} />
       <script type="module" src={getAssetUrl("/assets/captcha.js")} defer />
