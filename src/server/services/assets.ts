@@ -2,7 +2,7 @@ import { log } from "./logger";
 
 const assetHashes = new Map<string, string>();
 
-const ASSETS_TO_HASH = ["main.js", "main.css"];
+const ASSETS_TO_HASH = ["main.js", "captcha.js", "main.css"];
 const DIST_ASSETS_PATH = "dist/assets";
 
 export async function initAssets(): Promise<void> {

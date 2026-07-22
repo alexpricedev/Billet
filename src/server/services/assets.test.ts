@@ -39,6 +39,7 @@ describe("assets (production)", () => {
   beforeAll(() => {
     mkdirSync("dist/assets", { recursive: true });
     writeFileSync("dist/assets/main.js", "console.log('test')");
+    writeFileSync("dist/assets/captcha.js", "console.log('captcha')");
     writeFileSync("dist/assets/main.css", "body { color: red }");
   });
 

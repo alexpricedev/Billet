@@ -155,8 +155,9 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Security</h3>
           <p>
-            CSRF protection, rate limiting, a Content Security Policy, HSTS, and
-            security headers on every response
+            CSRF protection, rate limiting, an optional proof-of-work captcha, a
+            Content Security Policy, HSTS, and security headers on every
+            response
           </p>
         </div>
         <div className="feature-card">
