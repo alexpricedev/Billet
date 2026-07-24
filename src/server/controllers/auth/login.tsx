@@ -9,6 +9,7 @@ import {
   verifyCaptcha,
 } from "../../services/captcha";
 import { getEmailService } from "../../services/email";
+import { log } from "../../services/logger";
 import type { LoginState } from "../../templates/login";
 import { Login } from "../../templates/login";
 import { redirect, render } from "../../utils/response";
@@ -37,8 +38,13 @@ export const login = {
     const formData = await req.formData();
 
     // 2. Honeypot: a filled hidden field means a bot. Feign success — create
-    //    nothing, send nothing — so the bot has no signal to adapt to.
+    //    nothing, send nothing — so the bot has no signal to adapt to. Logged
+    //    because a false positive drops a real sign-in with no other trace.
     if (formData.get(HONEYPOT_FIELD)) {
+      log.warn(
+        "login",
+        `honeypot tripped, dropping submission for ${formData.get("email") ?? "unknown"}`,
+      );
       setFlash(req, { state: "email-sent" });
       return redirect("/login");
     }
