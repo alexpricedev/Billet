@@ -1,10 +1,10 @@
 import { CaptchaWidget } from "../components/captcha-widget";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
+import { Honeypot } from "../components/honeypot";
 import { BaseLayout } from "../components/layouts";
 import { Logo } from "../components/logo";
 import type { CaptchaChallenge } from "../services/captcha";
-import { HONEYPOT_FIELD } from "../services/captcha";
 
 export interface LoginState {
   state?: "email-sent" | "validation-error";
@@ -65,22 +65,7 @@ export const Login = ({ state, challenge }: LoginProps) => {
                   />
                 </FormField>
 
-                {/* Honeypot — a real field hidden off-screen. Bots fill it; humans
-                    never see it. Submissions with it set are silently discarded. */}
-                <input
-                  type="text"
-                  name={HONEYPOT_FIELD}
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    left: "-9999px",
-                    width: "1px",
-                    height: "1px",
-                    opacity: 0,
-                  }}
-                />
+                <Honeypot />
 
                 <CaptchaWidget challenge={challenge} />
 

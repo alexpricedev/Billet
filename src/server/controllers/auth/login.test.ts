@@ -1,12 +1,22 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { SQL } from "bun";
+import { redirectIfAuthenticated } from "../../middleware/auth";
 import { clearRateLimitLog } from "../../middleware/rate-limit";
-import { clearUsedChallenges, issueChallenge } from "../../services/captcha";
+import {
+  clearUsedChallenges,
+  HONEYPOT_FIELD,
+  issueChallenge,
+} from "../../services/captcha";
 import type { LoginState } from "../../templates/login";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { cleanupTestData } from "../../test-utils/helpers";
 import { stateHelpers } from "../../utils/state";
+
+// Snapshot the real function value now. `redirectIfAuthenticated` is a live
+// binding, so once a test mock.module()s the auth middleware the import itself
+// points at the stub — capturing it here keeps a handle on the genuine one.
+const realRedirectIfAuthenticated = redirectIfAuthenticated;
 
 // Solve a challenge the way the client would, for the captcha-enabled tests.
 const solveChallenge = (
@@ -134,11 +144,19 @@ describe("Login Controller", () => {
         },
       });
 
-      const response = await mockedLogin.index(request);
+      try {
+        const response = await mockedLogin.index(request);
 
-      expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/");
-      expect(mockRedirectIfAuthenticated).toHaveBeenCalled();
+        expect(response.status).toBe(303);
+        expect(response.headers.get("location")).toBe("/");
+        expect(mockRedirectIfAuthenticated).toHaveBeenCalled();
+      } finally {
+        // Restore the real middleware so this module mock doesn't leak into
+        // other test files when the whole suite runs in one process.
+        mock.module("../../middleware/auth", () => ({
+          redirectIfAuthenticated: realRedirectIfAuthenticated,
+        }));
+      }
     });
   });
 
@@ -268,7 +286,7 @@ describe("Login Controller", () => {
     test("silently discards a submission with the honeypot filled", async () => {
       const formData = new FormData();
       formData.append("email", "bot@example.com");
-      formData.append("company_website", "http://spam.example");
+      formData.append(HONEYPOT_FIELD, "http://spam.example");
 
       const request = createBunRequest("http://localhost:3000/login", {
         method: "POST",

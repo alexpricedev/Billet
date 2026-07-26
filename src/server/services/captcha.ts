@@ -10,7 +10,10 @@ import { computeHMAC, generateSecureToken, verifyHMAC } from "../utils/crypto";
 // Shared field names — the login template, controller, and client solver must all
 // agree on these. The client bundle hardcodes the same literals (it cannot import
 // this module, which pulls in node:crypto), and a test cross-checks the two.
-export const HONEYPOT_FIELD = "company_website";
+// Neutral name on purpose: no email/name/address/company/url token, so native
+// browser autofill won't populate it (that produced real dropped signups). The
+// Honeypot component also sets password-manager opt-out attributes.
+export const HONEYPOT_FIELD = "referral_code";
 export const CAPTCHA_SOLUTION_FIELD = "captcha_solution";
 
 // How hard the client has to work: it brute-forces a number in [0, maxnumber].

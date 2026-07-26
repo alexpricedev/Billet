@@ -101,9 +101,13 @@ describe("Captcha Service", () => {
 
     test("rejects a tampered challenge (signature mismatch)", () => {
       const challenge = issueChallenge();
-      // Flip the target hash without re-signing.
+      // Flip the target hash's last hex digit without re-signing. Pick a digit
+      // guaranteed to differ from the original, not a fixed "0" (that's a no-op
+      // 1-in-16 of the time, when the digest already ends in "0").
+      const lastDigit = challenge.challenge.at(-1);
+      const flipped = lastDigit === "0" ? "1" : "0";
       const tampered = solveChallenge(challenge, {
-        challenge: `${challenge.challenge.slice(0, -1)}0`,
+        challenge: `${challenge.challenge.slice(0, -1)}${flipped}`,
       });
       expect(verifyCaptcha(tampered)).toBe(false);
     });
