@@ -3,12 +3,21 @@ import {
   createBunRequest,
   getSetCookieHeaders,
 } from "../test-utils/bun-request";
-import { stateHelpers } from "./state";
+import { FLASH_PAYLOAD_MAX_BYTES, fitFlashState, stateHelpers } from "./state";
 
 interface TestState {
   success?: boolean;
   error?: string;
 }
+
+interface FormState {
+  state?: string;
+  name?: string;
+  message?: string;
+}
+
+const encodedSize = (value: unknown): number =>
+  encodeURIComponent(JSON.stringify(value)).length;
 
 describe("State Helpers", () => {
   const helpers = stateHelpers<TestState>();
@@ -97,5 +106,77 @@ describe("State Helpers", () => {
     const result = helpers.getFlash(req);
     expect(result.success).toBe(true);
     expect(result.error).toBe("Something failed");
+  });
+});
+
+describe("fitFlashState", () => {
+  test("returns state unchanged when already within budget", () => {
+    const state: FormState = { state: "csrf-expired", name: "Alex" };
+
+    expect(fitFlashState(state, ["message", "name"])).toEqual(state);
+  });
+
+  test("brings oversized state within budget", () => {
+    const state: FormState = {
+      state: "csrf-expired",
+      name: "Alex",
+      message: "x".repeat(10_000),
+    };
+
+    const fitted = fitFlashState(state, ["message", "name"]);
+
+    expect(encodedSize(fitted)).toBeLessThanOrEqual(FLASH_PAYLOAD_MAX_BYTES);
+  });
+
+  test("always preserves the marker, even when input must be dropped", () => {
+    const state: FormState = {
+      state: "csrf-expired",
+      name: "Alex",
+      // Percent-encoding inflates this well past the raw character count.
+      message: '"'.repeat(20_000),
+    };
+
+    const fitted = fitFlashState(state, ["message", "name"]);
+
+    expect(fitted.state).toBe("csrf-expired");
+    expect(encodedSize(fitted)).toBeLessThanOrEqual(FLASH_PAYLOAD_MAX_BYTES);
+  });
+
+  test("sacrifices fields in the order given", () => {
+    const state: FormState = {
+      state: "csrf-expired",
+      name: "Alex",
+      message: "x".repeat(10_000),
+    };
+
+    const fitted = fitFlashState(state, ["message", "name"]);
+
+    // message is trimmed first, so the short name survives intact.
+    expect(fitted.name).toBe("Alex");
+    expect((fitted.message ?? "").length).toBeLessThan(10_000);
+  });
+
+  test("does not mutate the input", () => {
+    const state: FormState = {
+      state: "csrf-expired",
+      message: "x".repeat(10_000),
+    };
+
+    fitFlashState(state, ["message"]);
+
+    expect(state.message?.length).toBe(10_000);
+  });
+
+  test("leaves non-string fields alone", () => {
+    const state = {
+      state: "csrf-expired",
+      count: 3,
+      message: "x".repeat(9000),
+    };
+
+    const fitted = fitFlashState(state, ["message", "count"]);
+
+    expect(fitted.count).toBe(3);
+    expect(encodedSize(fitted)).toBeLessThanOrEqual(FLASH_PAYLOAD_MAX_BYTES);
   });
 });

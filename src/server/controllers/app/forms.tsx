@@ -1,14 +1,21 @@
 import type { BunRequest } from "bun";
 import { getSessionContext } from "../../middleware/auth";
-import { csrfProtection } from "../../middleware/csrf";
+import { checkCsrf, isRecoverableCsrfFailure } from "../../middleware/csrf";
 import { createCsrfToken } from "../../services/csrf";
 import { setSessionCookie } from "../../services/sessions";
 import type { FormsState } from "../../templates/forms";
 import { Forms } from "../../templates/forms";
+import { readFormValues } from "../../utils/form-data";
 import { redirect, render } from "../../utils/response";
-import { stateHelpers } from "../../utils/state";
+import { fitFlashState, stateHelpers } from "../../utils/state";
 
 const { getFlash, setFlash } = stateHelpers<FormsState>();
+
+const FORM_FIELDS = ["name", "email", "message"] as const;
+
+// Ordered longest-first: sacrifice the message before the short fields when
+// the preserved values don't fit the flash cookie.
+const TRIMMABLE_FIELDS = ["message", "name", "email"] as const;
 
 export const forms = {
   async index(req: BunRequest): Promise<Response> {
@@ -51,29 +58,51 @@ export const forms = {
       return redirect("/forms");
     }
 
-    const csrfResponse = await csrfProtection(req, {
-      method: "POST",
-      path: "/forms",
-    });
-    if (csrfResponse) {
-      return csrfResponse;
-    }
+    const csrf = await checkCsrf(req, { method: "POST", path: "/forms" });
+    if (!csrf.ok) {
+      // Forged, missing or cross-origin: fail hard, exactly as before.
+      if (!isRecoverableCsrfFailure(csrf)) {
+        return csrf.response;
+      }
 
-    const formData = await req.formData();
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const message = formData.get("message") as string;
-
-    if (!name || name.trim().length < 3) {
+      // Stale but authentic. Don't run the action - hand the work back with a
+      // fresh token so the user can resubmit instead of losing what they typed.
+      const stale = await readFormValues(req, FORM_FIELDS);
+      setFlash(
+        req,
+        fitFlashState<FormsState>(
+          {
+            state: "csrf-expired",
+            name: stale.name,
+            email: stale.email,
+            message: stale.message,
+          },
+          TRIMMABLE_FIELDS,
+        ),
+      );
       return redirect("/forms");
     }
 
-    setFlash(req, {
-      state: "submission-success",
-      name: name.trim(),
-      email: email?.trim() || undefined,
-      message: message?.trim() || undefined,
-    });
+    const { name, email, message } = await readFormValues(req, FORM_FIELDS);
+
+    if (!name || name.length < 3) {
+      setFlash(
+        req,
+        fitFlashState<FormsState>(
+          { state: "validation-error", name, email, message },
+          TRIMMABLE_FIELDS,
+        ),
+      );
+      return redirect("/forms");
+    }
+
+    setFlash(
+      req,
+      fitFlashState<FormsState>(
+        { state: "submission-success", name, email, message },
+        TRIMMABLE_FIELDS,
+      ),
+    );
     return redirect("/forms");
   },
 };

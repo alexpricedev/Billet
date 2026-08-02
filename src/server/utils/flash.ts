@@ -1,8 +1,14 @@
 import type { BunRequest } from "bun";
+import { log } from "../services/logger";
 import { computeHMAC, verifyHMAC } from "./crypto";
 
 const FLASH_COOKIE_PREFIX = "flash_";
 const FLASH_COOKIE_MAX_AGE = 300; // 5 minutes
+
+// Browsers silently drop a cookie over ~4096 bytes, so an oversized payload
+// makes the flash message vanish with no other symptom. Warn rather than fail:
+// see fitFlashState in ./state.ts for trimming state down before it gets here.
+const FLASH_COOKIE_WARN_BYTES = 3500;
 
 interface FlashCookieOptions {
   httpOnly: boolean;
@@ -29,6 +35,14 @@ export const setFlashCookie = <T>(
   const payload = JSON.stringify(data);
   const signature = computeHMAC(payload);
   const signedValue = `${signature}.${payload}`;
+
+  const encodedSize = encodeURIComponent(signedValue).length;
+  if (encodedSize > FLASH_COOKIE_WARN_BYTES) {
+    log.warn(
+      "flash",
+      `Cookie ${cookieName} is ${encodedSize} bytes encoded - browsers may drop it`,
+    );
+  }
 
   req.cookies.set(cookieName, signedValue, getFlashCookieOptions());
 };

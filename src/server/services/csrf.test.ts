@@ -1,10 +1,22 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  setSystemTime,
+  test,
+} from "bun:test";
 import { SQL } from "bun";
 import { cleanupTestData } from "../test-utils/helpers";
 import { findOrCreateUser } from "./auth";
 import {
+  CSRF_GRACE_WINDOWS,
   createCsrfToken,
   ensureCsrfSecret,
+  inspectCsrfToken,
+  TIME_WINDOW_MINUTES,
   validateOrigin,
   verifyCsrfToken,
 } from "./csrf";
@@ -25,6 +37,10 @@ mock.module("./database", () => ({
 describe("CSRF Service", () => {
   beforeEach(async () => {
     await cleanupTestData(db);
+  });
+
+  afterEach(() => {
+    setSystemTime();
   });
 
   afterAll(async () => {
@@ -349,6 +365,125 @@ describe("CSRF Service", () => {
       expect(isValid).toBe(true);
 
       process.env.APP_URL = originalAppUrl;
+    });
+  });
+
+  describe("inspectCsrfToken", () => {
+    const WINDOW_MS = TIME_WINDOW_MINUTES * 60 * 1000;
+
+    // Mint a token as if the page had rendered `minutesAgo` in the past.
+    const mintAged = async (
+      sessionId: string,
+      minutesAgo: number,
+    ): Promise<string> => {
+      setSystemTime(new Date(Date.now() - minutesAgo * 60 * 1000));
+      const token = await createCsrfToken(sessionId, "POST", "/forms");
+      setSystemTime();
+      return token;
+    };
+
+    test("returns valid for a freshly minted token", async () => {
+      const sessionId = await createTestSession();
+      const token = await createCsrfToken(sessionId, "POST", "/forms");
+
+      expect(await inspectCsrfToken(sessionId, "POST", "/forms", token)).toBe(
+        "valid",
+      );
+    });
+
+    test("returns expired for a token a few windows old", async () => {
+      const sessionId = await createTestSession();
+      // 3 windows back is beyond the current/previous pair but inside grace.
+      const token = await mintAged(sessionId, TIME_WINDOW_MINUTES * 3);
+
+      expect(await inspectCsrfToken(sessionId, "POST", "/forms", token)).toBe(
+        "expired",
+      );
+    });
+
+    test("returns invalid once a token falls outside the grace range", async () => {
+      const sessionId = await createTestSession();
+      const token = await mintAged(
+        sessionId,
+        TIME_WINDOW_MINUTES * (CSRF_GRACE_WINDOWS + 4),
+      );
+
+      expect(await inspectCsrfToken(sessionId, "POST", "/forms", token)).toBe(
+        "invalid",
+      );
+    });
+
+    test("returns session-expired when the session has no secret", async () => {
+      const sessionId = await createTestSession();
+
+      expect(
+        await inspectCsrfToken(sessionId, "POST", "/forms", "nonce.token"),
+      ).toBe("session-expired");
+    });
+
+    test("returns invalid for a malformed token", async () => {
+      const sessionId = await createTestSession();
+      await ensureCsrfSecret(sessionId);
+
+      expect(
+        await inspectCsrfToken(sessionId, "POST", "/forms", "no-dot-here"),
+      ).toBe("invalid");
+    });
+
+    test("returns rate-limited after repeated forged attempts", async () => {
+      const sessionId = await createTestSession();
+      await ensureCsrfSecret(sessionId);
+
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await inspectCsrfToken(sessionId, "POST", "/forms", "bad.token");
+      }
+
+      expect(
+        await inspectCsrfToken(sessionId, "POST", "/forms", "bad.token"),
+      ).toBe("rate-limited");
+    });
+
+    test("expired tokens never trip the failure brake", async () => {
+      const sessionId = await createTestSession();
+      const token = await mintAged(sessionId, TIME_WINDOW_MINUTES * 3);
+
+      // Well past MAX_FAILURES_PER_WINDOW: a user with several stale tabs must
+      // not be able to lock themselves out of the recovery path.
+      for (let attempt = 0; attempt < 11; attempt++) {
+        expect(await inspectCsrfToken(sessionId, "POST", "/forms", token)).toBe(
+          "expired",
+        );
+      }
+    });
+
+    test("expired tokens are still rejected by verifyCsrfToken", async () => {
+      const sessionId = await createTestSession();
+      const token = await mintAged(sessionId, TIME_WINDOW_MINUTES * 3);
+
+      expect(await verifyCsrfToken(sessionId, "POST", "/forms", token)).toBe(
+        false,
+      );
+    });
+
+    test("a token from the previous window is still valid", async () => {
+      const sessionId = await createTestSession();
+      setSystemTime(new Date(Date.now() - WINDOW_MS));
+      const token = await createCsrfToken(sessionId, "POST", "/forms");
+      setSystemTime();
+
+      const status = await inspectCsrfToken(sessionId, "POST", "/forms", token);
+      // Depending on where "now" sits in its bucket this is either the previous
+      // bucket (valid) or one older (expired) - never a hard failure.
+      expect(["valid", "expired"]).toContain(status);
+    });
+
+    test("an expired token for the wrong path stays invalid", async () => {
+      const sessionId = await createTestSession();
+      const token = await mintAged(sessionId, TIME_WINDOW_MINUTES * 3);
+
+      expect(
+        await inspectCsrfToken(sessionId, "POST", "/projects", token),
+      ).toBe("invalid");
     });
   });
 });

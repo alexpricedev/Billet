@@ -1,7 +1,16 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  setSystemTime,
+  test,
+} from "bun:test";
 import { SQL } from "bun";
 import { findOrCreateUser } from "../../services/auth";
-import { createCsrfToken } from "../../services/csrf";
+import { createCsrfToken, TIME_WINDOW_MINUTES } from "../../services/csrf";
 import {
   createAuthenticatedSession,
   createGuestSession,
@@ -30,10 +39,23 @@ describe("Forms Controller", () => {
     await cleanupTestData(db);
   });
 
+  afterEach(() => {
+    setSystemTime();
+  });
+
   afterAll(async () => {
     await connection.end();
     mock.restore();
   });
+
+  // Mint a token as if the page had rendered several windows ago: authentic,
+  // but too stale to act on.
+  const mintStaleToken = async (sessionId: string): Promise<string> => {
+    setSystemTime(new Date(Date.now() - TIME_WINDOW_MINUTES * 3 * 60 * 1000));
+    const token = await createCsrfToken(sessionId, "POST", "/forms");
+    setSystemTime();
+    return token;
+  };
 
   const createTestSession = async () => {
     const user = await findOrCreateUser(randomEmail());
@@ -150,7 +172,7 @@ describe("Forms Controller", () => {
       expect(setCookie).toContain("Alex");
     });
 
-    test("redirects without flash when name is missing", async () => {
+    test("redirects with a validation flash when name is missing", async () => {
       const sessionId = await createGuestSession();
       const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(sessionId, "POST", "/forms");
@@ -174,16 +196,18 @@ describe("Forms Controller", () => {
       expect(response.headers.get("location")).toBe("/forms");
 
       const setCookie = findSetCookie(request, "flash_state");
-      expect(setCookie).toBeUndefined();
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("validation-error");
     });
 
-    test("redirects without flash when name is too short", async () => {
+    test("preserves submitted values when name is too short", async () => {
       const sessionId = await createGuestSession();
       const cookieHeader = `session_id=${sessionId}`;
       const csrfToken = await createCsrfToken(sessionId, "POST", "/forms");
 
       const mockFormData = new FormData();
       mockFormData.append("name", "ab");
+      mockFormData.append("email", "alex@example.com");
       mockFormData.append("_csrf", csrfToken);
 
       const request = createBunRequest("http://localhost:3000/forms", {
@@ -201,7 +225,10 @@ describe("Forms Controller", () => {
       expect(response.headers.get("location")).toBe("/forms");
 
       const setCookie = findSetCookie(request, "flash_state");
-      expect(setCookie).toBeUndefined();
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("validation-error");
+      expect(setCookie).toContain("ab");
+      expect(setCookie).toContain("alex@example.com");
     });
 
     test("rejects request without CSRF token", async () => {
@@ -300,6 +327,108 @@ describe("Forms Controller", () => {
       const setCookie = findSetCookie(request, "flash_state");
       expect(setCookie).toBeDefined();
       expect(setCookie).toContain("submission-success");
+    });
+
+    test("preserves submitted values when the CSRF token has expired", async () => {
+      const sessionId = await createGuestSession();
+      const staleToken = await mintStaleToken(sessionId);
+
+      const mockFormData = new FormData();
+      mockFormData.append("name", "Alex");
+      mockFormData.append("email", "alex@example.com");
+      mockFormData.append("message", "Hello world");
+      mockFormData.append("_csrf", staleToken);
+
+      const request = createBunRequest("http://localhost:3000/forms", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+          Cookie: `session_id=${sessionId}`,
+        },
+        body: mockFormData,
+      });
+
+      const response = await forms.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/forms");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("csrf-expired");
+      expect(setCookie).toContain("Alex");
+      expect(setCookie).toContain("alex@example.com");
+      expect(setCookie).toContain("Hello world");
+      // The stale submission must never be recorded as a success.
+      expect(setCookie).not.toContain("submission-success");
+    });
+
+    test("still hard-fails an expired token from a foreign origin", async () => {
+      const sessionId = await createGuestSession();
+      const staleToken = await mintStaleToken(sessionId);
+
+      const mockFormData = new FormData();
+      mockFormData.append("name", "Alex");
+      mockFormData.append("_csrf", staleToken);
+
+      const request = createBunRequest("http://localhost:3000/forms", {
+        method: "POST",
+        headers: {
+          Origin: "http://evil.example",
+          Cookie: `session_id=${sessionId}`,
+        },
+        body: mockFormData,
+      });
+
+      const response = await forms.create(request);
+
+      expect(response.status).toBe(403);
+      expect(await response.text()).toBe("Invalid request origin");
+      expect(findSetCookie(request, "flash_state")).toBeUndefined();
+    });
+  });
+
+  describe("CSRF expiry recovery round-trip", () => {
+    test("re-renders the form pre-filled with a fresh token", async () => {
+      const sessionId = await createGuestSession();
+
+      const request = createBunRequest("http://localhost:3000/forms", {
+        headers: { Cookie: `session_id=${sessionId}` },
+      });
+
+      const { setFlash } = stateHelpers<FormsState>();
+      setFlash(request, {
+        state: "csrf-expired",
+        name: "Alex",
+        email: "alex@example.com",
+        message: "Hello world",
+      });
+
+      const response = await forms.index(request);
+      const html = await response.text();
+
+      expect(html).toContain("Your session timed out");
+      expect(html).toContain('value="Alex"');
+      expect(html).toContain('value="alex@example.com"');
+      expect(html).toContain("Hello world");
+      expect(html).toContain('name="_csrf"');
+    });
+
+    test("does not pre-fill the form after a successful submission", async () => {
+      const sessionId = await createGuestSession();
+
+      const request = createBunRequest("http://localhost:3000/forms", {
+        headers: { Cookie: `session_id=${sessionId}` },
+      });
+
+      const { setFlash } = stateHelpers<FormsState>();
+      setFlash(request, { state: "submission-success", name: "Alex" });
+
+      const response = await forms.index(request);
+      const html = await response.text();
+
+      expect(html).toContain("Submitted successfully");
+      expect(html).not.toContain('value="Alex"');
     });
   });
 });

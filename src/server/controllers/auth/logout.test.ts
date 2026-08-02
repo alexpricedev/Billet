@@ -1,4 +1,13 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  setSystemTime,
+  test,
+} from "bun:test";
 import { SQL } from "bun";
 import { cleanupTestData } from "../../test-utils/helpers";
 
@@ -50,7 +59,7 @@ mock.module("../../middleware/auth", () => {
 });
 
 import { findOrCreateUser } from "../../services/auth";
-import { createCsrfToken } from "../../services/csrf";
+import { createCsrfToken, TIME_WINDOW_MINUTES } from "../../services/csrf";
 import { db } from "../../services/database";
 import { createAuthenticatedSession } from "../../services/sessions";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
@@ -59,6 +68,10 @@ import { logout } from "./logout";
 describe("Logout Controller", () => {
   beforeEach(async () => {
     await cleanupTestData(db);
+  });
+
+  afterEach(() => {
+    setSystemTime();
   });
 
   afterAll(async () => {
@@ -305,6 +318,72 @@ describe("Logout Controller", () => {
       expect(setCookie).toBeTruthy();
       expect(setCookie).toContain("session_id=");
       expect(setCookie).toContain("Max-Age=0");
+    });
+
+    test("honours a stale but authentic token so sign-out never appears broken", async () => {
+      const user = await findOrCreateUser("csrf-stale@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      setSystemTime(new Date(Date.now() - TIME_WINDOW_MINUTES * 3 * 60 * 1000));
+      const staleToken = await createCsrfToken(
+        sessionId,
+        "POST",
+        "/auth/logout",
+      );
+      setSystemTime();
+
+      const formData = new FormData();
+      formData.append("_csrf", staleToken);
+
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+          Cookie: `session_id=${sessionId}`,
+        },
+        body: formData,
+      });
+
+      const response = await logout.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/login");
+      expect(response.headers.get("Clear-Site-Data")).toBe(
+        '"cookies", "storage"',
+      );
+
+      const remaining = await db`SELECT id_hash FROM sessions`;
+      expect(remaining.length).toBe(0);
+    });
+
+    test("still rejects a stale token from a foreign origin", async () => {
+      const user = await findOrCreateUser("csrf-stale-origin@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      setSystemTime(new Date(Date.now() - TIME_WINDOW_MINUTES * 3 * 60 * 1000));
+      const staleToken = await createCsrfToken(
+        sessionId,
+        "POST",
+        "/auth/logout",
+      );
+      setSystemTime();
+
+      const formData = new FormData();
+      formData.append("_csrf", staleToken);
+
+      const request = createBunRequest("http://localhost:3000/auth/logout", {
+        method: "POST",
+        headers: {
+          Origin: "http://evil.example",
+          Cookie: `session_id=${sessionId}`,
+        },
+        body: formData,
+      });
+
+      const response = await logout.create(request);
+
+      expect(response.status).toBe(403);
+      expect(await response.text()).toBe("Invalid request origin");
     });
   });
 });
