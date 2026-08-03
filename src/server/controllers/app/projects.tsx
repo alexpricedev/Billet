@@ -1,6 +1,6 @@
 import type { BunRequest } from "bun";
 import { getSessionContext, requireAuth } from "../../middleware/auth";
-import { csrfProtection } from "../../middleware/csrf";
+import { checkCsrf, isRecoverableCsrfFailure } from "../../middleware/csrf";
 import { createCsrfToken } from "../../services/csrf";
 import {
   createProject,
@@ -10,8 +10,9 @@ import {
 import { setSessionCookie } from "../../services/sessions";
 import type { ProjectsState } from "../../templates/projects";
 import { Projects } from "../../templates/projects";
+import { readFormValues } from "../../utils/form-data";
 import { redirect, render } from "../../utils/response";
-import { stateHelpers } from "../../utils/state";
+import { fitFlashState, stateHelpers } from "../../utils/state";
 
 const { getFlash, setFlash } = stateHelpers<ProjectsState>();
 
@@ -76,23 +77,40 @@ export const projects = {
       return redirect("/projects");
     }
 
-    const csrfResponse = await csrfProtection(req, {
-      method: "POST",
-      path: "/projects",
-    });
-    if (csrfResponse) {
-      return csrfResponse;
+    const csrf = await checkCsrf(req, { method: "POST", path: "/projects" });
+    if (!csrf.ok) {
+      // Forged, missing or cross-origin: fail hard, exactly as before.
+      if (!isRecoverableCsrfFailure(csrf)) {
+        return csrf.response;
+      }
+
+      // Stale but authentic. Don't create - hand the title back with a fresh
+      // token so the user can resubmit.
+      const stale = await readFormValues(req, ["title"]);
+      setFlash(
+        req,
+        fitFlashState<ProjectsState>(
+          { state: "csrf-expired", title: stale.title },
+          ["title"],
+        ),
+      );
+      return redirect("/projects");
     }
 
-    const formData = await req.formData();
-    const title = formData.get("title") as string;
+    const { title } = await readFormValues(req, ["title"]);
 
-    if (!title || title.trim().length < 2) {
+    if (!title || title.length < 2) {
+      setFlash(
+        req,
+        fitFlashState<ProjectsState>({ state: "validation-error", title }, [
+          "title",
+        ]),
+      );
       return redirect("/projects");
     }
 
     const createdBy = ctx.user?.email ?? null;
-    await createProject(title.trim(), createdBy);
+    await createProject(title, createdBy);
     setFlash(req, { state: "submission-success" });
     return redirect("/projects");
   },
@@ -105,12 +123,20 @@ export const projects = {
       return authRedirect;
     }
 
-    const csrfResponse = await csrfProtection(req, {
+    const csrf = await checkCsrf(req, {
       method: "POST",
-      path: req.url,
+      path: new URL(req.url).pathname,
     });
-    if (csrfResponse) {
-      return csrfResponse;
+    if (!csrf.ok) {
+      if (!isRecoverableCsrfFailure(csrf)) {
+        return csrf.response;
+      }
+
+      // Stale but authentic. Nothing to preserve, and a delete must never be
+      // replayed silently - bounce back so the row re-renders with a fresh
+      // token and the user confirms with a deliberate second click.
+      setFlash(req, { state: "delete-csrf-expired" });
+      return redirect("/projects");
     }
 
     const idParam = req.params.id;

@@ -69,7 +69,7 @@ A complete magic-link email auth flow: users enter their email, receive a login 
 
 ### Security
 
-- **CSRF protection** using the synchronizer token pattern with timing-safe comparison and origin validation
+- **CSRF protection** using the synchronizer token pattern with timing-safe comparison and origin validation. A token that has aged out but still verifies against the session secret is recognised as stale rather than forged, so the form is re-rendered with a fresh token and the user's input intact instead of a dead-end 403
 - **Rate limiting** middleware with configurable sliding-window limits per IP
 - **Signup spam defense** on the login form — an always-on honeypot and per-IP rate limit, plus an optional first-party proof-of-work captcha (no third party, account, or extra secret; off by default, enable with `CAPTCHA_ENABLED`)
 - **Session fixation prevention** — sessions are regenerated on login

@@ -7,7 +7,13 @@ import type { Project } from "../services/project";
 import type { User } from "../services/users";
 
 export interface ProjectsState {
-  state?: "submission-success" | "deletion-success";
+  state?:
+    | "submission-success"
+    | "deletion-success"
+    | "csrf-expired"
+    | "delete-csrf-expired"
+    | "validation-error";
+  title?: string;
 }
 
 export type ProjectsProps = {
@@ -21,6 +27,13 @@ export type ProjectsProps = {
 };
 
 export const Projects = (props: ProjectsProps): JSX.Element => {
+  // Only re-fill the create form when that submit failed.
+  const restoredTitle =
+    props.state?.state === "csrf-expired" ||
+    props.state?.state === "validation-error"
+      ? props.state.title
+      : undefined;
+
   return (
     <Layout
       title="CRUD - Billet"
@@ -36,13 +49,31 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
         protection, and flash messages.
       </p>
 
-      {props.state?.state && (
+      {(props.state?.state === "submission-success" ||
+        props.state?.state === "deletion-success") && (
         <Flash type="success">
           {props.state.state === "submission-success" &&
             "Project added successfully."}
           {props.state.state === "deletion-success" &&
             "Project deleted successfully."}
         </Flash>
+      )}
+
+      {props.state?.state === "csrf-expired" && (
+        <Flash type="warning">
+          Your session timed out — nothing was saved. Check the title and add it
+          again.
+        </Flash>
+      )}
+
+      {props.state?.state === "delete-csrf-expired" && (
+        <Flash type="warning">
+          Your session timed out — nothing was deleted. Try again.
+        </Flash>
+      )}
+
+      {props.state?.state === "validation-error" && (
+        <Flash type="error">Project title must be at least 2 characters.</Flash>
       )}
 
       <section className="card">
@@ -58,6 +89,7 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
             placeholder="New project title"
             required
             minLength={2}
+            defaultValue={restoredTitle}
           />
           <button type="submit">Add Project</button>
         </form>

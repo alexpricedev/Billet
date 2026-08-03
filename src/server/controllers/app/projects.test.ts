@@ -1,7 +1,16 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  setSystemTime,
+  test,
+} from "bun:test";
 import { SQL } from "bun";
 import { findOrCreateUser } from "../../services/auth";
-import { createCsrfToken } from "../../services/csrf";
+import { createCsrfToken, TIME_WINDOW_MINUTES } from "../../services/csrf";
 import type { Project } from "../../services/project";
 import {
   createAuthenticatedSession,
@@ -47,6 +56,10 @@ describe("Projects Controller", () => {
     mockDeleteProject.mockClear();
   });
 
+  afterEach(() => {
+    setSystemTime();
+  });
+
   afterAll(async () => {
     await connection.end();
     mock.restore();
@@ -55,6 +68,18 @@ describe("Projects Controller", () => {
   const createTestSession = async () => {
     const user = await findOrCreateUser(randomEmail());
     return createAuthenticatedSession(user.id);
+  };
+
+  // Mint a token as if the page had rendered several windows ago: authentic,
+  // but too stale to act on.
+  const mintStaleToken = async (
+    sessionId: string,
+    path: string,
+  ): Promise<string> => {
+    setSystemTime(new Date(Date.now() - TIME_WINDOW_MINUTES * 3 * 60 * 1000));
+    const token = await createCsrfToken(sessionId, "POST", path);
+    setSystemTime();
+    return token;
   };
 
   describe("GET /projects", () => {
@@ -617,6 +642,86 @@ describe("Projects Controller", () => {
       expect(mockDeleteProject).not.toHaveBeenCalled();
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/projects");
+    });
+  });
+
+  describe("CSRF expiry recovery", () => {
+    test("create preserves the title and does not create the project", async () => {
+      const sessionId = await createTestSession();
+      const staleToken = await mintStaleToken(sessionId, "/projects");
+
+      const mockFormData = new FormData();
+      mockFormData.append("title", "My New Project");
+      mockFormData.append("_csrf", staleToken);
+
+      const request = createBunRequest("http://localhost:3000/projects", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+          Cookie: `session_id=${sessionId}`,
+        },
+        body: mockFormData,
+      });
+
+      const response = await projects.create(request);
+
+      expect(mockCreateProject).not.toHaveBeenCalled();
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/projects");
+
+      const setCookie = findSetCookie(request, "flash_state");
+      expect(setCookie).toContain("csrf-expired");
+      expect(setCookie).toContain("My New Project");
+    });
+
+    test("destroy never deletes on a stale token", async () => {
+      const sessionId = await createTestSession();
+      const staleToken = await mintStaleToken(sessionId, "/projects/1/delete");
+
+      const mockFormData = new FormData();
+      mockFormData.append("_csrf", staleToken);
+
+      const request = createBunRequest(
+        "http://localhost:3000/projects/1/delete",
+        {
+          method: "POST",
+          headers: {
+            Origin: "http://localhost:3000",
+            Cookie: `session_id=${sessionId}`,
+          },
+          body: mockFormData,
+        },
+        { id: "1" },
+      );
+
+      const response = await projects.destroy(request);
+
+      // The load-bearing assertion: a destructive action must never be
+      // replayed off a stale token.
+      expect(mockDeleteProject).not.toHaveBeenCalled();
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/projects");
+      expect(findSetCookie(request, "flash_state")).toContain(
+        "delete-csrf-expired",
+      );
+    });
+
+    test("renders the recovery warning and pre-fills the title", async () => {
+      const sessionId = await createTestSession();
+      mockGetProjects.mockResolvedValueOnce([]);
+
+      const request = createBunRequest("http://localhost:3000/projects", {
+        headers: { Cookie: `session_id=${sessionId}` },
+      });
+
+      const { setFlash } = stateHelpers<ProjectsState>();
+      setFlash(request, { state: "csrf-expired", title: "My New Project" });
+
+      const response = await projects.index(request);
+      const html = await response.text();
+
+      expect(html).toContain("Your session timed out");
+      expect(html).toContain('value="My New Project"');
     });
   });
 });
