@@ -123,9 +123,17 @@ Run the full suite: `bun run test`
 
 The "designed for AI agents" tagline is the reason Billet exists, so here's what that means in practice.
 
-### CLAUDE.md — the agent's guide
+### CLAUDE.md and skills — the agent's guide
 
-The repo includes a 200-line [`CLAUDE.md`](CLAUDE.md) that serves as an onboarding document for AI coding agents. It covers the full architecture: directory layout, naming conventions, routing patterns, service layer design, testing strategies by module type, and a step-by-step walkthrough for adding a new page. When an agent opens this project, it knows where everything goes and how everything connects — before writing a single line of code.
+The repo ships a deliberately short [`CLAUDE.md`](CLAUDE.md) plus a set of skills in `.claude/skills/`. `CLAUDE.md` covers only what an agent can't learn by reading the repo — the gotchas: two JSX runtimes with no hydration, why service tests mock the database module before importing, why `bun test` isn't the test command, where security headers actually come from. Everything procedural lives in skills that load on demand:
+
+| Skill | Loads when |
+|---|---|
+| `adding-a-feature` | Wiring a page, endpoint, or migration through every layer |
+| `writing-tests` | Adding or fixing a test — one reference per module type |
+| `verifying-changes` | Running lint, typecheck, and the test suite, and reading their failures |
+
+This split follows Anthropic's [context engineering guidance for Claude 5 models](https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models): keep the always-loaded context small and specific to your codebase, and use progressive disclosure for the rest.
 
 ### Why this architecture works for agents
 
