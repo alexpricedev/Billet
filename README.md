@@ -108,7 +108,7 @@ Run the full suite: `bun run test`
 
 ### Frontend
 
-- **React JSX as a template engine** — server-side only, no client-side React, no virtual DOM, no hydration
+- **Preact JSX as a template engine** — server-rendered to a string, no hydration, no client-side framework runtime on the page by default. One JSX runtime across server and client, so there's no second React toolchain to reason about
 - **Bun CSS bundler** with `@import` resolution, CSS nesting, and minification — no external CSS tooling needed
 - **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example loaded via CDN import map)
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS

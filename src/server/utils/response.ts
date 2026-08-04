@@ -1,5 +1,5 @@
-import type { JSX } from "react";
-import { renderToString } from "react-dom/server";
+import type { JSX } from "preact";
+import { renderToString } from "preact-render-to-string";
 
 // Security headers are applied centrally to every response — see
 // `secureRoutes` and the `fetch` fallback in main.ts — so producers here only

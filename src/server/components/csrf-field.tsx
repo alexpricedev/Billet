@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { JSX } from "preact";
 
 interface CsrfFieldProps {
   token: string | null;

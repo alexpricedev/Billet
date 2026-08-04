@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { renderToString } from "react-dom/server";
+import { renderToString } from "preact-render-to-string";
 import { CaptchaWidget } from "./captcha-widget";
 
 const challenge = {

@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { JSX } from "preact";
 import { CsrfField } from "../components/csrf-field";
 import { DataTable } from "../components/data-table";
 import { Flash } from "../components/flash";

@@ -1,5 +1,7 @@
+import type { ComponentChildren } from "preact";
+
 interface DataTableProps {
-  children: React.ReactNode;
+  children: ComponentChildren;
   className?: string;
   // A caption names the table for screen readers. It's visually hidden by
   // default (pages usually have a visible heading already); pass

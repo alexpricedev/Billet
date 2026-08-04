@@ -1,7 +1,9 @@
+import type { ComponentChildren } from "preact";
+
 interface FormFieldProps {
   label: string;
   id: string;
-  children: React.ReactNode;
+  children: ComponentChildren;
 }
 
 export const FormField = ({ label, id, children }: FormFieldProps) => (

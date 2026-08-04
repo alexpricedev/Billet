@@ -20,8 +20,10 @@ Takes fully resolved data as props, wrapped in the layout:
 `name` sets `data-page` on `<body>`, which is what dispatches the client script in step 6. Any
 form that POSTs needs `<CsrfField token={csrfToken} />`.
 
-This compiles with React's JSX runtime and renders once on the server — it never hydrates. Don't
-reach for `useState` here.
+This renders once on the server and never hydrates, so don't reach for `useState` here — it's the
+same Preact runtime the islands use, but the output is a string. Write SVG attributes in kebab-case
+(`stroke-width`, not `strokeWidth`); Preact passes camelCase through verbatim and the browser
+ignores it.
 
 ## 3. Controller — `src/server/controllers/app/dashboard.tsx`
 
