@@ -5,6 +5,8 @@ coverage
 .env
 .env.test
 docs
-.claude
+.claude/*
+!.claude/skills/
+.claude/settings.local.json
 .worktrees
 .gstack

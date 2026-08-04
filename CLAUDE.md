@@ -1,221 +1,103 @@
-# CLAUDE.md - Development Context & Guidelines
+# CLAUDE.md
 
-This file contains essential context and guidelines for Claude instances working on this project.
+Billet is a server-rendered full-stack TypeScript app on Bun + PostgreSQL. Requests flow
+route → controller → service → template. `README.md` has the directory tree; the code is the
+spec for everything else. This file is for the things you can't learn by reading the repo.
 
-**Key workflow reminders:**
+## Working agreements
 
-- Never try to run the local dev server. The Human is always running it in another tab on port 3000.
-- Always test your work with the /browse skill to confirm it works as expected.
-- This project uses JSX for it's template engine but it is NOT a React (client) project.
-- When trying different approaches for a given problem, always go back and remove or refactor.
-- Use code comments sparingly. Save them for when the extra context is really needed.
+- The dev server is already running on port 3000 in another tab — don't start one, and don't
+  add a second. `bun run dev` here will fail on the port or fight the watcher.
+- Run test and lint suites through the `package.json` scripts (`bun run test`, `bun run check`).
+  Invoking `bun test` directly skips migrations and leaks your `.env` into the run — see the
+  `verifying-changes` skill.
+- Write code that reads like the surrounding code: match its comment density, naming, and idiom.
+- When you try several approaches to a problem, delete the ones you abandoned before you finish.
+- Check work in the browser with the `/browse` skill when the change is user-visible.
 
-## General codebase notes
+## Gotchas
 
-### Code Quality Standards
+### Two JSX runtimes, no hydration
 
-**STRICT LINTING ENFORCED:**
+Server templates and `src/server/components/` compile with React's runtime (`jsxImportSource: react`
+in `tsconfig.json`) and render once through `renderToString()` in `src/server/utils/response.ts`.
+None of it hydrates — there is no React on the client, and `useState` in a server component does
+nothing.
 
-ALWAYS check for TS errors and linting issues before finishing a work loop (`bun run check`)
+Client interactivity is Preact islands. A client component opts in per-file with a
+`/** @jsxImportSource preact */` pragma on line 1, and the page script mounts it with
+`render()` from `preact`. Preact is marked `--external` in the build scripts and resolved at
+runtime from the import map in `src/server/components/layouts.tsx`, so the version pinned there
+must stay in step with `package.json`.
 
-- **Zero warnings allowed** (`--max-warnings 0`)
-- **No "any" types allowed** (`noExplicitAny: error`)
-- **No console statements allowed** (`noConsole: error`) — use `log` from `src/server/services/logger.ts` instead
-- **No unsafe writes**
+No Web Components. Shadow DOM and custom-element lifecycles need browser infrastructure to test;
+pure functions and Preact islands are both testable under `bun:test`.
 
-### Package Management
+### Service tests mock the DB module before importing the service
 
-- Uses `bun` as the package manager (not npm, pnpm or yarn)
-- Lock file: `bun.lock`
+`src/server/services/*.test.ts` call `mock.module("./database", ...)` and *then* import the
+service under test. The imports sit below executable code on purpose — that ordering is what
+makes the mock take effect. Don't tidy it.
 
-## Architecture Decisions
+### The test runner is a script, not `bun test`
 
-### Code Quality Tools
+`bun run test` runs `src/server/test-utils/run-tests.ts`, which applies migrations first, spawns
+one process per test file (isolation + a per-file timeout), and pins `SESSION_COOKIE_NAME=session_id`
+because tests hardcode that cookie. A custom `SESSION_COOKIE_NAME` in your `.env` breaks auth tests
+if it leaks in.
 
-- **Biome**: Code linting for TypeScript
-- **Prettier**: Code formatting with consistent style
-- **TypeScript**: Strict mode enabled for type safety
+`bunfig.toml` preloads `src/client/test-utils/setup.ts` for *every* test file. It registers
+happy-dom globals and then restores Bun's native `Request`/`Response`/`FormData` — server tests
+depend on that restore.
 
-### No Web Components
+### Security headers and CSP are centralised
 
-Shadow DOM and custom element lifecycles can't be tested without browser-level infrastructure (happy-dom, Puppeteer, etc.). Prefer pure functions for logic and Preact islands for client-side interactivity — both are testable with `bun:test`.
+Every response gets its headers from `secureRoutes` / `handleGuarded` in
+`src/server/utils/security-headers.ts`. Controllers set only content-specific headers.
 
-### Testing Strategies by Module Type
+The CSP script allowlist is `'self' 'unsafe-inline' https://unpkg.com https://esm.sh`. Any new
+third-party script needs the CSP entry, an SRI `integrity` hash, and ideally a `preconnect` in
+`layouts.tsx` — otherwise it is silently blocked in the browser but passes every test.
 
-ALWAYS run test suites via the `package.json` *test scripts* so the env vars are correct.
-NEVER try to roll your own lint or test commands.
+### Env is validated at boot and `APP_URL` is load-bearing
 
-**API Controllers** (`src/server/controllers/api/*.test.ts`):
-- Mock service layer dependencies only
-- Test actual HTTP Response objects (status codes, headers, JSON content)
-- Focus on request/response handling and error scenarios
+`validateEnv()` exits the process on a missing var, then migrations run before `Bun.serve()` — a
+failed migration means no server. `src/server/services/database.ts` throws at import time without
+`DATABASE_URL`, so anything that imports it (directly or not) needs the env set.
 
-**View Controllers** (`src/server/controllers/app/*.test.ts`):
-- Mock service layer dependencies only  
-- Test actual HTML output using `renderToString()`
-- Verify specific content appears in rendered HTML
-- Test redirect responses with actual status codes and Location headers
+`APP_URL` must include the port. CSRF origin validation compares the request `Origin` against it
+exactly, so `http://localhost` vs `http://localhost:3000` rejects every form post with a 403.
 
-**Services** (`src/server/services/*.test.ts`):
-- Use real PostgreSQL database for testing with .env.test configuration
-- Test complete CRUD operations with actual SQL queries
-- Use table truncation and cleanup for test isolation
+### Assets are only fingerprinted in production
 
-**Test Utilities** (`src/server/test-utils/*.ts`):
-- Unit test adapters and helper functions directly
-- Focus on input/output transformations
-- Test edge cases and error handling
+`initAssets()` and `getAssetUrl()` no-op unless `NODE_ENV=production`, so asset URLs differ between
+dev and prod. In production the files must already exist in `dist/assets` or startup throws.
 
-**Client Scripts** (`src/client/**/*.test.ts`):
-- Use happy-dom for DOM globals (auto-loaded via bunfig.toml prelude)
-- Set up DOM fixtures matching server-rendered HTML in `beforeEach`
-- Clean up with `document.body.innerHTML = ""` in `afterEach`
-- Call `init()` and assert DOM state changes
-- For Preact components, render into a container and assert output
-- Use dynamic imports for page init functions to get fresh module context (avoid top-level imports with module caching)
+### Linting
 
-### Best Practices
+Biome runs with `recommended` on and `noConsole: error` — use `log` from
+`src/server/services/logger.ts` in server code. Test files, `logger.ts`, the database CLI/seed
+scripts, and `test-utils/bootstrap.ts` have targeted overrides in `biome.json`; add an override
+there rather than sprinkling ignore comments.
 
-- **Test user interactions**: Focus on user behavior rather than implementation
-- **Authenticated contexts**: Test components with guest and logged-in users
-- **Error scenarios**: Test error handling and edge cases
+`tsconfig.json` excludes `src/server/services/email-providers/resend.ts` from typechecking —
+changes to it are not covered by `bun run check`.
 
-## Architecture Patterns
+### Naming that isn't inferable
 
-### Server-side Rendering Flow
+App controllers export a plain name (`home`, `projects`); API controllers use an `Api` suffix
+(`examplesApi`, `statsApi`) so both can be barrel-exported when they share a resource name.
 
-- Data fetched synchronously in route handlers is always available before template renders
-- No need for loading states when data is fetched server-side before rendering
-- Routes return Response objects with proper headers, not JSX elements directly
-- Templates receive fully resolved data as props
+## Skills
 
-### Server Startup
+Detail lives in skills so it loads only when it's relevant:
 
-- Migrations run automatically on startup (`await runMigrations()` before `Bun.serve()`)
-- If a migration fails, the server won't start (fail-safe)
-- No need to run migrations manually before starting the server
+- `adding-a-feature` — wiring a new page, API endpoint, or admin route through every layer
+- `writing-tests` — the testing pattern for each module type
+- `verifying-changes` — how to run checks and tests, and what the failures mean
 
-### Logging
+## Runbooks
 
-- Use `log.info(category, message)`, `log.warn(...)`, `log.error(...)` from `src/server/services/logger.ts`
-- Never use `console.*` directly in server code — Biome enforces `noConsole: error`
-- CLI scripts (`cli.ts`, `bootstrap.ts`) and test files are exempt from this rule
-- Output format: `[LEVEL] [category] message` — goes to stdout/stderr for platform capture
-
-### Service Layer Abstraction
-
-- Business logic should live in `/src/server/services/` directory
-- Services provide single source of truth for data operations
-- Services should be pure functions when possible for easier testing
-- Services can be shared across both API and view routes
-- Example: `analytics.ts` service for visitor stats and analytics
-
-### Type Safety Across Layers
-
-- Export types from service modules alongside functions
-- Import and use service types in templates for consistency
-- Avoid duplicating type definitions across files
-- Maintain type safety from service → route → template
-- Example: `VisitorStats` type exported from analytics service
-
-## Routing Structure
-
-### Route Organization
-
-- Separate API routes (`/src/server/routes/api.ts`) and view routes (`/src/server/routes/app.tsx`)
-- Routes use Bun's native `routes: {}` configuration for better performance
-- API routes return JSON responses using `Response.json()`
-- View routes render HTML using `renderToString()` wrapped in Response objects
-- Both route types can share services for business logic
-
-### Route Handler Patterns
-
-- API routes: `(req) => Response | Promise<Response>`
-- View routes: `(req) => Response` (after fetching data from services)
-- Avoid circular dependencies between routes (don't fetch API routes from view routes)
-- Use services to share logic between different route types
-
-## Project Structure
-
-### Directory Layout
-
-```
-src/
-├── client/                        # Browser-side code
-│   ├── main.ts                    # Entry point — routes to page init functions
-│   ├── style.css                  # Global styles (CSS entry point)
-│   ├── components/                # Reusable client components (CSS)
-│   │   ├── nav.css
-│   │   └── layout.css
-│   └── pages/                     # Page-specific JS & CSS (co-located)
-│       ├── home.ts / home.css
-│       ├── about.ts / about.css
-│       └── contact.ts / contact.css
-│
-├── server/                        # Server-side code (Bun/TypeScript)
-│   ├── main.ts                    # Server entry point
-│   ├── routes/
-│   │   ├── app.tsx                # View route map
-│   │   └── api.ts                 # API route map
-│   ├── controllers/               # Route handlers (grouped by domain)
-│   │   ├── app/                   # View controllers — return HTML
-│   │   ├── api/                   # API controllers — return JSON
-│   │   └── auth/                  # Auth controllers — login/logout flows
-│   ├── templates/                 # Full-page JSX templates
-│   ├── components/                # Reusable server JSX components
-│   ├── services/                  # Business logic & data access
-│   ├── middleware/                # HTTP middleware (auth, CSRF)
-│   ├── utils/                     # Shared utilities (response, crypto, etc.)
-│   ├── database/
-│   │   ├── cli.ts / migrate.ts    # Migration tooling
-│   │   └── migrations/            # Numbered migration files
-│   └── test-utils/                # Test infrastructure (setup, factories, helpers)
-│
-└── types/                         # Global TypeScript type declarations
-```
-
-### Naming Conventions
-
-| What | Convention | Example |
-|------|-----------|---------|
-| Files & directories | kebab-case | `route-handler.ts`, `test-utils/` |
-| JSX component exports | PascalCase | `Home`, `Layout`, `CsrfField` |
-| Controller namespace exports | camelCase | `home`, `examplesApi`, `login` |
-| Service functions | camelCase | `getExamples`, `createCsrfToken` |
-| Type exports | PascalCase | `Example`, `VisitorStats`, `AuthContext` |
-| Migrations | `NNN_snake_case.ts` | `001_initial_setup.ts` |
-| Test files | Co-located `.test.ts` | `home.test.ts` next to `home.tsx` |
-
-**Controller barrel export naming:** App controllers export plain names (`home`, `about`). API controllers use an `Api` suffix (`examplesApi`, `statsApi`) to disambiguate when both domains share a resource name.
-
-### How Files Connect (Adding a New Page)
-
-To add a new page called "dashboard", create files in this order:
-
-1. **Service** (if it needs data): `src/server/services/dashboard.ts`
-   - Export functions and types
-2. **Template**: `src/server/templates/dashboard.tsx`
-   - Import types from service, accept data as props
-   - Wrap in `<Layout title="Dashboard" name="dashboard">`
-3. **Controller**: `src/server/controllers/app/dashboard.tsx`
-   - Import service functions and template
-   - Fetch data, pass to template via `render(<Dashboard ... />)`
-   - Export as `const dashboard = { index(req) { ... } }`
-4. **Barrel export**: Add `export { dashboard } from "./dashboard"` to `controllers/app/index.ts`
-5. **Route**: Add `"/dashboard": dashboard.index` to `routes/app.tsx`
-6. **Client JS** (if interactive): `src/client/pages/dashboard.ts`
-   - Export an `init()` function
-   - Register it in `src/client/main.ts`
-7. **Client CSS** (if page-specific styles): `src/client/pages/dashboard.css`
-8. **Test**: `src/server/controllers/app/dashboard.test.ts`
-
-For an **API endpoint**, the flow is similar but skips templates:
-1. Service → 2. Controller in `controllers/api/` → 3. Barrel export with `Api` suffix → 4. Route in `routes/api.ts` → 5. Test
-
-### Key Patterns
-
-- **Routes** are thin — they only map URL paths to controller methods
-- **Controllers** orchestrate: fetch from services, then render templates or return JSON
-- **Services** own all business logic and data access — controllers never query the DB directly
-- **Templates** are pure presentation — they receive fully resolved data as props
-- **Client scripts** use `data-page` on `<body>` for page routing (set by the `Layout` component's `name` prop)
+`runbooks/` holds the operational standards this project is held to — `SECURITY.md`, `PRIVACY.md`,
+`ACCESSIBILITY.md`, `SEO.md`, `EMAIL.md`, `CI.md`. Read the relevant one before changing headers,
+cookies, metadata, or email delivery.
