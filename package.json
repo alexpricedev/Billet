@@ -1,7 +1,7 @@
 {
   "name": "billet",
   "description": "A full-stack TypeScript starter designed to be built on by AI coding agents",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scripts": {
     "build": "bun run build:client && bun run build:css",
     "build:client": "bun build ./src/client/main.ts ./src/client/captcha.ts --outdir ./dist/assets --minify --external preact --external preact/hooks --external preact/jsx-dev-runtime --external preact/jsx-runtime",
