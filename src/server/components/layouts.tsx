@@ -1,4 +1,4 @@
-import type React from "react";
+import type { ComponentChildren } from "preact";
 
 import { getAssetUrl } from "../services/assets";
 import {
@@ -73,7 +73,7 @@ function HeadMeta({
 interface LayoutProps {
   title: string;
   name: string;
-  children: React.ReactNode;
+  children: ComponentChildren;
   user?: User | null;
   csrfToken?: string;
   description?: string;
@@ -180,7 +180,7 @@ function SiteFooter() {
 
 interface ErrorLayoutProps {
   title: string;
-  children: React.ReactNode;
+  children: ComponentChildren;
   nav?: boolean;
 }
 
@@ -213,7 +213,7 @@ export function ErrorLayout({ title, children, nav = true }: ErrorLayoutProps) {
 
 interface BaseLayoutProps {
   title: string;
-  children: React.ReactNode;
+  children: ComponentChildren;
   description?: string;
   canonicalPath?: string;
   noindex?: boolean;

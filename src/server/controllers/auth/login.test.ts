@@ -98,7 +98,7 @@ describe("Login Controller", () => {
       const html = await response.text();
 
       expect(html).toContain("Check your email!");
-      expect(html).toContain("We&#x27;ve sent you a magic link");
+      expect(html).toContain("We've sent you a magic link");
     });
 
     test("shows error message when error is provided", async () => {

@@ -1,4 +1,3 @@
-/** @jsxImportSource preact */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { render } from "preact";
 import { ProjectSearch } from "./project-search";

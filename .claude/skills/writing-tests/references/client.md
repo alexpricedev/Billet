@@ -39,8 +39,7 @@ The fixture has to match what the server actually renders — the same ids, clas
 
 Render into a container and assert on the output:
 
-```ts
-/** @jsxImportSource preact */
+```tsx
 import { render } from "preact";
 
 const container = document.createElement("div");
@@ -49,8 +48,8 @@ render(<ProjectSearch projects={[{ id: 1, title: "Test" }]} />, container);
 expect(container.textContent).toContain("Test");
 ```
 
-The `/** @jsxImportSource preact */` pragma on line 1 is required — without it the file compiles
-against React's runtime and the render fails.
+Preact is the project-wide JSX runtime, so no pragma is needed. The file must be `.tsx` for the
+JSX to compile.
 
 Islands here reach outside their own tree (`ProjectSearch` toggles rows in the server-rendered
 table by id), so the fixture usually needs that surrounding markup in `document.body` too.

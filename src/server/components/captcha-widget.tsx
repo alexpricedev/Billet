@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { JSX } from "preact";
 import { getAssetUrl } from "../services/assets";
 import {
   CAPTCHA_SOLUTION_FIELD,

@@ -1,5 +1,5 @@
-import type { JSX } from "react";
-import { renderToString } from "react-dom/server";
+import type { JSX } from "preact";
+import { renderToString } from "preact-render-to-string";
 import { ErrorPage } from "../templates/error";
 
 // Renders an error template to a bare HTML Response. Callers pass it through

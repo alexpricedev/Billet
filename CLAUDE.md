@@ -17,18 +17,24 @@ spec for everything else. This file is for the things you can't learn by reading
 
 ## Gotchas
 
-### Two JSX runtimes, no hydration
+### One JSX runtime, two execution models
 
-Server templates and `src/server/components/` compile with React's runtime (`jsxImportSource: react`
-in `tsconfig.json`) and render once through `renderToString()` in `src/server/utils/response.ts`.
-None of it hydrates — there is no React on the client, and `useState` in a server component does
-nothing.
+Everything compiles with Preact (`jsxImportSource: preact` in `tsconfig.json`) — there is no React
+in this project. What differs is *when* the JSX runs, and the `src/server/` vs `src/client/` split
+is the signal:
 
-Client interactivity is Preact islands. A client component opts in per-file with a
-`/** @jsxImportSource preact */` pragma on line 1, and the page script mounts it with
-`render()` from `preact`. Preact is marked `--external` in the build scripts and resolved at
-runtime from the import map in `src/server/components/layouts.tsx`, so the version pinned there
-must stay in step with `package.json`.
+- **`src/server/`** renders once through `renderToString()` from `preact-render-to-string` and ships
+  as HTML. It never hydrates, so `useState` in a server template does nothing.
+- **`src/client/`** mounts into the live DOM with `render()` from `preact` and is fully interactive.
+
+`preact` is a runtime **dependency**, not a devDependency — the server imports its JSX runtime, so a
+production install without it won't boot. The client bundle marks it `--external` and resolves it
+from the import map in `src/server/components/layouts.tsx`, so the version pinned there must stay in
+step with `package.json`.
+
+**Write SVG attributes in kebab-case** (`stroke-width`, not `strokeWidth`). Preact passes camelCase
+attribute names through verbatim, and the HTML parser doesn't recognise `strokeWidth` — the stroke
+silently renders at the default width. React used to rewrite these; nothing does now.
 
 No Web Components. Shadow DOM and custom-element lifecycles need browser infrastructure to test;
 pure functions and Preact islands are both testable under `bun:test`.

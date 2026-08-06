@@ -1,6 +1,8 @@
+import type { ComponentChildren } from "preact";
+
 interface FlashProps {
   type: "success" | "error" | "warning";
-  children: React.ReactNode;
+  children: ComponentChildren;
 }
 
 const CLASS_NAMES = {

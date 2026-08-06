@@ -1,6 +1,8 @@
+import type { ComponentChildren } from "preact";
+
 interface BadgeProps {
   variant: "admin" | "user";
-  children: React.ReactNode;
+  children: ComponentChildren;
 }
 
 export const Badge = ({ variant, children }: BadgeProps) => (
