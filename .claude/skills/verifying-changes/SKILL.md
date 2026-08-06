@@ -12,7 +12,7 @@ raw `bun` commands do not.
 
 ```bash
 bun run check    # biome lint + tsc --noEmit
-bun run test     # migrations, then every *.test.ts file
+bun run test     # migrations, then every *.test.ts / *.test.tsx file
 ```
 
 `bun run check` is fast and should pass before you consider a change done. `bun run test` is the

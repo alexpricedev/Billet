@@ -12,7 +12,9 @@ if (migrateExit !== 0) {
   process.exit(1);
 }
 
-const glob = new Glob("**/*.test.ts");
+// Both extensions: component tests live in .test.tsx, and a `**/*.test.ts`
+// pattern does not match them.
+const glob = new Glob("**/*.test.{ts,tsx}");
 const files: string[] = [];
 for await (const file of glob.scan({ cwd: "src" })) {
   files.push(`src/${file}`);
