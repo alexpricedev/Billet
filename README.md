@@ -260,6 +260,14 @@ A couple of small, zero-dependency packages built alongside Billet that drop str
 
 ---
 
+## Upgrading a fork
+
+Billet is used by cloning or forking, so there's no package manager to warn you about a breaking
+change. Releases are tagged, and [CHANGELOG.md](CHANGELOG.md) records what a fork has to change in
+its own code before merging a new major version. Read it before pulling upstream.
+
+---
+
 ## Contributing
 
 Contributions are welcome! Please open issues or PRs.
