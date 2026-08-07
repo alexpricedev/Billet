@@ -68,7 +68,7 @@
     background: rgba(245, 158, 11, 0.06);
     font-size: 0.8125rem;
     font-weight: 500;
-    line-height: 1;
+    line-height: 1.35;
     color: var(--color-text);
     text-decoration: none;
     transition: all 150ms ease;
