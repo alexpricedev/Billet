@@ -180,6 +180,12 @@ img {
   margin-bottom: 2rem;
   padding: 24px;
   width: 100%;
+
+  /* The trailing margin of the last block would otherwise stack on top of the
+     card's own padding and leave the bottom looking deeper than the top. */
+  > *:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .btn-ghost {
