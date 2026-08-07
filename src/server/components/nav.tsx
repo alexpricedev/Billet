@@ -30,12 +30,17 @@ export const Nav = ({ page, user, csrfToken }: NavProps) => (
     </ul>
     <div className="nav-auth">
       {user ? (
-        <form method="post" action="/auth/logout">
-          <CsrfField token={csrfToken ?? null} />
-          <button type="submit" className="btn-ghost">
-            Logout
-          </button>
-        </form>
+        <>
+          <a href="/account" className="btn-ghost">
+            Account
+          </a>
+          <form method="post" action="/auth/logout">
+            <CsrfField token={csrfToken ?? null} />
+            <button type="submit" className="btn-ghost">
+              Logout
+            </button>
+          </form>
+        </>
       ) : (
         <a href="/login" className="btn-ghost">
           Login

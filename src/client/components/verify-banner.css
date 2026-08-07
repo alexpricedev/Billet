@@ -1,0 +1,49 @@
+/* Fixed reminder for a signed-in user with an unconfirmed email address.
+   Pinned to the top so it survives scrolling — the prompt is easy to forget and
+   easy to lose in a long page. Body offset lives on body[data-banner], set by
+   the layout from the same condition, so the two can't disagree. */
+.verify-banner {
+  align-items: center;
+  background: var(--color-surface-hover);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 14px;
+  gap: 0.75rem;
+  justify-content: center;
+  left: 0;
+  padding: 0.625rem 1rem;
+  position: fixed;
+  right: 0;
+  text-align: center;
+  top: 0;
+  z-index: 10;
+
+  a {
+    color: var(--color-primary);
+    font-weight: 500;
+  }
+}
+
+/* Two lines' worth of room on narrow screens, where the message and the link
+   wrap onto separate rows. */
+body[data-banner] {
+  padding-top: 2.75rem;
+
+  @media (width <= 480px) {
+    padding-top: 4.5rem;
+  }
+}
+
+/* Body padding moves the whole document down, but a fragment jump scrolls the
+   target to y=0 — straight under the fixed bar. #verify-email is the banner's
+   own link target and only exists while the banner is showing, so it can carry
+   the offset unconditionally. */
+#verify-email {
+  scroll-margin-top: 3.5rem;
+
+  @media (width <= 480px) {
+    scroll-margin-top: 5.25rem;
+  }
+}

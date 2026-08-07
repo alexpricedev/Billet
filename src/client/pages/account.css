@@ -1,0 +1,40 @@
+.account-section {
+  display: block;
+
+  h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  form {
+    margin-top: 1rem;
+  }
+
+  .form-field {
+    margin-bottom: 1rem;
+    max-width: 22rem;
+  }
+}
+
+.account-email {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  margin-bottom: 0.25rem;
+}
+
+.account-details {
+  display: grid;
+  gap: 0.25rem 1.5rem;
+  grid-template-columns: max-content 1fr;
+  margin: 0;
+
+  dt {
+    color: var(--color-text-tertiary);
+    font-size: 14px;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 14px;
+  }
+}

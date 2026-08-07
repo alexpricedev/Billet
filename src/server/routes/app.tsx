@@ -9,7 +9,15 @@ import {
   stack,
   webmanifest,
 } from "../controllers/app";
-import { callback, login, logout } from "../controllers/auth";
+import {
+  account,
+  callback,
+  login,
+  logout,
+  passwordReset,
+  signup,
+  verify,
+} from "../controllers/auth";
 import { createRouteHandler } from "../utils/route-handler";
 
 export const appRoutes = {
@@ -35,7 +43,30 @@ export const appRoutes = {
     GET: login.index,
     POST: login.create,
   }),
+  "/signup": createRouteHandler({
+    GET: signup.index,
+    POST: signup.create,
+  }),
+  // Password-mode routes are registered unconditionally and 404 from inside the
+  // controller when AUTH_MODE isn't "password", so the route table stays static
+  // and testable rather than being rebuilt from the environment at import time.
+  "/forgot-password": createRouteHandler({
+    GET: passwordReset.index,
+    POST: passwordReset.create,
+  }),
+  "/reset-password": createRouteHandler({
+    GET: passwordReset.edit,
+    POST: passwordReset.update,
+  }),
+  "/account": account.index,
+  "/account/password": createRouteHandler({
+    POST: account.updatePassword,
+  }),
   "/auth/callback": callback.index,
+  "/auth/verify": verify.index,
+  "/auth/verify/resend": createRouteHandler({
+    POST: verify.resend,
+  }),
   "/auth/logout": createRouteHandler({
     POST: logout.create,
   }),

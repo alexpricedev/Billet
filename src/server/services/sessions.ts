@@ -86,7 +86,8 @@ export const getSessionContextFromDB = async (
       SELECT
         s.id_hash, s.user_id, s.session_type,
         s.expires_at, s.last_activity_at, s.created_at,
-        u.id as user_id_result, u.email, u.role, u.created_at as user_created_at
+        u.id as user_id_result, u.email, u.role, u.created_at as user_created_at,
+        u.email_verified_at
       FROM sessions s
       LEFT JOIN users u ON s.user_id = u.id
       WHERE s.id_hash = ${sessionIdHash}
@@ -106,6 +107,7 @@ export const getSessionContextFromDB = async (
       email: string | null;
       role: "user" | "admin" | null;
       user_created_at: string | null;
+      email_verified_at: string | null;
     };
 
     const isAuthenticated =
@@ -116,6 +118,9 @@ export const getSessionContextFromDB = async (
           email: data.email as string,
           role: (data.role as "user" | "admin") ?? "user",
           created_at: new Date(data.user_created_at as string),
+          email_verified_at: data.email_verified_at
+            ? new Date(data.email_verified_at)
+            : null,
         }
       : null;
 
@@ -168,6 +173,36 @@ export const deleteSession = async (rawSessionId: string): Promise<boolean> => {
     return hasAffectedRows(result as DatabaseMutationResult);
   } catch {
     return false;
+  }
+};
+
+/**
+ * Delete every session belonging to a user, optionally sparing one.
+ *
+ * Credential changes have to invalidate sessions an attacker may already hold.
+ * A password reset passes no exception (nothing about the old session is
+ * trustworthy); a deliberate change-password passes the current session's hash
+ * so the user isn't logged out of the tab they're working in.
+ */
+export const deleteUserSessions = async (
+  userId: string,
+  exceptSessionHash?: string,
+): Promise<number> => {
+  try {
+    const result = exceptSessionHash
+      ? await db`
+          DELETE FROM sessions
+          WHERE user_id = ${userId}
+            AND id_hash != ${exceptSessionHash}
+        `
+      : await db`
+          DELETE FROM sessions
+          WHERE user_id = ${userId}
+        `;
+
+    return (result as DatabaseMutationResult).count ?? 0;
+  } catch {
+    return 0;
   }
 };
 

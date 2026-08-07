@@ -5,43 +5,41 @@ import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
 import type { AuthMode } from "../services/auth-mode";
 import type { CaptchaChallenge } from "../services/captcha";
+import { MIN_PASSWORD_LENGTH } from "../services/passwords";
 
-export interface LoginState {
+export interface SignupState {
   state?: "email-sent" | "validation-error";
   error?: string;
-  // Preserved across the redirect so a failed attempt doesn't make the user
-  // retype their address. The password is deliberately never carried back —
-  // flash state lives in a cookie.
   email?: string;
 }
 
-export interface LoginProps {
+export interface SignupProps {
   mode: AuthMode;
-  state?: LoginState;
+  state?: SignupState;
   challenge?: CaptchaChallenge | null;
 }
 
-export const Login = ({ mode, state, challenge }: LoginProps) => {
+export const Signup = ({ mode, state, challenge }: SignupProps) => {
   const password = mode === "password";
 
   return (
     <AuthPage
-      title="Login - Billet"
+      title="Sign up - Billet"
       description={
         password
-          ? "Log in to Billet with your email and password."
-          : "Log in to Billet with a magic link — no passwords to remember."
+          ? "Create a Billet account with an email and password."
+          : "Create a Billet account — we'll email you a link to get started."
       }
-      canonicalPath="/login"
-      heading="Sign in to your account"
+      canonicalPath="/signup"
+      heading="Create your account"
       subtitle={
         password
-          ? "Enter your email and password to continue"
-          : "We'll send you a magic link to sign in instantly"
+          ? "Pick a password and you're in"
+          : "We'll email you a link to get started — no password needed"
       }
       footer={
         <>
-          <a href="/signup">Create an account</a>
+          <a href="/login">Already have an account?</a>
           {" · "}
           <a href="/">Back to home</a>
         </>
@@ -50,11 +48,11 @@ export const Login = ({ mode, state, challenge }: LoginProps) => {
       {state?.state === "email-sent" ? (
         <Flash type="success">
           <p>Check your email!</p>
-          <p>We've sent you a magic link. Click it to sign in instantly.</p>
-          <p>For testing: Check the server console for the magic link.</p>
+          <p>We've sent you a link to finish setting up your account.</p>
+          <p>For testing: Check the server console for the link.</p>
         </Flash>
       ) : (
-        <form method="POST" action="/login">
+        <form method="POST" action="/signup">
           {state?.state === "validation-error" && state.error && (
             <Flash type="error">
               <span>{state.error}</span>
@@ -79,9 +77,10 @@ export const Login = ({ mode, state, challenge }: LoginProps) => {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
-                placeholder="Enter your password"
+                minLength={MIN_PASSWORD_LENGTH}
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
               />
             </FormField>
           )}
@@ -91,14 +90,8 @@ export const Login = ({ mode, state, challenge }: LoginProps) => {
           <CaptchaWidget challenge={challenge} />
 
           <button type="submit" className="login-submit">
-            {password ? "Sign in" : "Send magic link"}
+            {password ? "Create account" : "Send sign-up link"}
           </button>
-
-          {password && (
-            <p className="login-aside">
-              <a href="/forgot-password">Forgot your password?</a>
-            </p>
-          )}
         </form>
       )}
     </AuthPage>

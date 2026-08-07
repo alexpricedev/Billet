@@ -1,3 +1,4 @@
+import { AUTH_MODES, isAuthMode } from "../services/auth-mode";
 import { log } from "../services/logger";
 
 const REQUIRED = [
@@ -46,6 +47,24 @@ export function validateEnv(): void {
       "Set FROM_EMAIL to an address on a Resend-verified domain (see runbooks/EMAIL.md)",
     );
     process.exit(1);
+  }
+
+  // AUTH_MODE is optional and defaults to magic-link. A typo would otherwise fall
+  // through to that default silently, so a value outside the set is fatal — booting
+  // with the wrong credential type is worse than not booting at all.
+  if (
+    process.env.AUTH_MODE !== undefined &&
+    !isAuthMode(process.env.AUTH_MODE)
+  ) {
+    log.error(
+      "env",
+      `AUTH_MODE must be one of: ${AUTH_MODES.join(", ")} (got "${process.env.AUTH_MODE}")`,
+    );
+    process.exit(1);
+  }
+
+  if (process.env.AUTH_MODE === "password") {
+    log.info("env", "Auth mode: password (email + password credentials)");
   }
 
   // CAPTCHA_ENABLED is optional and self-contained: the proof-of-work captcha signs

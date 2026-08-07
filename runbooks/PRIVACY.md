@@ -157,7 +157,9 @@ A consent banner without a policy is non-compliant. If you add tracking, add a
 must disclose, at minimum:
 
 1. **Controller identity** — legal/entity name, postal address, privacy contact
-2. **Data categories** — what you collect (account, usage, IP/technical, payment…)
+2. **Data categories** — what you collect (account, usage, IP/technical, payment…).
+   With `AUTH_MODE=password` this includes an authentication credential: the
+   stored argon2id hash of the user's password, plus `email_verified_at`
 3. **Processing purposes** — why, per category
 4. **Lawful basis** — GDPR Art. 6 per purpose (consent, contract, legitimate interest…)
 5. **Recipients / processors** — name them (e.g. your analytics vendor, host), and any non-EU/UK transfers + safeguards
@@ -212,7 +214,10 @@ keep it out of logs. Billet's request path already logs no PII — preserve that
 
 - **Don't log IPs, user-agents, headers, or request bodies** in production. Use
   `log.*(category, message)` from [`services/logger.ts`](../src/server/services/logger.ts)
-  with non-PII messages.
+  with non-PII messages. This matters more in password mode: the bodies of
+  `POST /login`, `/signup`, `/reset-password`, and `/account/password` all carry
+  a plaintext password. Nothing in the request path logs them today — don't add
+  a body dump to debug a form.
 - **Don't store raw IPs.** The rate-limit middleware keys an in-memory map by IP
   and never persists it — keep it that way if you wire it into routes.
 - **Redact secrets and personal data** before logging; separate identifiers from
@@ -220,8 +225,8 @@ keep it out of logs. Billet's request path already logs no PII — preserve that
 
 > Framework maintainer note: `ConsoleLogProvider`
 > ([`email-providers/console.ts`](../src/server/services/email-providers/console.ts))
-> logs the full outbound email — recipient address and magic-link sign-in URL —
-> to stdout. It is a dev provider; make sure your production `EmailService` wiring
+> logs the full outbound email — recipient address and the single-use URL, be it
+> a magic-link sign-in, an address confirmation, or a password reset — to stdout. It is a dev provider; make sure your production `EmailService` wiring
 > ([`email.ts`](../src/server/services/email.ts)) never selects it, or those land
 > in platform logs.
 

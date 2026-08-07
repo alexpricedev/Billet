@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
-> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with magic-link auth, CSRF protection, rate limiting, auto-migrations, and 30+ test files. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
+> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with auth (magic-link or email+password, your pick), CSRF protection, rate limiting, auto-migrations, and 30+ test files. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
 >
 > — *Claude Opus 4.6*
 
@@ -59,9 +59,13 @@ Auth, security, database, testing, linting — these are the rails. They're solv
 
 ### Authentication
 
-A complete magic-link email auth flow: users enter their email, receive a login link, and get a session. No passwords to store, hash, or reset.
+Two complete auth flows, chosen with one environment variable. `AUTH_MODE` defaults to `magic-link`;
+set it to `password` for conventional email-and-password credentials. The two are mutually exclusive —
+offering both at once would mean every account has two ways in, and the weaker one sets the ceiling.
 
-- **Magic-link login** with HMAC-protected tokens and expiry
+- **Magic-link login** (default) with HMAC-protected tokens and expiry — no passwords to store, hash, or reset
+- **Password login** with argon2id hashing (via `Bun.password`, no new dependency), a full reset-by-email flow, and change-password on `/account`
+- **Email verification** — `users.email_verified_at` records when an address was proven, with a fixed reminder banner until it is. Nothing is gated on it; forks add their own gating
 - **Session management** with 30-day sessions, automatic renewal, and secure cookie handling (HttpOnly, Secure, SameSite)
 - **Guest sessions** that auto-create for unauthenticated visitors — useful for carts, preferences, or any state you want before login
 - **Admin middleware** with role-based route protection and a dedicated `/admin` route namespace
@@ -71,8 +75,9 @@ A complete magic-link email auth flow: users enter their email, receive a login 
 
 - **CSRF protection** using the synchronizer token pattern with timing-safe comparison and origin validation. A token that has aged out but still verifies against the session secret is recognised as stale rather than forged, so the form is re-rendered with a fresh token and the user's input intact instead of a dead-end 403
 - **Rate limiting** middleware with configurable sliding-window limits per IP
-- **Signup spam defense** on the login form — an always-on honeypot and per-IP rate limit, plus an optional first-party proof-of-work captcha (no third party, account, or extra secret; off by default, enable with `CAPTCHA_ENABLED`)
-- **Session fixation prevention** — sessions are regenerated on login
+- **Signup spam defense** on every signed-out auth form — an always-on honeypot and per-IP rate limit, plus an optional first-party proof-of-work captcha (no third party, account, or extra secret; off by default, enable with `CAPTCHA_ENABLED`)
+- **Session fixation prevention** — sessions are regenerated on login, and a password change or reset invalidates the other sessions
+- **Password storage** — argon2id with a per-hash salt, deliberately unpeppered so a `CRYPTO_PEPPER` rotation stays recoverable; sign-in and password reset give identical answers for known and unknown addresses
 - **Environment validation** at startup — the server fails fast with clear error messages if required variables are missing
 - **Response hardening** — security headers on every response (nosniff, frame/clickjacking protection, an enforcing Content Security Policy, Permissions-Policy, HSTS in production), plus `/.well-known/security.txt` and Subresource Integrity on third-party scripts — see [runbooks/SECURITY.md](runbooks/SECURITY.md)
 
@@ -235,7 +240,7 @@ src/
 │   ├── controllers/            # Route handlers
 │   │   ├── app/                # View controllers — return HTML
 │   │   ├── api/                # API controllers — return JSON
-│   │   └── auth/               # Auth controllers — login/logout
+│   │   └── auth/               # Auth controllers — login/signup/logout/account/reset/verify
 │   ├── templates/              # Full-page JSX templates
 │   ├── components/             # Reusable server JSX components
 │   ├── services/               # Business logic & data access
@@ -298,16 +303,19 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 | `CRYPTO_PEPPER` | Yes | Secret key for session tokens — run `bun run generate:pepper` to get one (see below) |
 | `APP_URL` | Yes | Your app's public URL — you'll get this from Railway after your first deploy (e.g. `https://my-app.up.railway.app`) |
 | `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
+| `AUTH_MODE` | No | `magic-link` (default) or `password`. Mutually exclusive; any other value stops the server at boot |
 | `CAPTCHA_ENABLED` | No | Set to `true` to add a proof-of-work captcha to the login form. Off by default; `/login` is unchanged when unset |
 | `CAPTCHA_DIFFICULTY` | No | Tunes the captcha's client-side work (search-space size). Defaults to `100000` (~sub-second for a real browser) |
 
 > **Generating `CRYPTO_PEPPER`:** This is a secret key used to secure session tokens. Run `bun run generate:pepper` to get a value. Use a different value for each environment (development, production, etc).
 
-> **Email deliverability:** When sending real mail via Resend, follow [runbooks/EMAIL.md](runbooks/EMAIL.md) to set up SPF, DKIM, and DMARC — without it, magic links land in spam.
+> **Email deliverability:** When sending real mail via Resend, follow [runbooks/EMAIL.md](runbooks/EMAIL.md) to set up SPF, DKIM, and DMARC — without it, magic links and password-reset mail land in spam.
 
 > **SEO:** Before your first deploy, set `SITE_URL` (and the `Sitemap:` line in `public/robots.txt`) to your production domain — see [runbooks/SEO.md](runbooks/SEO.md) for the canonical-URL config, sitemap, indexing policy, and verification steps.
 
 > **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
+
+> **Auth mode:** Leave `AUTH_MODE` unset for magic-link auth. Set `AUTH_MODE=password` for email-and-password instead — that enables `/forgot-password`, `/reset-password`, and the change-password form on `/account`, which all 404 in magic-link mode. Switching an existing app to `password` leaves current users with no password: `/account` offers those accounts a set-password form, and `/forgot-password` covers anyone already signed out. `/signup` and `/account` exist in both modes.
 
 > **Signup spam:** The login form always carries a honeypot and per-IP rate limit. If bots still create accounts with random emails, set `CAPTCHA_ENABLED=true` to add a first-party proof-of-work captcha — it signs challenges with your existing `CRYPTO_PEPPER`, so there's no third party, account, or extra secret to configure.
 

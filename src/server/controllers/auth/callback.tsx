@@ -1,7 +1,9 @@
 import type { BunRequest } from "bun";
-import { getSessionContext } from "../../middleware/auth";
 import { verifyMagicLink } from "../../services/auth";
-import { setSessionCookie } from "../../services/sessions";
+import {
+  getSessionIdFromRequest,
+  setSessionCookie,
+} from "../../services/sessions";
 import { redirect } from "../../utils/response";
 
 export const callback = {
@@ -14,9 +16,7 @@ export const callback = {
     }
 
     try {
-      const ctx = await getSessionContext(req);
-      const guestSessionId = ctx.isGuest ? ctx.sessionId : null;
-      const result = await verifyMagicLink(token, guestSessionId);
+      const result = await verifyMagicLink(token, getSessionIdFromRequest(req));
 
       if (!result.success) {
         return redirect(`/login?error=${encodeURIComponent(result.error)}`);

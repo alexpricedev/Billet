@@ -78,9 +78,20 @@
   width: 100%;
 }
 
+/* Secondary action inside the form itself — "forgot your password?" sits below
+   the submit button rather than in the footer, where it would compete with the
+   sign-in/sign-up cross-link. */
+.login-aside {
+  text-align: center;
+  font-size: 14px;
+  margin: 16px 0 0 0;
+}
+
 .login-footer {
   text-align: center;
   margin-top: 24px;
+  color: var(--color-text-quaternary);
+  font-size: 14px;
 
   a {
     font-size: 14px;

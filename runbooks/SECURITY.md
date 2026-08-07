@@ -184,6 +184,18 @@ want a spotless console.
 
 ## 8. Deliberately not implemented (yet)
 
+- **Breached-password checks** — password mode (`AUTH_MODE=password`) enforces
+  length only, per NIST SP 800-63B. Screening new passwords against a breach
+  corpus is the one composition-adjacent check that measurably helps; it needs a
+  k-anonymity lookup against Have I Been Pwned (or a local corpus) and an
+  outbound call on the sign-up path, so it is left to the fork.
+- **Multi-factor authentication** — no TOTP, WebAuthn, or emailed second factor.
+  A magic link is already single-factor-by-email; passwords are single-factor by
+  knowledge. Adding a second factor means new schema, recovery codes, and a
+  re-authentication flow.
+- **Password expiry / reuse history** — not implemented, and not recommended.
+  Forced rotation drives predictable mutations; reuse history means retaining old
+  hashes indefinitely.
 - **Reporting API (`Reporting-Endpoints` + CSP `report-to`)** — needs a collector
   endpoint to receive violation reports. Add one to observe CSP breakage in the
   wild before tightening the policy.

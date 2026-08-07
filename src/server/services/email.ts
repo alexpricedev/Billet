@@ -23,83 +23,151 @@ export interface MagicLinkEmailData {
   expiryMinutes: number;
 }
 
-export class EmailService {
-  constructor(private provider: EmailProvider) {}
+export interface VerifyEmailData {
+  to: EmailAddress;
+  verifyUrl: string;
+  expiryHours: number;
+}
 
-  async sendMagicLink(data: MagicLinkEmailData): Promise<void> {
-    const fromEmail = process.env.FROM_EMAIL as string;
-    const fromName = process.env.FROM_NAME as string;
-    const replyTo = process.env.REPLY_TO_EMAIL;
+export interface PasswordResetEmailData {
+  to: EmailAddress;
+  resetUrl: string;
+  expiryMinutes: number;
+}
 
-    const message: EmailMessage = {
-      to: data.to,
-      from: {
-        email: fromEmail,
-        name: fromName,
-      },
-      ...(replyTo ? { replyTo: { email: replyTo } } : {}),
-      // Unique per send so Gmail doesn't collapse consecutive magic links into
-      // one thread — the recipient always sees the newest link.
-      headers: { "X-Entity-Ref-ID": crypto.randomUUID() },
-      subject: "Your magic link to sign in",
-      html: this.renderMagicLinkTemplate(data),
-      text: this.renderMagicLinkText(data),
-    };
+// Every email here is a single call to action on a link, so they share one
+// inline-styled shell. Inline styles rather than a <style> block because most
+// clients strip the latter.
+interface ActionEmail {
+  title: string;
+  heading: string;
+  intro: string;
+  buttonLabel: string;
+  url: string;
+  footer: string;
+}
 
-    await this.provider.send(message);
-  }
-
-  private renderMagicLinkTemplate(data: MagicLinkEmailData): string {
-    return `
+const renderActionHtml = ({
+  title,
+  heading,
+  intro,
+  buttonLabel,
+  url,
+  footer,
+}: ActionEmail): string => `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign in to ${process.env.APP_NAME as string}</title>
+  <title>${title}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
       <h1 style="color: #2563eb; margin: 0;">${process.env.APP_NAME as string}</h1>
     </div>
-    
+
     <div style="background: #f8fafc; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
-      <h2 style="margin-top: 0; color: #1f2937;">Sign in to your account</h2>
+      <h2 style="margin-top: 0; color: #1f2937;">${heading}</h2>
       <p style="margin-bottom: 30px; color: #4b5563;">
-        Click the button below to sign in to your account. This link will expire in ${data.expiryMinutes} minutes.
+        ${intro}
       </p>
-      
+
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.magicLinkUrl}" 
+        <a href="${url}"
            style="display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 500;">
-          Sign in to ${process.env.APP_NAME as string}
+          ${buttonLabel}
         </a>
       </div>
-      
+
       <p style="margin-bottom: 0; color: #6b7280; font-size: 14px;">
         If the button doesn't work, copy and paste this link into your browser:<br>
-        <a href="${data.magicLinkUrl}" style="color: #2563eb; word-break: break-all;">${data.magicLinkUrl}</a>
+        <a href="${url}" style="color: #2563eb; word-break: break-all;">${url}</a>
       </p>
     </div>
-    
+
     <div style="text-align: center; color: #6b7280; font-size: 14px;">
-      <p>If you didn't request this email, you can safely ignore it.</p>
+      <p>${footer}</p>
     </div>
   </div>
 </body>
 </html>`;
+
+const renderActionText = ({ title, intro, url, footer }: ActionEmail): string =>
+  `${title}
+
+${intro}
+
+${url}
+
+${footer}`;
+
+export class EmailService {
+  constructor(private provider: EmailProvider) {}
+
+  async sendMagicLink(data: MagicLinkEmailData): Promise<void> {
+    const appName = process.env.APP_NAME as string;
+
+    await this.deliver("Your magic link to sign in", data.to, {
+      title: `Sign in to ${appName}`,
+      heading: "Sign in to your account",
+      intro: `Click the button below to sign in to your account. This link will expire in ${data.expiryMinutes} minutes.`,
+      buttonLabel: `Sign in to ${appName}`,
+      url: data.magicLinkUrl,
+      footer: "If you didn't request this email, you can safely ignore it.",
+    });
   }
 
-  private renderMagicLinkText(data: MagicLinkEmailData): string {
-    return `Sign in to ${process.env.APP_NAME as string}
+  async sendVerifyEmail(data: VerifyEmailData): Promise<void> {
+    const appName = process.env.APP_NAME as string;
 
-Click the link below to sign in to your account:
-${data.magicLinkUrl}
+    await this.deliver("Confirm your email address", data.to, {
+      title: `Confirm your email for ${appName}`,
+      heading: "Confirm your email address",
+      intro: `Click the button below to confirm this is your email address. This link will expire in ${data.expiryHours} hours.`,
+      buttonLabel: "Confirm email address",
+      url: data.verifyUrl,
+      footer:
+        "If you didn't create this account, you can safely ignore this email.",
+    });
+  }
 
-This link will expire in ${data.expiryMinutes} minutes.
+  async sendPasswordReset(data: PasswordResetEmailData): Promise<void> {
+    await this.deliver("Reset your password", data.to, {
+      title: `Reset your ${process.env.APP_NAME as string} password`,
+      heading: "Reset your password",
+      intro: `Click the button below to choose a new password. This link will expire in ${data.expiryMinutes} minutes and can only be used once.`,
+      buttonLabel: "Reset password",
+      url: data.resetUrl,
+      footer:
+        "If you didn't request a password reset, you can safely ignore this email — your password will not change.",
+    });
+  }
 
-If you didn't request this email, you can safely ignore it.`;
+  private async deliver(
+    subject: string,
+    to: EmailAddress,
+    content: ActionEmail,
+  ): Promise<void> {
+    const replyTo = process.env.REPLY_TO_EMAIL;
+
+    const message: EmailMessage = {
+      to,
+      from: {
+        email: process.env.FROM_EMAIL as string,
+        name: process.env.FROM_NAME as string,
+      },
+      ...(replyTo ? { replyTo: { email: replyTo } } : {}),
+      // Unique per send so Gmail doesn't collapse consecutive links into one
+      // thread — the recipient always sees the newest one.
+      headers: { "X-Entity-Ref-ID": crypto.randomUUID() },
+      subject,
+      html: renderActionHtml(content),
+      text: renderActionText(content),
+    };
+
+    await this.provider.send(message);
   }
 }
 
