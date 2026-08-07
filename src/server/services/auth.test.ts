@@ -13,7 +13,15 @@ mock.module("./database", () => ({
   },
 }));
 
-import { createMagicLink, findOrCreateUser, verifyMagicLink } from "./auth";
+import {
+  consumeUserToken,
+  createMagicLink,
+  createUserToken,
+  findOrCreateUser,
+  findUserByEmail,
+  regenerateSession,
+  verifyMagicLink,
+} from "./auth";
 import { db } from "./database";
 import {
   createGuestSession,
@@ -246,6 +254,179 @@ describe("Auth Service with PostgreSQL", () => {
 
       expect(session1?.user?.email).toBe("user1@example.com");
       expect(session2?.user?.email).toBe("user2@example.com");
+    });
+  });
+
+  describe("findUserByEmail", () => {
+    test("returns null instead of creating a user", async () => {
+      expect(await findUserByEmail("nobody@example.com")).toBeNull();
+
+      const rows =
+        await db`SELECT id FROM users WHERE email = 'nobody@example.com'`;
+      expect(rows).toHaveLength(0);
+    });
+
+    test("finds an existing user, normalizing case and whitespace", async () => {
+      const created = await findOrCreateUser("Findme@Example.com");
+
+      const found = await findUserByEmail("  FINDME@example.COM  ");
+      expect(found?.id).toBe(created.id);
+    });
+
+    test("carries email_verified_at, null until the address is proven", async () => {
+      const created = await findOrCreateUser("prove@example.com");
+      expect(
+        (await findUserByEmail("prove@example.com"))?.email_verified_at,
+      ).toBeNull();
+
+      await db`UPDATE users SET email_verified_at = NOW() WHERE id = ${created.id}`;
+
+      const verified = await findUserByEmail("prove@example.com");
+      expect(verified?.email_verified_at).toBeInstanceOf(Date);
+    });
+  });
+
+  describe("createUserToken / consumeUserToken", () => {
+    test("stores only the HMAC, never the raw token", async () => {
+      const user = await findOrCreateUser("tokens@example.com");
+      const rawToken = await createUserToken(user.id, "password_reset");
+
+      const rows = await db`
+        SELECT token_hash, type FROM user_tokens WHERE user_id = ${user.id}
+      `;
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].type).toBe("password_reset");
+      expect(rows[0].token_hash).not.toBe(rawToken);
+    });
+
+    test("returns the owning user id and marks the token used", async () => {
+      const user = await findOrCreateUser("consume@example.com");
+      const rawToken = await createUserToken(user.id, "email_verification");
+
+      expect(await consumeUserToken(rawToken, "email_verification")).toBe(
+        user.id,
+      );
+
+      const rows =
+        await db`SELECT used_at FROM user_tokens WHERE user_id = ${user.id}`;
+      expect(rows[0].used_at).not.toBeNull();
+    });
+
+    test("is single-use", async () => {
+      const user = await findOrCreateUser("once@example.com");
+      const rawToken = await createUserToken(user.id, "password_reset");
+
+      expect(await consumeUserToken(rawToken, "password_reset")).toBe(user.id);
+      expect(await consumeUserToken(rawToken, "password_reset")).toBeNull();
+    });
+
+    test("will not spend a token as the wrong type", async () => {
+      const user = await findOrCreateUser("crosstype@example.com");
+      const rawToken = await createUserToken(user.id, "email_verification");
+
+      expect(await consumeUserToken(rawToken, "password_reset")).toBeNull();
+      expect(await consumeUserToken(rawToken, "magic_link")).toBeNull();
+      // Still spendable as its real type — the failed attempts didn't burn it.
+      expect(await consumeUserToken(rawToken, "email_verification")).toBe(
+        user.id,
+      );
+    });
+
+    test("rejects an expired token", async () => {
+      const user = await findOrCreateUser("stale@example.com");
+      const rawToken = await createUserToken(user.id, "password_reset");
+      await db`UPDATE user_tokens SET expires_at = NOW() - INTERVAL '1 minute' WHERE user_id = ${user.id}`;
+
+      expect(await consumeUserToken(rawToken, "password_reset")).toBeNull();
+    });
+
+    test("gives each type its own lifetime", async () => {
+      const user = await findOrCreateUser("ttl@example.com");
+      await createUserToken(user.id, "magic_link");
+      await createUserToken(user.id, "password_reset");
+      await createUserToken(user.id, "email_verification");
+
+      const rows = await db`
+        SELECT type, expires_at FROM user_tokens WHERE user_id = ${user.id}
+      `;
+      const minutes = (type: string) => {
+        const row = rows.find((r: { type: string }) => r.type === type);
+        return (new Date(row.expires_at).getTime() - Date.now()) / 60000;
+      };
+
+      expect(minutes("magic_link")).toBeLessThan(16);
+      expect(minutes("password_reset")).toBeGreaterThan(55);
+      expect(minutes("password_reset")).toBeLessThan(65);
+      expect(minutes("email_verification")).toBeGreaterThan(23 * 60);
+    });
+
+    test("consumes concurrently without double-spending", async () => {
+      const user = await findOrCreateUser("tokenrace@example.com");
+      const rawToken = await createUserToken(user.id, "password_reset");
+
+      const results = await Promise.all([
+        consumeUserToken(rawToken, "password_reset"),
+        consumeUserToken(rawToken, "password_reset"),
+      ]);
+
+      expect(results.filter(Boolean)).toEqual([user.id]);
+    });
+  });
+
+  describe("regenerateSession", () => {
+    test("drops the guest session and issues a different one", async () => {
+      const user = await findOrCreateUser("regen@example.com");
+      const guestSessionId = await createGuestSession();
+
+      const sessionId = await regenerateSession(user.id, guestSessionId);
+
+      expect(sessionId).not.toBe(guestSessionId);
+      expect(await getSessionContextFromDB(guestSessionId)).toBeNull();
+
+      const ctx = await getSessionContextFromDB(sessionId);
+      expect(ctx?.isAuthenticated).toBe(true);
+      expect(ctx?.user?.id).toBe(user.id);
+    });
+
+    test("works with no guest session to discard", async () => {
+      const user = await findOrCreateUser("regen-nogueest@example.com");
+
+      const ctx = await getSessionContextFromDB(
+        await regenerateSession(user.id),
+      );
+      expect(ctx?.isAuthenticated).toBe(true);
+    });
+  });
+
+  describe("email verification via magic link", () => {
+    test("stamps email_verified_at on first sign-in", async () => {
+      const { user, rawToken } = await createMagicLink("verify@example.com");
+      expect(user.email_verified_at).toBeNull();
+
+      const result = await verifyMagicLink(rawToken);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.user.email_verified_at).toBeInstanceOf(Date);
+      }
+    });
+
+    test("keeps the original timestamp on later sign-ins", async () => {
+      const first = await createMagicLink("returning@example.com");
+      const firstResult = await verifyMagicLink(first.rawToken);
+      expect(firstResult.success).toBe(true);
+      if (!firstResult.success) return;
+
+      const second = await createMagicLink("returning@example.com");
+      const secondResult = await verifyMagicLink(second.rawToken);
+
+      expect(secondResult.success).toBe(true);
+      if (secondResult.success) {
+        expect(secondResult.user.email_verified_at).toEqual(
+          firstResult.user.email_verified_at,
+        );
+      }
     });
   });
 

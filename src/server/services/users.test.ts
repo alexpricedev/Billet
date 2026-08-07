@@ -45,6 +45,7 @@ describe("Users Service", () => {
     expect(result[0]).toHaveProperty("email");
     expect(result[0]).toHaveProperty("role");
     expect(result[0]).toHaveProperty("created_at");
+    expect(result[0]).toHaveProperty("email_verified_at");
   });
 
   test("returns users ordered by created_at descending (newest first)", async () => {

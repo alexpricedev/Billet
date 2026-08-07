@@ -8,6 +8,10 @@ export interface User {
   email: string;
   role: "user" | "admin";
   created_at: Date;
+  // Null until the address is proven: set when a magic link is clicked, or when
+  // a password user follows their verification email. Nothing is gated on it —
+  // it drives the reminder banner and is there for forks that want to gate.
+  email_verified_at: Date | null;
 }
 
 export interface UserToken {
@@ -20,9 +24,78 @@ export interface UserToken {
   created_at: Date;
 }
 
+// The `type` discriminator on user_tokens. Every single-use emailed token in the
+// app goes through the same table, hashing, and consume path — only the lifetime
+// differs, so a new flow adds a row here rather than a new mechanism.
+export type UserTokenType =
+  | "magic_link"
+  | "password_reset"
+  | "email_verification";
+
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+
+const TOKEN_TTL_MS: Record<UserTokenType, number> = {
+  // Short: the link both authenticates and signs in, so a leaked mailbox is a
+  // live session.
+  magic_link: 15 * MINUTE_MS,
+  // Short-ish: also grants account takeover, but users often reset from a
+  // different device and need time to get to their inbox.
+  password_reset: 60 * MINUTE_MS,
+  // Long: proves address ownership only. The user already has a session, so an
+  // expired link is pure friction with no security upside.
+  email_verification: 24 * HOUR_MS,
+};
+
+// What the emails carrying these tokens tell the recipient. Derived from the
+// lifetimes above rather than restated, so the copy can't quietly promise an
+// expiry the token doesn't have.
+export const MAGIC_LINK_EXPIRY_MINUTES = TOKEN_TTL_MS.magic_link / MINUTE_MS;
+export const PASSWORD_RESET_EXPIRY_MINUTES =
+  TOKEN_TTL_MS.password_reset / MINUTE_MS;
+export const EMAIL_VERIFICATION_EXPIRY_HOURS =
+  TOKEN_TTL_MS.email_verification / HOUR_MS;
+
 export type AuthResult =
   | { success: true; user: User; sessionId: string }
   | { success: false; error: string };
+
+// Every query that selects a user goes through this, so a row from the driver
+// can never reach a template with a timestamp still typed as a string.
+export const toUser = (row: {
+  id: string;
+  email: string;
+  role: "user" | "admin";
+  created_at: string | Date;
+  email_verified_at: string | Date | null;
+}): User => ({
+  id: row.id,
+  email: row.email,
+  role: row.role,
+  created_at: new Date(row.created_at),
+  email_verified_at: row.email_verified_at
+    ? new Date(row.email_verified_at)
+    : null,
+});
+
+/**
+ * Look up a user by email without creating one.
+ *
+ * Password sign-in needs this rather than findOrCreateUser: creating an account
+ * because someone mistyped their address would leave a passwordless row behind
+ * and turn a typo into a permanent orphan.
+ */
+export const findUserByEmail = async (email: string): Promise<User | null> => {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const results = await db`
+    SELECT id, email, role, created_at, email_verified_at
+    FROM users
+    WHERE email = ${normalizedEmail}
+  `;
+
+  return results.length > 0 ? toUser(results[0]) : null;
+};
 
 /**
  * Create or get existing user by email
@@ -32,14 +105,10 @@ export const findOrCreateUser = async (email: string): Promise<User> => {
   const normalizedEmail = email.toLowerCase().trim();
 
   // First try to find existing user
-  const existing = await db`
-    SELECT id, email, role, created_at
-    FROM users
-    WHERE email = ${normalizedEmail}
-  `;
+  const existing = await findUserByEmail(normalizedEmail);
 
-  if (existing.length > 0) {
-    return existing[0] as User;
+  if (existing) {
+    return existing;
   }
 
   // Create new user if not found
@@ -47,10 +116,88 @@ export const findOrCreateUser = async (email: string): Promise<User> => {
   const newUser = await db`
     INSERT INTO users (id, email)
     VALUES (${userId}, ${normalizedEmail})
-    RETURNING id, email, role, created_at
+    RETURNING id, email, role, created_at, email_verified_at
   `;
 
-  return newUser[0] as User;
+  return toUser(newUser[0]);
+};
+
+/**
+ * Mint a single-use token for a user and return the raw value.
+ *
+ * Only the HMAC of the token is stored, so a database dump can't be replayed as
+ * a login — the raw value exists only in the email that carries it.
+ */
+export const createUserToken = async (
+  userId: string,
+  type: UserTokenType,
+): Promise<string> => {
+  const rawToken = generateSecureToken(32);
+  const expiresAt = new Date(Date.now() + TOKEN_TTL_MS[type]);
+
+  await db`
+    INSERT INTO user_tokens (id, user_id, token_hash, type, expires_at)
+    VALUES (
+      ${randomUUID()},
+      ${userId},
+      ${computeHMAC(rawToken)},
+      ${type},
+      ${expiresAt.toISOString()}
+    )
+  `;
+
+  return rawToken;
+};
+
+/**
+ * Consume a token of a given type, returning the user it belongs to.
+ *
+ * The single UPDATE ... RETURNING is what makes this race-safe: two concurrent
+ * requests with the same token both try to claim the row, and only the one that
+ * flips used_at from NULL gets a row back. Type is part of the WHERE clause, so
+ * a verification token can never be spent as a password reset.
+ */
+export const consumeUserToken = async (
+  rawToken: string,
+  type: UserTokenType,
+): Promise<string | null> => {
+  const results = await db`
+    UPDATE user_tokens
+    SET used_at = CURRENT_TIMESTAMP
+    WHERE type = ${type}
+      AND token_hash = ${computeHMAC(rawToken)}
+      AND used_at IS NULL
+      AND expires_at > CURRENT_TIMESTAMP
+    RETURNING user_id
+  `;
+
+  return results.length > 0 ? (results[0].user_id as string) : null;
+};
+
+/**
+ * Issue a fresh authenticated session, discarding whatever the request arrived
+ * with.
+ *
+ * Every sign-in path calls this instead of createAuthenticatedSession directly:
+ * reusing the id an anonymous visitor arrived with would let an attacker who
+ * planted that cookie ride the session once it gains privileges.
+ *
+ * `previousSessionId` is the raw cookie value, not a session the caller has
+ * already looked up — resolving it first would mean creating a guest session
+ * for a cookieless visitor purely to delete it a line later. The type isn't
+ * checked either: a guest session must go, and an authenticated one belongs to
+ * a sign-in that is being replaced, so it would only linger as an orphan.
+ * Deleting an id that no longer exists is a no-op.
+ */
+export const regenerateSession = async (
+  userId: string,
+  previousSessionId?: string | null,
+): Promise<string> => {
+  if (previousSessionId) {
+    await deleteSession(previousSessionId);
+  }
+
+  return createAuthenticatedSession(userId);
 };
 
 /**
@@ -62,21 +209,7 @@ export const createMagicLink = async (
   email: string,
 ): Promise<{ user: User; rawToken: string }> => {
   const user = await findOrCreateUser(email);
-
-  const rawToken = generateSecureToken(32);
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-  const tokenHashString = computeHMAC(rawToken);
-  const tokenId = randomUUID();
-  await db`
-    INSERT INTO user_tokens (id, user_id, token_hash, type, expires_at)
-    VALUES (
-      ${tokenId},
-      ${user.id},
-      ${tokenHashString},
-      'magic_link',
-      ${expiresAt.toISOString()}
-    )
-  `;
+  const rawToken = await createUserToken(user.id, "magic_link");
 
   return { user, rawToken };
 };
@@ -88,65 +221,32 @@ export const createMagicLink = async (
  */
 export const verifyMagicLink = async (
   rawToken: string,
-  guestSessionId?: string | null,
+  previousSessionId?: string | null,
 ): Promise<AuthResult> => {
-  const providedTokenHash = computeHMAC(rawToken);
+  const userId = await consumeUserToken(rawToken, "magic_link");
 
-  // Atomic verification prevents race conditions - only unused, valid tokens are marked as used
-  const tokenResults = await db`
-    UPDATE user_tokens
-    SET used_at = CURRENT_TIMESTAMP
-    WHERE type = 'magic_link'
-      AND token_hash = ${providedTokenHash}
-      AND used_at IS NULL
-      AND expires_at > CURRENT_TIMESTAMP
-    RETURNING id, user_id, token_hash, expires_at, used_at
-  `;
-
-  // No rows updated means token was invalid, expired, or already used
-  if (tokenResults.length === 0) {
+  // No row claimed means the token was invalid, expired, or already used
+  if (!userId) {
     return { success: false, error: "Invalid or expired token" };
   }
 
-  const tokenData = tokenResults[0] as {
-    id: string;
-    user_id: string;
-    token_hash: string;
-    expires_at: string;
-    used_at: string | null;
-  };
-
+  // Clicking a link sent to the address proves the user owns it, so the magic
+  // link doubles as email verification. COALESCE keeps the original timestamp
+  // on every subsequent sign-in.
   const userResults = await db`
-    SELECT id, email, role, created_at
-    FROM users
-    WHERE id = ${tokenData.user_id}
+    UPDATE users
+    SET email_verified_at = COALESCE(email_verified_at, CURRENT_TIMESTAMP)
+    WHERE id = ${userId}
+    RETURNING id, email, role, created_at, email_verified_at
   `;
 
   if (userResults.length === 0) {
     return { success: false, error: "User not found" };
   }
 
-  const userData = userResults[0] as {
-    id: string;
-    email: string;
-    role: "user" | "admin";
-    created_at: string;
-  };
+  const sessionId = await regenerateSession(userId, previousSessionId);
 
-  // Always create a fresh session to prevent session fixation attacks
-  if (guestSessionId) {
-    await deleteSession(guestSessionId);
-  }
-  const sessionId = await createAuthenticatedSession(tokenData.user_id);
-
-  const user: User = {
-    id: userData.id,
-    email: userData.email,
-    role: userData.role,
-    created_at: new Date(userData.created_at),
-  };
-
-  return { success: true, user, sessionId };
+  return { success: true, user: toUser(userResults[0]), sessionId };
 };
 
 /**

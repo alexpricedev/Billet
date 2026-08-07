@@ -4,6 +4,7 @@
 @import "./pages/forms.css";
 @import "./pages/projects.css";
 @import "./pages/login.css";
+@import "./pages/account.css";
 @import "./pages/admin.css";
 @import "./pages/error.css";
 
@@ -14,6 +15,7 @@
 @import "./components/form-field.css";
 @import "./components/data-table.css";
 @import "./components/badge.css";
+@import "./components/verify-banner.css";
 
 :root {
   --color-bg: #0a0a0b;
@@ -178,6 +180,12 @@ img {
   margin-bottom: 2rem;
   padding: 24px;
   width: 100%;
+
+  /* The trailing margin of the last block would otherwise stack on top of the
+     card's own padding and leave the bottom looking deeper than the top. */
+  > *:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .btn-ghost {

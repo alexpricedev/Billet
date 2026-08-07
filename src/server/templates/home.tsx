@@ -148,8 +148,8 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
         <div className="feature-card">
           <h3>Authentication</h3>
           <p>
-            Magic-link email login, session management, guest sessions, admin
-            roles
+            Magic-link or password login, session management, guest sessions,
+            admin roles
           </p>
         </div>
         <div className="feature-card">

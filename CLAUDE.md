@@ -48,13 +48,40 @@ makes the mock take effect. Don't tidy it.
 ### The test runner is a script, not `bun test`
 
 `bun run test` runs `src/server/test-utils/run-tests.ts`, which applies migrations first, spawns
-one process per test file (isolation + a per-file timeout), and pins `SESSION_COOKIE_NAME=session_id`
-because tests hardcode that cookie. A custom `SESSION_COOKIE_NAME` in your `.env` breaks auth tests
-if it leaks in.
+one process per test file (isolation + a per-file timeout), and pins `SESSION_COOKIE_NAME=session_id`,
+`AUTH_MODE=magic-link`, and `CAPTCHA_ENABLED=false`. Tests hardcode that cookie and assume the
+default auth mode with the captcha off; any of the three set in your `.env` would otherwise leak
+in and break every auth test — running the dev server in password mode or with the captcha on is
+enough to do it. Files that exercise password mode or the captcha set the variable themselves
+per-case.
 
 `bunfig.toml` preloads `src/client/test-utils/setup.ts` for *every* test file. It registers
 happy-dom globals and then restores Bun's native `Request`/`Response`/`FormData` — server tests
 depend on that restore.
+
+### Auth is one mode or the other, never both
+
+`AUTH_MODE` (`src/server/services/auth-mode.ts`) is `magic-link` (default) or `password`. The two
+are mutually exclusive on purpose. `/forgot-password`, `/reset-password`, `/account/password`,
+and `/auth/verify*` all `render404()` from inside their controllers when the mode is wrong — the
+route table in `routes/app.tsx` is static, so a route existing tells you nothing about whether it
+answers. `/login`, `/signup`, and `/account` exist in both modes and branch on
+`passwordAuthEnabled()`.
+
+`authMode()` reads `process.env` on every call so tests can flip it mid-file; an invalid value is
+fatal at boot in `validateEnv()`.
+
+### Passwords are read raw, and never round-trip through flash state
+
+`readFormValues` (`src/server/utils/form-data.ts`) trims values and drops empties — **unsafe for
+credentials**, because whitespace is part of a password. Password controllers use `readPassword`
+from `src/server/controllers/auth/form-guard.ts` instead, which reads the field verbatim.
+
+Flash state is an HMAC-signed but client-readable cookie. A failed auth form preserves the email
+address and nothing else. Never add a password to it.
+
+Password hashing lives in `src/server/utils/crypto.ts` and is deliberately *not* peppered with
+`CRYPTO_PEPPER`, unlike everything else in that file — see the comment there and `SECURITY.md`.
 
 ### Security headers and CSP are centralised
 

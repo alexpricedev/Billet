@@ -10,6 +10,7 @@ import {
 import type { User } from "../services/users";
 import { Logo } from "./logo";
 import { Nav } from "./nav";
+import { VerifyBanner } from "./verify-banner";
 
 // The site is dark-only (see `colorScheme: "dark"` on <html>), so theme-color
 // matches --color-bg from style.css rather than shipping light/dark variants.
@@ -143,7 +144,17 @@ export function Layout({
           }}
         />
       </head>
-      <body data-page={name} data-component="layout">
+      {/* data-banner drives the body offset for the fixed banner. Set from the
+          same condition the component renders on, so the padding can't outlive
+          the bar it makes room for. */}
+      <body
+        data-page={name}
+        data-component="layout"
+        data-banner={
+          user && !user.email_verified_at ? "verify-email" : undefined
+        }
+      >
+        <VerifyBanner user={user} />
         <header>
           <a href="/" className="logo">
             <Logo />

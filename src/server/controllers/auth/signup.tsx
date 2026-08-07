@@ -1,0 +1,183 @@
+import type { BunRequest } from "bun";
+import { redirectIfAuthenticated } from "../../middleware/auth";
+import {
+  createMagicLink,
+  EMAIL_VERIFICATION_EXPIRY_HOURS,
+  MAGIC_LINK_EXPIRY_MINUTES,
+  regenerateSession,
+} from "../../services/auth";
+import { authMode, passwordAuthEnabled } from "../../services/auth-mode";
+import { captchaEnabled, issueChallenge } from "../../services/captcha";
+import { getEmailService } from "../../services/email";
+import { log } from "../../services/logger";
+import { signUpWithPassword, validatePassword } from "../../services/passwords";
+import {
+  getSessionIdFromRequest,
+  setSessionCookie,
+} from "../../services/sessions";
+import type { SignupState } from "../../templates/signup";
+import { Signup } from "../../templates/signup";
+import { appUrl } from "../../utils/app-url";
+import { redirect, render } from "../../utils/response";
+import { stateHelpers } from "../../utils/state";
+import { guardAuthForm, readEmail, readPassword } from "./form-guard";
+
+const { getFlash, setFlash } = stateHelpers<SignupState>();
+
+/**
+ * Sign-up exists in both auth modes. In magic-link mode it is the same
+ * mechanism as /login with sign-up wording — the link creates the account on
+ * first use — which is worth a separate page because "create an account" and
+ * "sign in" are different intentions even when the plumbing is identical.
+ */
+export const signup = {
+  async index(req: BunRequest): Promise<Response> {
+    const authRedirect = await redirectIfAuthenticated(req);
+    if (authRedirect) return authRedirect;
+
+    const state = getFlash(req);
+    const challenge = captchaEnabled() ? issueChallenge() : null;
+
+    return render(
+      <Signup mode={authMode()} state={state} challenge={challenge} />,
+    );
+  },
+
+  async create(req: BunRequest): Promise<Response> {
+    const guard = await guardAuthForm(req);
+
+    if (!guard.ok) {
+      if (guard.reason === "rate-limited") return guard.response;
+
+      if (guard.reason === "honeypot") {
+        log.warn("signup", "honeypot tripped, dropping submission");
+        setFlash(req, feignedFailure(guard.formData));
+        return redirect("/signup");
+      }
+
+      setFlash(req, {
+        state: "validation-error",
+        error: "Verification failed. Please try again.",
+      });
+      return redirect("/signup");
+    }
+
+    const email = readEmail(guard.formData);
+
+    if (!email || !email.includes("@")) {
+      setFlash(req, {
+        state: "validation-error",
+        error: "Invalid email address",
+      });
+      return redirect("/signup");
+    }
+
+    return passwordAuthEnabled()
+      ? createPasswordAccount(req, email, guard.formData)
+      : sendSignupLink(req, email);
+  },
+};
+
+/**
+ * What a dropped submission looks like to whoever sent it. See the twin in
+ * login.tsx — password mode has no "check your email" state to borrow, and
+ * telling someone an account is being set up when none was created strands
+ * them at a sign-in that will never work.
+ */
+const feignedFailure = (formData: FormData): SignupState =>
+  passwordAuthEnabled()
+    ? {
+        state: "validation-error",
+        error: "Something went wrong. Please try again.",
+        email: readEmail(formData),
+      }
+    : { state: "email-sent" };
+
+const sendSignupLink = async (
+  req: BunRequest,
+  email: string,
+): Promise<Response> => {
+  try {
+    const { user, rawToken } = await createMagicLink(email.toLowerCase());
+
+    await getEmailService().sendMagicLink({
+      to: { email: user.email },
+      magicLinkUrl: appUrl(`/auth/callback?token=${rawToken}`),
+      expiryMinutes: MAGIC_LINK_EXPIRY_MINUTES,
+    });
+
+    setFlash(req, { state: "email-sent" });
+    return redirect("/signup");
+  } catch {
+    setFlash(req, {
+      state: "validation-error",
+      error: "Something went wrong. Please try again.",
+    });
+    return redirect("/signup");
+  }
+};
+
+const createPasswordAccount = async (
+  req: BunRequest,
+  email: string,
+  formData: FormData,
+): Promise<Response> => {
+  const password = readPassword(formData, "password");
+
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    setFlash(req, {
+      state: "validation-error",
+      error: passwordError,
+      email,
+    });
+    return redirect("/signup");
+  }
+
+  try {
+    const result = await signUpWithPassword(email, password);
+
+    if (!result.success) {
+      // Sign-up can't hide that an address is taken — the alternative is either
+      // logging someone into an account they may not own or claiming success
+      // for an account that was never created. See services/passwords.ts.
+      setFlash(req, {
+        state: "validation-error",
+        error:
+          result.error === "email-taken"
+            ? "An account with that email already exists. Try signing in instead."
+            : "That password isn't valid. Please try another.",
+        email,
+      });
+      return redirect("/signup");
+    }
+
+    const sessionId = await regenerateSession(
+      result.user.id,
+      getSessionIdFromRequest(req),
+    );
+    setSessionCookie(req, sessionId);
+
+    // The account is usable before the address is confirmed, so a mail failure
+    // must not cost the user their session — it's logged and the banner keeps
+    // offering a resend.
+    try {
+      await getEmailService().sendVerifyEmail({
+        to: { email: result.user.email },
+        verifyUrl: appUrl(`/auth/verify?token=${result.verifyToken}`),
+        expiryHours: EMAIL_VERIFICATION_EXPIRY_HOURS,
+      });
+    } catch (error) {
+      log.error("signup", `failed to send verification email: ${error}`);
+    }
+
+    return redirect("/");
+  } catch {
+    setFlash(req, {
+      state: "validation-error",
+      error: "Something went wrong. Please try again.",
+      email,
+    });
+    return redirect("/signup");
+  }
+};

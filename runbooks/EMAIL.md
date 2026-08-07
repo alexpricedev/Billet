@@ -1,7 +1,8 @@
 # Email Deliverability Runbook
 
-Every email the app sends — the magic-link login being the built-in one — is
-transactional and goes through Resend. Landing in the inbox (not spam) depends
+Every email the app sends is transactional and goes through Resend. The built-in
+ones are the magic-link login (`AUTH_MODE=magic-link`) and, in password mode, the
+address-confirmation and password-reset messages. Landing in the inbox (not spam) depends
 almost entirely on DNS: SPF, DKIM, and DMARC. This runbook is domain-agnostic —
 replace `<your-domain>` with your real sending domain throughout.
 
@@ -78,4 +79,6 @@ Deliberately **not** implemented, and why:
   transactional sender.
 - **Open/click tracking** — keep Resend's open and click tracking **OFF**.
   Click tracking rewrites links through a shared tracking domain, which hurts
-  deliverability and makes magic-link URLs look untrustworthy.
+  deliverability and makes magic-link URLs look untrustworthy. The same applies
+  to password-reset and confirmation links: a rewritten single-use token is a
+  token a scanner can burn before the recipient clicks it.

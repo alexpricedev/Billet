@@ -116,6 +116,70 @@ describe("Email Service", () => {
       expect(new Set(refs).size).toBe(2);
     });
 
+    test("sends a verification email with both HTML and text bodies", async () => {
+      await emailService.sendVerifyEmail({
+        to: { email: "newuser@example.com" },
+        verifyUrl: "https://example.com/auth/verify?token=verify123",
+        expiryHours: 24,
+      });
+
+      expect(mockProvider.sentMessages).toHaveLength(1);
+      const message = mockProvider.sentMessages[0];
+
+      expect(message.subject).toBe("Confirm your email address");
+      expect(message.to.email).toBe("newuser@example.com");
+      expect(message.html).toContain("<!DOCTYPE html>");
+      expect(message.html).toContain(
+        "https://example.com/auth/verify?token=verify123",
+      );
+      expect(message.html).toContain("24 hours");
+      // Both bodies are required: the console provider and Resend both read text.
+      expect(message.text).toContain(
+        "https://example.com/auth/verify?token=verify123",
+      );
+      expect(message.text).toContain("24 hours");
+      expect(message.text).toContain("didn't create this account");
+    });
+
+    test("sends a password reset email with both HTML and text bodies", async () => {
+      await emailService.sendPasswordReset({
+        to: { email: "forgot@example.com" },
+        resetUrl: "https://example.com/reset-password?token=reset456",
+        expiryMinutes: 60,
+      });
+
+      const message = mockProvider.sentMessages[0];
+
+      expect(message.subject).toBe("Reset your password");
+      expect(message.html).toContain(
+        "https://example.com/reset-password?token=reset456",
+      );
+      expect(message.html).toContain("60 minutes");
+      expect(message.text).toContain(
+        "https://example.com/reset-password?token=reset456",
+      );
+      // Reassures a recipient who didn't ask for this that nothing has changed.
+      expect(message.text).toContain("your password will not change");
+    });
+
+    test("threads every auth email separately with its own X-Entity-Ref-ID", async () => {
+      await emailService.sendVerifyEmail({
+        to: { email: "same@example.com" },
+        verifyUrl: "https://example.com/auth/verify?token=a",
+        expiryHours: 24,
+      });
+      await emailService.sendPasswordReset({
+        to: { email: "same@example.com" },
+        resetUrl: "https://example.com/reset-password?token=b",
+        expiryMinutes: 60,
+      });
+
+      const refs = mockProvider.sentMessages.map(
+        (m) => m.headers?.["X-Entity-Ref-ID"],
+      );
+      expect(new Set(refs).size).toBe(2);
+    });
+
     test("omits Reply-To when REPLY_TO_EMAIL is unset", async () => {
       const original = process.env.REPLY_TO_EMAIL;
       delete process.env.REPLY_TO_EMAIL;
