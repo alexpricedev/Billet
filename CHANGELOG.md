@@ -23,6 +23,12 @@ change its own code after merging.
   An account carried over from magic-link mode has no password yet, so it gets a set-password
   form there instead; which of the two runs is decided from the account's own state, never from
   the fields the form submits.
+- A signed-out user whose account predates the switch to password mode is told so when they
+  try to sign in, and linked to `/forgot-password` to set a first password. Sign-in otherwise
+  gives one message for a wrong password and an unknown address; this case is the deliberate
+  exception, because there is no password such a user could type correctly. It does make
+  `/login` report whether an address is a registered carried-over account — see the enumeration
+  posture in `SECURITY.md` for the trade and how to revert it in a fork.
 - Password reset by email (`/forgot-password`, `/reset-password`) and email verification
   (`/auth/verify`, `/auth/verify/resend`). All four 404 in magic-link mode. `/auth/verify`
   renders its own result page rather than redirecting into `/account`, so a link opened from a
@@ -43,6 +49,11 @@ change its own code after merging.
 - The magic-link token helpers in `services/auth.ts` are now `createUserToken` /
   `consumeUserToken`, generalised over a token type. `createMagicLink` and `verifyMagicLink`
   keep their signatures and behaviour.
+- `signInWithPassword` returns a `SignInResult` discriminated union rather than `User | null`,
+  matching the other result types in `services/passwords.ts` and carrying the reason a sign-in
+  failed. A fork calling it directly needs `result.success` / `result.user` instead of a null
+  check — note that the old `if (!user)` still compiles against the new type and is always
+  false, so the compiler will not catch this for you.
 - The layered bot defence (rate limit → honeypot → captcha) moved out of the login controller
   into `controllers/auth/form-guard.ts` and now runs on `/signup` and `/forgot-password` too.
   A honeypot or captcha failure hands the parsed body back to the caller, so `/reset-password`

@@ -77,7 +77,7 @@ offering both at once would mean every account has two ways in, and the weaker o
 - **Rate limiting** middleware with configurable sliding-window limits per IP
 - **Signup spam defense** on every signed-out auth form — an always-on honeypot and per-IP rate limit, plus an optional first-party proof-of-work captcha (no third party, account, or extra secret; off by default, enable with `CAPTCHA_ENABLED`)
 - **Session fixation prevention** — sessions are regenerated on login, and a password change or reset invalidates the other sessions
-- **Password storage** — argon2id with a per-hash salt, deliberately unpeppered so a `CRYPTO_PEPPER` rotation stays recoverable; sign-in and password reset give identical answers for known and unknown addresses
+- **Password storage** — argon2id with a per-hash salt, deliberately unpeppered so a `CRYPTO_PEPPER` rotation stays recoverable; password reset gives identical answers for known and unknown addresses, and so does sign-in except for accounts carried over from magic-link mode, which are told they have no password yet (see [SECURITY.md](SECURITY.md) for that trade-off)
 - **Environment validation** at startup — the server fails fast with clear error messages if required variables are missing
 - **Response hardening** — security headers on every response (nosniff, frame/clickjacking protection, an enforcing Content Security Policy, Permissions-Policy, HSTS in production), plus `/.well-known/security.txt` and Subresource Integrity on third-party scripts — see [runbooks/SECURITY.md](runbooks/SECURITY.md)
 
@@ -315,7 +315,7 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 
 > **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
 
-> **Auth mode:** Leave `AUTH_MODE` unset for magic-link auth. Set `AUTH_MODE=password` for email-and-password instead — that enables `/forgot-password`, `/reset-password`, and the change-password form on `/account`, which all 404 in magic-link mode. Switching an existing app to `password` leaves current users with no password: `/account` offers those accounts a set-password form, and `/forgot-password` covers anyone already signed out. `/signup` and `/account` exist in both modes.
+> **Auth mode:** Leave `AUTH_MODE` unset for magic-link auth. Set `AUTH_MODE=password` for email-and-password instead — that enables `/forgot-password`, `/reset-password`, and the change-password form on `/account`, which all 404 in magic-link mode. Switching an existing app to `password` leaves current users with no password: `/account` offers those accounts a set-password form, and `/forgot-password` covers anyone already signed out — a failed sign-in tells them so and links them there, rather than leaving them to guess at "Invalid email or password" forever. `/signup` and `/account` exist in both modes.
 
 > **Signup spam:** The login form always carries a honeypot and per-IP rate limit. If bots still create accounts with random emails, set `CAPTCHA_ENABLED=true` to add a first-party proof-of-work captcha — it signs challenges with your existing `CRYPTO_PEPPER`, so there's no third party, account, or extra secret to configure.
 

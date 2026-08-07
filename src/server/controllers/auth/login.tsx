@@ -16,6 +16,7 @@ import {
 } from "../../services/sessions";
 import type { LoginState } from "../../templates/login";
 import { Login } from "../../templates/login";
+import { appUrl } from "../../utils/app-url";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { guardAuthForm, readEmail, readPassword } from "./form-guard";
@@ -96,12 +97,9 @@ const sendMagicLinkAndRedirect = async (
   try {
     const { user, rawToken } = await createMagicLink(email.toLowerCase());
 
-    const url = new URL(req.url);
-    const magicLinkUrl = `${url.protocol}//${url.host}/auth/callback?token=${rawToken}`;
-
     await getEmailService().sendMagicLink({
       to: { email: user.email },
-      magicLinkUrl,
+      magicLinkUrl: appUrl(`/auth/callback?token=${rawToken}`),
       expiryMinutes: MAGIC_LINK_EXPIRY_MINUTES,
     });
 
@@ -124,22 +122,36 @@ const signInWithPasswordAndRedirect = async (
   const password = readPassword(formData, "password");
 
   try {
-    const user = await signInWithPassword(email, password);
+    const result = await signInWithPassword(email, password);
 
-    if (!user) {
-      // One message for "no such account", "wrong password", and "that account
-      // signs in with a magic link" — anything more specific tells an attacker
-      // which addresses are registered.
-      setFlash(req, {
-        state: "validation-error",
-        error: "Invalid email or password",
-        email,
-      });
+    if (!result.success) {
+      // One message for "no such account" and "wrong password" — separating
+      // those two would tell an attacker which addresses are registered.
+      //
+      // An account carried over from magic-link mode is the exception, and it
+      // has to be: it has no password, so every attempt fails and the generic
+      // message never explains why. The template turns this state into a link
+      // to /forgot-password, which sets a first password on a null hash.
+      setFlash(
+        req,
+        result.reason === "no-password"
+          ? {
+              state: "no-password",
+              error:
+                "This account was created before password sign-in, so it doesn't have one yet.",
+              email,
+            }
+          : {
+              state: "validation-error",
+              error: "Invalid email or password",
+              email,
+            },
+      );
       return redirect("/login");
     }
 
     const sessionId = await regenerateSession(
-      user.id,
+      result.user.id,
       getSessionIdFromRequest(req),
     );
     setSessionCookie(req, sessionId);

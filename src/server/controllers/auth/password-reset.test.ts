@@ -8,6 +8,11 @@ import {
   HONEYPOT_FIELD,
   issueChallenge,
 } from "../../services/captcha";
+import {
+  type EmailMessage,
+  EmailService,
+  setEmailService,
+} from "../../services/email";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { cleanupTestData } from "../../test-utils/helpers";
 
@@ -107,6 +112,8 @@ describe("Password Reset Controller", () => {
   afterAll(async () => {
     if (originalMode === undefined) delete process.env.AUTH_MODE;
     else process.env.AUTH_MODE = originalMode;
+    // Drop the capturing service one test installs, so the singleton rebuilds.
+    setEmailService(null as unknown as EmailService);
     await connection.end();
     mock.restore();
   });
@@ -145,6 +152,39 @@ describe("Password Reset Controller", () => {
         WHERE user_id = ${signUp.user.id} AND type = 'password_reset'
       `;
       expect(tokens).toHaveLength(1);
+    });
+
+    test("builds the reset link from APP_URL, not the request Host", async () => {
+      const signUp = await signUpWithPassword("host@example.com", PASSWORD);
+      expect(signUp.success).toBe(true);
+      if (!signUp.success) return;
+
+      const sent: EmailMessage[] = [];
+      setEmailService(
+        new EmailService({
+          send: async (message) => {
+            sent.push(message);
+          },
+        }),
+      );
+
+      // `new URL(req.url).host` is the client's Host header. A forged one must
+      // not reach the email, or the link hands the token to the attacker.
+      const formData = new FormData();
+      formData.append("email", "host@example.com");
+      await passwordReset.create(
+        createBunRequest("http://evil.example/forgot-password", {
+          method: "POST",
+          body: formData,
+        }),
+      );
+
+      expect(sent).toHaveLength(1);
+      expect(sent[0].html).not.toContain("evil.example");
+      expect(sent[0].text).not.toContain("evil.example");
+      expect(sent[0].html).toContain(
+        `${new URL(process.env.APP_URL as string).origin}/reset-password?token=`,
+      );
     });
 
     test("answers an unknown address identically, creating nothing", async () => {
@@ -264,11 +304,12 @@ describe("Password Reset Controller", () => {
       expect(findSetCookie(request, "session_id")).toBeDefined();
 
       expect(
-        await signInWithPassword("reset@example.com", NEW_PASSWORD),
-      ).not.toBeNull();
-      expect(
-        await signInWithPassword("reset@example.com", PASSWORD),
-      ).toBeNull();
+        (await signInWithPassword("reset@example.com", NEW_PASSWORD)).success,
+      ).toBe(true);
+      expect(await signInWithPassword("reset@example.com", PASSWORD)).toEqual({
+        success: false,
+        reason: "invalid-credentials",
+      });
     });
 
     test("completes when the captcha is enabled", async () => {
@@ -296,8 +337,9 @@ describe("Password Reset Controller", () => {
         expect(response.status).toBe(303);
         expect(response.headers.get("location")).toBe("/");
         expect(
-          await signInWithPassword("captcha@example.com", NEW_PASSWORD),
-        ).not.toBeNull();
+          (await signInWithPassword("captcha@example.com", NEW_PASSWORD))
+            .success,
+        ).toBe(true);
       } finally {
         if (original === undefined) delete process.env.CAPTCHA_ENABLED;
         else process.env.CAPTCHA_ENABLED = original;
@@ -364,7 +406,7 @@ describe("Password Reset Controller", () => {
       expect(findSetCookie(replay, "flash_state")).toContain("invalid-token");
       expect(
         await signInWithPassword("once@example.com", "yet-another-passphrase"),
-      ).toBeNull();
+      ).toEqual({ success: false, reason: "invalid-credentials" });
     });
 
     test("will not spend a verification token as a reset", async () => {
@@ -380,8 +422,8 @@ describe("Password Reset Controller", () => {
 
       expect(findSetCookie(request, "flash_state")).toContain("invalid-token");
       expect(
-        await signInWithPassword("cross@example.com", PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("cross@example.com", PASSWORD)).success,
+      ).toBe(true);
     });
 
     test("keeps the token usable after a too-short password", async () => {
@@ -405,8 +447,8 @@ describe("Password Reset Controller", () => {
         postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
       );
       expect(
-        await signInWithPassword("typo@example.com", NEW_PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("typo@example.com", NEW_PASSWORD)).success,
+      ).toBe(true);
     });
 
     // A stale challenge (page left open) must not cost the user their link —
@@ -449,8 +491,9 @@ describe("Password Reset Controller", () => {
           }),
         );
         expect(
-          await signInWithPassword("stalecap@example.com", NEW_PASSWORD),
-        ).not.toBeNull();
+          (await signInWithPassword("stalecap@example.com", NEW_PASSWORD))
+            .success,
+        ).toBe(true);
       } finally {
         if (original === undefined) delete process.env.CAPTCHA_ENABLED;
         else process.env.CAPTCHA_ENABLED = original;
@@ -481,8 +524,8 @@ describe("Password Reset Controller", () => {
 
       expect(findSetCookie(request, "flash_state")).toContain("invalid-token");
       expect(
-        await signInWithPassword("stale@example.com", PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("stale@example.com", PASSWORD)).success,
+      ).toBe(true);
     });
 
     test("404s in magic-link mode", async () => {

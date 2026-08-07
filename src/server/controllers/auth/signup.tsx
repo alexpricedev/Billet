@@ -17,6 +17,7 @@ import {
 } from "../../services/sessions";
 import type { SignupState } from "../../templates/signup";
 import { Signup } from "../../templates/signup";
+import { appUrl } from "../../utils/app-url";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { guardAuthForm, readEmail, readPassword } from "./form-guard";
@@ -99,12 +100,9 @@ const sendSignupLink = async (
   try {
     const { user, rawToken } = await createMagicLink(email.toLowerCase());
 
-    const url = new URL(req.url);
-    const magicLinkUrl = `${url.protocol}//${url.host}/auth/callback?token=${rawToken}`;
-
     await getEmailService().sendMagicLink({
       to: { email: user.email },
-      magicLinkUrl,
+      magicLinkUrl: appUrl(`/auth/callback?token=${rawToken}`),
       expiryMinutes: MAGIC_LINK_EXPIRY_MINUTES,
     });
 
@@ -164,10 +162,9 @@ const createPasswordAccount = async (
     // must not cost the user their session — it's logged and the banner keeps
     // offering a resend.
     try {
-      const url = new URL(req.url);
       await getEmailService().sendVerifyEmail({
         to: { email: result.user.email },
-        verifyUrl: `${url.protocol}//${url.host}/auth/verify?token=${result.verifyToken}`,
+        verifyUrl: appUrl(`/auth/verify?token=${result.verifyToken}`),
         expiryHours: EMAIL_VERIFICATION_EXPIRY_HOURS,
       });
     } catch (error) {

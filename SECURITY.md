@@ -94,6 +94,11 @@ CSRF protection applies to: POST, PUT, PATCH, DELETE
 - **Session Management**: HMAC-protected IDs, secure cookies, 30-day expiration
 - **Input Validation**: Type-safe forms, parameterized queries, XSS prevention
 - **Environment Security**: Crypto pepper, environment isolation, no secret logging
+- **Emailed links are built from `APP_URL`**, never from the request — `appUrl`
+  in [`utils/app-url.ts`](src/server/utils/app-url.ts). `new URL(req.url).host`
+  is the client's `Host` header, so deriving a link from it would let a forged
+  header put an attacker's domain into a real, unspent magic-link or
+  password-reset URL
 
 ## Password Storage (`AUTH_MODE=password`)
 
@@ -114,21 +119,47 @@ no password is ever stored.
   and nothing else; the flash cookie is signed but client-readable.
 - **Timing-equalised sign-in.** An unknown address, and an account with no
   password, both still run a verification against a dummy hash, so response time
-  doesn't reveal which addresses are registered.
+  never separates them from a wrong password. The dummy hash is burnt on the
+  no-password branch too: that branch's *message* differs by design (below), but
+  its timing must not leak the same fact a second way, through a channel the
+  rate limit can't see.
 
 ### Enumeration posture
 
-Sign-in and `/forgot-password` answer identically whether or not an account
-exists. **Sign-up does not**, and that is a deliberate trade: it signs the user
-in immediately, so "pretend it worked" would mean either logging someone into an
-account they may not own or claiming success for an account that was never
-created. A visitor who submits a registered address is told so and pointed at
-sign-in.
+`/forgot-password` answers identically whether or not an account exists.
+Sign-in answers identically for a **wrong password** and an **unknown address** —
+those two are one `invalid-credentials` result in `signInWithPassword`, and must
+render as one message.
+
+**Two deliberate exceptions**, both because the alternative strands a real user:
+
+- **Sign-up** can't hide that an address is taken. It signs the user in
+  immediately, so "pretend it worked" would mean either logging someone into an
+  account they may not own or claiming success for an account that was never
+  created. A visitor who submits a registered address is told so and pointed at
+  sign-in.
+- **Sign-in against an account with no password** — one carried over from
+  magic-link mode — returns `no-password` and says so, with a link to
+  `/forgot-password`. There is no password such a user could type correctly, so
+  the generic message is a permanent dead end for exactly the people a mode
+  switch affects.
+
+The cost of the second is real and worth naming: submitting an address with any
+password reveals whether it is a registered *carried-over* account. Registered
+password accounts stay indistinguishable from unknown addresses, so the oracle
+is scoped to accounts that predate the switch and closes for each one as it sets
+a password. The only mitigation is the per-IP rate limit on the form
+(5/60s, `guardAuthForm`). A fork that would rather keep sign-in fully
+non-enumerable should collapse `no-password` back into `invalid-credentials` in
+`services/passwords.ts` and drop the branch in `controllers/auth/login.tsx` —
+its carried-over users then have to find `/forgot-password` unaided.
 
 ### Setting a first password
 
 Accounts that predate a switch to password mode have no `password_hash`, so
-`/account` offers them a set-password form with no current-password field.
+`/account` offers them a set-password form with no current-password field, and a
+failed sign-in points them at `/forgot-password` — which sets a first password on
+a null hash just as it replaces an existing one.
 Which of the two operations runs is read from the account's own state, never
 inferred from the fields the form submits, and `setInitialPassword` scopes its
 UPDATE with `AND password_hash IS NULL` — omitting `current_password` from a

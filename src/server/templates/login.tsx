@@ -7,7 +7,10 @@ import type { AuthMode } from "../services/auth-mode";
 import type { CaptchaChallenge } from "../services/captcha";
 
 export interface LoginState {
-  state?: "email-sent" | "validation-error";
+  // "no-password" is a failed sign-in against an account carried over from
+  // magic-link mode. It renders like a validation error but carries a way out,
+  // because there is no password the user could have typed correctly.
+  state?: "email-sent" | "validation-error" | "no-password";
   error?: string;
   // Preserved across the redirect so a failed attempt doesn't make the user
   // retype their address. The password is deliberately never carried back —
@@ -55,11 +58,21 @@ export const Login = ({ mode, state, challenge }: LoginProps) => {
         </Flash>
       ) : (
         <form method="POST" action="/login">
-          {state?.state === "validation-error" && state.error && (
-            <Flash type="error">
-              <span>{state.error}</span>
-            </Flash>
-          )}
+          {(state?.state === "validation-error" ||
+            state?.state === "no-password") &&
+            state.error && (
+              <Flash type="error">
+                <span>{state.error}</span>
+                {/* The message alone is a dead end — nothing on this page tells
+                    someone that the reset flow is also how you set a first
+                    password. */}
+                {state.state === "no-password" && (
+                  <p className="flash-action">
+                    <a href="/forgot-password">Set your password</a>
+                  </p>
+                )}
+              </Flash>
+            )}
 
           <FormField label="Email address" id="email">
             <input

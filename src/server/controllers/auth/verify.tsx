@@ -12,16 +12,12 @@ import { log } from "../../services/logger";
 import { verifyEmailToken } from "../../services/passwords";
 import type { AccountState } from "../../templates/account";
 import { VerifyResult } from "../../templates/verify-result";
+import { appUrl } from "../../utils/app-url";
 import { render404 } from "../../utils/errors";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 
 const { setFlash } = stateHelpers<AccountState>();
-
-const buildVerifyUrl = (req: BunRequest, token: string): string => {
-  const url = new URL(req.url);
-  return `${url.protocol}//${url.host}/auth/verify?token=${token}`;
-};
 
 /**
  * Email confirmation. Only reachable in password mode — a magic-link account is
@@ -71,7 +67,7 @@ export const verify = {
 
       await getEmailService().sendVerifyEmail({
         to: { email: ctx.user.email },
-        verifyUrl: buildVerifyUrl(req, token),
+        verifyUrl: appUrl(`/auth/verify?token=${token}`),
         expiryHours: EMAIL_VERIFICATION_EXPIRY_HOURS,
       });
 

@@ -4,8 +4,11 @@ import { checkCsrf } from "../../middleware/csrf";
 import { rateLimit } from "../../middleware/rate-limit";
 import { authMode, passwordAuthEnabled } from "../../services/auth-mode";
 import { createCsrfToken } from "../../services/csrf";
+import { log } from "../../services/logger";
 import {
+  type ChangePasswordResult,
   changePassword,
+  type SetPasswordResult,
   setInitialPassword,
   userHasPassword,
 } from "../../services/passwords";
@@ -94,14 +97,30 @@ export const account = {
     // current_password would be a way to skip proving it.
     const hasPassword = await userHasPassword(ctx.user.id);
 
-    const result = hasPassword
-      ? await changePassword(
-          ctx.user.id,
-          currentPassword,
-          newPassword,
-          ctx.sessionHash,
-        )
-      : await setInitialPassword(ctx.user.id, newPassword, ctx.sessionHash);
+    // The purge of the other sessions throws rather than reporting a count of
+    // zero, so a database failure lands here instead of being announced as
+    // "signed out everywhere else". The password may or may not have changed by
+    // that point, which is what the message has to say.
+    let result: ChangePasswordResult | SetPasswordResult;
+
+    try {
+      result = hasPassword
+        ? await changePassword(
+            ctx.user.id,
+            currentPassword,
+            newPassword,
+            ctx.sessionHash,
+          )
+        : await setInitialPassword(ctx.user.id, newPassword, ctx.sessionHash);
+    } catch (error) {
+      log.error("account", `password update failed: ${error}`);
+      setFlash(req, {
+        state: "password-error",
+        error:
+          "Something went wrong. Check whether your password changed before trying again, and sign out of your other devices.",
+      });
+      return redirect("/account");
+    }
 
     if (!result.success) {
       setFlash(req, {

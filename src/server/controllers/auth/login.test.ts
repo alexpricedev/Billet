@@ -483,7 +483,7 @@ describe("Login Controller", () => {
       expect(findSetCookie(unknownAccount, "session_id")).toBeUndefined();
     });
 
-    test("refuses a magic-link account that has no password", async () => {
+    test("points a magic-link account with no password at the reset flow", async () => {
       await findOrCreateUser("linkonly@example.com");
 
       const request = post({
@@ -492,10 +492,58 @@ describe("Login Controller", () => {
       });
       await login.create(request);
 
-      expect(findSetCookie(request, "flash_state")).toContain(
-        "Invalid email or password",
+      // The deliberate exception to the merged failure message: there is no
+      // password to type correctly, so the generic answer is a dead end.
+      const flash = decodeURIComponent(
+        findSetCookie(request, "flash_state") as string,
       );
+      expect(flash).toContain("no-password");
+      expect(flash).toContain("created before password sign-in");
+      expect(flash).not.toContain("Invalid email or password");
       expect(findSetCookie(request, "session_id")).toBeUndefined();
+    });
+
+    test("renders the no-password message with a link to set one", async () => {
+      await findOrCreateUser("linkonly@example.com");
+
+      const post_ = post({
+        email: "linkonly@example.com",
+        password: PASSWORD,
+      });
+      await login.create(post_);
+
+      // Carry the flash the controller just set into the next GET — the value
+      // only, not the whole Set-Cookie header findSetCookie returns.
+      const value = findSetCookie(post_, "flash_state")?.match(
+        /flash_state=([^;]+)/,
+      )?.[1];
+      const get = createBunRequest("http://localhost:3000/login", {
+        method: "GET",
+        headers: { cookie: `flash_state=${value}` },
+      });
+      const html = await (await login.index(get)).text();
+
+      expect(html).toContain("created before password sign-in");
+      expect(html).toContain('href="/forgot-password"');
+      expect(html).toContain("Set your password");
+    });
+
+    test("keeps the generic message for a wrong password on a real account", async () => {
+      await signUpWithPassword("hasone@example.com", PASSWORD);
+
+      const request = post({
+        email: "hasone@example.com",
+        password: "definitely-not-it",
+      });
+      await login.create(request);
+
+      // The leak is scoped to null-hash rows. A registered password account
+      // must still be indistinguishable from an unknown address.
+      const flash = decodeURIComponent(
+        findSetCookie(request, "flash_state") as string,
+      );
+      expect(flash).toContain("Invalid email or password");
+      expect(flash).not.toContain("no-password");
     });
 
     test("preserves the typed email but never the password", async () => {

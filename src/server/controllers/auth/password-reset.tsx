@@ -8,7 +8,11 @@ import { passwordAuthEnabled } from "../../services/auth-mode";
 import { captchaEnabled, issueChallenge } from "../../services/captcha";
 import { getEmailService } from "../../services/email";
 import { log } from "../../services/logger";
-import { createPasswordReset, resetPassword } from "../../services/passwords";
+import {
+  createPasswordReset,
+  type ResetPasswordResult,
+  resetPassword,
+} from "../../services/passwords";
 import {
   getSessionIdFromRequest,
   setSessionCookie,
@@ -17,6 +21,7 @@ import type { ForgotPasswordState } from "../../templates/forgot-password";
 import { ForgotPassword } from "../../templates/forgot-password";
 import type { ResetPasswordState } from "../../templates/reset-password";
 import { ResetPassword } from "../../templates/reset-password";
+import { appUrl } from "../../utils/app-url";
 import { render404 } from "../../utils/errors";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
@@ -82,10 +87,9 @@ export const passwordReset = {
       const reset = await createPasswordReset(email);
 
       if (reset) {
-        const url = new URL(req.url);
         await getEmailService().sendPasswordReset({
           to: { email: reset.user.email },
-          resetUrl: `${url.protocol}//${url.host}/reset-password?token=${reset.rawToken}`,
+          resetUrl: appUrl(`/reset-password?token=${reset.rawToken}`),
           expiryMinutes: PASSWORD_RESET_EXPIRY_MINUTES,
         });
       }
@@ -109,9 +113,18 @@ export const passwordReset = {
     // The token isn't checked here — only spending it proves anything, and a
     // probe that reported "valid link" on GET would let an attacker sort real
     // tokens from guesses without ever committing to one.
+
+    // A flashed invalid-token message is carried through — redirecting here
+    // without a token is how the dead ends below reach the visitor at all. Any
+    // other state belongs to the form this branch isn't rendering.
     if (!token) {
       return render(
-        <ResetPassword token="" state={{ state: "invalid-token" }} />,
+        <ResetPassword
+          token=""
+          state={
+            state.state === "invalid-token" ? state : { state: "invalid-token" }
+          }
+        />,
       );
     }
 
@@ -152,7 +165,24 @@ export const passwordReset = {
       return invalidToken(req);
     }
 
-    const result = await resetPassword(token, password);
+    let result: ResetPasswordResult;
+
+    try {
+      result = await resetPassword(token, password);
+    } catch (error) {
+      // Reaching here means the token was already spent, so there is no link to
+      // send them back to and no way to know whether the new password stuck.
+      // Signing them in would be worse than saying so: the session purge is the
+      // step most likely to have failed, and this is the flow you use when you
+      // believe someone else is holding one of those sessions.
+      log.error("password-reset", `failed to complete reset: ${error}`);
+      resetFlash.setFlash(req, {
+        state: "invalid-token",
+        error:
+          "Something went wrong finishing that reset. Try signing in with your new password — if that doesn't work, request another link.",
+      });
+      return redirect("/reset-password");
+    }
 
     if (!result.success) {
       // The token survives an invalid password, so send them back to the same

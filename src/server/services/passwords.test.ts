@@ -132,47 +132,53 @@ describe("Passwords Service with PostgreSQL", () => {
       const signUp = await signUpWithPassword("signin@example.com", PASSWORD);
       expect(signUp.success).toBe(true);
 
-      const user = await signInWithPassword("signin@example.com", PASSWORD);
+      const result = await signInWithPassword("signin@example.com", PASSWORD);
 
-      expect(user?.email).toBe("signin@example.com");
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.user.email).toBe("signin@example.com");
     });
 
     test("never leaks the password hash to callers", async () => {
       await signUpWithPassword("leak@example.com", PASSWORD);
 
-      const user = await signInWithPassword("leak@example.com", PASSWORD);
+      const result = await signInWithPassword("leak@example.com", PASSWORD);
 
-      expect(user).not.toHaveProperty("password_hash");
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.user).not.toHaveProperty("password_hash");
     });
 
-    test("returns null for the wrong password", async () => {
+    test("gives the same reason for a wrong password and an unknown address", async () => {
       await signUpWithPassword("wrong@example.com", PASSWORD);
 
+      // The pair that must stay merged: telling these apart would make the
+      // form a way to test which addresses are registered.
       expect(
         await signInWithPassword("wrong@example.com", "not-it-at-all"),
-      ).toBeNull();
+      ).toEqual({ success: false, reason: "invalid-credentials" });
+      expect(await signInWithPassword("ghost@example.com", PASSWORD)).toEqual({
+        success: false,
+        reason: "invalid-credentials",
+      });
     });
 
-    test("returns null for an unknown address", async () => {
-      expect(
-        await signInWithPassword("ghost@example.com", PASSWORD),
-      ).toBeNull();
-    });
-
-    test("returns null for a magic-link account with no password", async () => {
+    test("reports a magic-link account with no password separately", async () => {
       await findOrCreateUser("passwordless@example.com");
 
+      // The deliberate exception — there is no password to get right, so the
+      // generic answer would strand the user. See SECURITY.md.
       expect(
         await signInWithPassword("passwordless@example.com", PASSWORD),
-      ).toBeNull();
+      ).toEqual({ success: false, reason: "no-password" });
     });
 
     test("matches case-insensitively on the address", async () => {
       await signUpWithPassword("case@example.com", PASSWORD);
 
       expect(
-        await signInWithPassword("CASE@Example.com", PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("CASE@Example.com", PASSWORD)).success,
+      ).toBe(true);
     });
 
     test("treats surrounding whitespace as part of the password", async () => {
@@ -180,10 +186,11 @@ describe("Passwords Service with PostgreSQL", () => {
 
       expect(
         await signInWithPassword("spaces@example.com", "padded pass"),
-      ).toBeNull();
+      ).toEqual({ success: false, reason: "invalid-credentials" });
       expect(
-        await signInWithPassword("spaces@example.com", "  padded pass  "),
-      ).not.toBeNull();
+        (await signInWithPassword("spaces@example.com", "  padded pass  "))
+          .success,
+      ).toBe(true);
     });
   });
 
@@ -210,8 +217,13 @@ describe("Passwords Service with PostgreSQL", () => {
         },
       );
       expect(
-        await signInWithPassword("carried@example.com", "brand-new-passphrase"),
-      ).not.toBeNull();
+        (
+          await signInWithPassword(
+            "carried@example.com",
+            "brand-new-passphrase",
+          )
+        ).success,
+      ).toBe(true);
     });
 
     // The `AND password_hash IS NULL` in the UPDATE is what stops this being a
@@ -225,8 +237,8 @@ describe("Passwords Service with PostgreSQL", () => {
         await setInitialPassword(signUp.user.id, "attacker-chosen-passphrase"),
       ).toEqual({ success: false, error: "already-set" });
       expect(
-        await signInWithPassword("taken@example.com", PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("taken@example.com", PASSWORD)).success,
+      ).toBe(true);
     });
 
     test("rejects an invalid password without touching the row", async () => {
@@ -266,11 +278,13 @@ describe("Passwords Service with PostgreSQL", () => {
 
       expect(result).toEqual({ success: true });
       expect(
-        await signInWithPassword("change@example.com", "brand-new-passphrase"),
-      ).not.toBeNull();
-      expect(
-        await signInWithPassword("change@example.com", PASSWORD),
-      ).toBeNull();
+        (await signInWithPassword("change@example.com", "brand-new-passphrase"))
+          .success,
+      ).toBe(true);
+      expect(await signInWithPassword("change@example.com", PASSWORD)).toEqual({
+        success: false,
+        reason: "invalid-credentials",
+      });
     });
 
     test("rejects a wrong current password and leaves the old one working", async () => {
@@ -286,8 +300,8 @@ describe("Passwords Service with PostgreSQL", () => {
 
       expect(result).toEqual({ success: false, error: "wrong-password" });
       expect(
-        await signInWithPassword("guard@example.com", PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("guard@example.com", PASSWORD)).success,
+      ).toBe(true);
     });
 
     test("rejects an invalid new password", async () => {
@@ -365,8 +379,9 @@ describe("Passwords Service with PostgreSQL", () => {
       expect(result.user.id).toBe(user.id);
       expect(result.user.email_verified_at).toBeInstanceOf(Date);
       expect(
-        await signInWithPassword("newpass@example.com", "a-fresh-passphrase"),
-      ).not.toBeNull();
+        (await signInWithPassword("newpass@example.com", "a-fresh-passphrase"))
+          .success,
+      ).toBe(true);
     });
 
     test("is single-use", async () => {
@@ -384,7 +399,7 @@ describe("Passwords Service with PostgreSQL", () => {
       // The second attempt must not have taken effect.
       expect(
         await signInWithPassword("once@example.com", "second-passphrase"),
-      ).toBeNull();
+      ).toEqual({ success: false, reason: "invalid-credentials" });
     });
 
     test("rejects an unknown or expired token", async () => {

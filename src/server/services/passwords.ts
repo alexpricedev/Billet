@@ -91,15 +91,28 @@ export const signUpWithPassword = async (
   return { success: true, user, verifyToken };
 };
 
+export type SignInResult =
+  | { success: true; user: User }
+  | { success: false; reason: "invalid-credentials" | "no-password" };
+
 /**
- * Check an email/password pair. Returns null for every kind of failure — the
- * caller must not distinguish "no such account" from "wrong password" in what
- * it renders.
+ * Check an email/password pair.
+ *
+ * "No such account" and "wrong password" are one answer — `invalid-credentials`
+ * — and must render as one message, or the form becomes a way to test which
+ * addresses are registered.
+ *
+ * `no-password` is the deliberate exception. An account carried over from
+ * magic-link mode has no password to be wrong, so the generic answer strands
+ * the user: every attempt fails and nothing says why. Separating it does make
+ * /login report whether an address is a registered carried-over account — see
+ * the enumeration posture in SECURITY.md for why that trade was taken and what
+ * it costs.
  */
 export const signInWithPassword = async (
   email: string,
   password: string,
-): Promise<User | null> => {
+): Promise<SignInResult> => {
   const normalizedEmail = email.toLowerCase().trim();
 
   const results = await db`
@@ -112,16 +125,23 @@ export const signInWithPassword = async (
     | (Parameters<typeof toUser>[0] & { password_hash: string | null })
     | undefined;
 
-  // Burn the same work on a miss (no account, or a magic-link account with no
-  // password) so the timing is indistinguishable from a wrong password.
-  if (!row?.password_hash) {
+  // Burn the same work on a miss so the timing is indistinguishable from a
+  // wrong password. The no-password branch does it too: its reply already
+  // differs, and a faster one there would leak the same thing a second way,
+  // through a channel the rate limit can't see.
+  if (!row) {
     await verifyPassword(password, await getDummyHash());
-    return null;
+    return { success: false, reason: "invalid-credentials" };
+  }
+
+  if (!row.password_hash) {
+    await verifyPassword(password, await getDummyHash());
+    return { success: false, reason: "no-password" };
   }
 
   return (await verifyPassword(password, row.password_hash))
-    ? toUser(row)
-    : null;
+    ? { success: true, user: toUser(row) }
+    : { success: false, reason: "invalid-credentials" };
 };
 
 /**

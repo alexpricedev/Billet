@@ -183,27 +183,29 @@ export const deleteSession = async (rawSessionId: string): Promise<boolean> => {
  * A password reset passes no exception (nothing about the old session is
  * trustworthy); a deliberate change-password passes the current session's hash
  * so the user isn't logged out of the tab they're working in.
+ *
+ * Unlike the rest of this file, a failure here throws rather than returning a
+ * falsy result. Every caller is a credential change that reports "you've been
+ * signed out everywhere else" on success, so a swallowed error would claim a
+ * purge that never happened and leave a stolen session live. Callers surface
+ * the failure instead.
  */
 export const deleteUserSessions = async (
   userId: string,
   exceptSessionHash?: string,
 ): Promise<number> => {
-  try {
-    const result = exceptSessionHash
-      ? await db`
-          DELETE FROM sessions
-          WHERE user_id = ${userId}
-            AND id_hash != ${exceptSessionHash}
-        `
-      : await db`
-          DELETE FROM sessions
-          WHERE user_id = ${userId}
-        `;
+  const result = exceptSessionHash
+    ? await db`
+        DELETE FROM sessions
+        WHERE user_id = ${userId}
+          AND id_hash != ${exceptSessionHash}
+      `
+    : await db`
+        DELETE FROM sessions
+        WHERE user_id = ${userId}
+      `;
 
-    return (result as DatabaseMutationResult).count ?? 0;
-  } catch {
-    return 0;
-  }
+  return (result as DatabaseMutationResult).count ?? 0;
 };
 
 export const renewSession = async (rawSessionId: string): Promise<boolean> => {

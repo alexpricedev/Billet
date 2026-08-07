@@ -189,11 +189,13 @@ describe("Account Controller", () => {
 
       expect(await getSessionContextFromDB(sessionId)).not.toBeNull();
       expect(
-        await signInWithPassword(
-          "change@example.com",
-          "a-brand-new-passphrase",
-        ),
-      ).not.toBeNull();
+        (
+          await signInWithPassword(
+            "change@example.com",
+            "a-brand-new-passphrase",
+          )
+        ).success,
+      ).toBe(true);
     });
 
     test("signs the user out of every other device", async () => {
@@ -231,8 +233,8 @@ describe("Account Controller", () => {
         "isn't your current password",
       );
       expect(
-        await signInWithPassword("guard@example.com", PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("guard@example.com", PASSWORD)).success,
+      ).toBe(true);
     });
 
     test("rejects a too-short new password", async () => {
@@ -283,11 +285,13 @@ describe("Account Controller", () => {
       expect(response.status).toBe(303);
       expect(findSetCookie(request, "flash_state")).toContain("password-set");
       expect(
-        await signInWithPassword(
-          "carried@example.com",
-          "a-brand-new-passphrase",
-        ),
-      ).not.toBeNull();
+        (
+          await signInWithPassword(
+            "carried@example.com",
+            "a-brand-new-passphrase",
+          )
+        ).success,
+      ).toBe(true);
     });
 
     // The whole point of the current-password check: which branch runs is
@@ -307,14 +311,14 @@ describe("Account Controller", () => {
 
       expect(findSetCookie(request, "flash_state")).toContain("password-error");
       expect(
-        await signInWithPassword("bypass@example.com", PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("bypass@example.com", PASSWORD)).success,
+      ).toBe(true);
       expect(
         await signInWithPassword(
           "bypass@example.com",
           "attacker-chosen-passphrase",
         ),
-      ).toBeNull();
+      ).toEqual({ success: false, reason: "invalid-credentials" });
     });
 
     test("rejects a request with no CSRF token", async () => {
@@ -331,8 +335,8 @@ describe("Account Controller", () => {
 
       expect((await account.updatePassword(request)).status).toBe(403);
       expect(
-        await signInWithPassword("nocsrf@example.com", PASSWORD),
-      ).not.toBeNull();
+        (await signInWithPassword("nocsrf@example.com", PASSWORD)).success,
+      ).toBe(true);
     });
 
     test("404s in magic-link mode", async () => {
