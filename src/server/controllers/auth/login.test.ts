@@ -524,8 +524,26 @@ describe("Login Controller", () => {
       const html = await (await login.index(get)).text();
 
       expect(html).toContain("created before password sign-in");
-      expect(html).toContain('href="/forgot-password"');
+      expect(html).toContain(
+        'href="/forgot-password?email=linkonly%40example.com"',
+      );
       expect(html).toContain("Set your password");
+    });
+
+    test("links to a bare /forgot-password when the flash has no email", async () => {
+      const request = createBunRequest("http://localhost:3000/login", {
+        method: "GET",
+      });
+      const { setFlash } = stateHelpers<LoginState>();
+      setFlash(request, {
+        state: "no-password",
+        error: "This account was created before password sign-in.",
+      });
+
+      const html = await (await login.index(request)).text();
+
+      expect(html).toContain('href="/forgot-password"');
+      expect(html).not.toContain("/forgot-password?email=");
     });
 
     test("keeps the generic message for a wrong password on a real account", async () => {

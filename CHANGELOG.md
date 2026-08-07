@@ -7,6 +7,16 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 2.1.1
+
+### Changed
+
+- The **Set your password** link on the `/login` no-password notice now carries the address
+  that was just typed, and `/forgot-password` prefills its email field from `?email=`. The
+  reset still takes a deliberate click — a server-side auto-submit has no captcha solution to
+  present and would spend the shared auth rate limit on a failed sign-in. A flash value wins
+  over the query param, and only an address-shaped param is accepted.
+
 ## 2.1.0
 
 ### Added

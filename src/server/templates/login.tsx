@@ -68,7 +68,18 @@ export const Login = ({ mode, state, challenge }: LoginProps) => {
                     password. */}
                 {state.state === "no-password" && (
                   <p className="flash-action">
-                    <a href="/forgot-password">Set your password</a>
+                    {/* Carry the address across so the reset form doesn't ask
+                        for what was typed one page earlier. The flash trims
+                        empties, so a missing email is a real case. */}
+                    <a
+                      href={
+                        state.email
+                          ? `/forgot-password?email=${encodeURIComponent(state.email)}`
+                          : "/forgot-password"
+                      }
+                    >
+                      Set your password
+                    </a>
                   </p>
                 )}
               </Flash>
