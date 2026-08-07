@@ -7,6 +7,10 @@
     justify-content: space-between;
     padding: 0.75rem 2rem;
 
+    /* Containing block for the mobile nav panel, which hangs off the header's
+       bottom edge at full viewport width — see nav.css. */
+    position: relative;
+
     @media (width <= 640px) {
       padding: 0.75rem 1rem;
     }
