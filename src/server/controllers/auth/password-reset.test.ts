@@ -221,6 +221,17 @@ describe("Password Reset Controller", () => {
       );
     });
 
+    test("preserves the typed email on a rejected submission", async () => {
+      const request = postForgot({ email: "retype.example.com" });
+      await passwordReset.create(request);
+
+      // The template renders it back as the field's defaultValue, so nobody
+      // retypes their address because a captcha went stale or a typo slipped in.
+      expect(
+        decodeURIComponent(findSetCookie(request, "flash_state") as string),
+      ).toContain("retype.example.com");
+    });
+
     test("feigns success when the honeypot is filled", async () => {
       const signUp = await signUpWithPassword("bait@example.com", PASSWORD);
       expect(signUp.success).toBe(true);

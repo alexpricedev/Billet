@@ -22,7 +22,9 @@ change its own code after merging.
   a change-password form that keeps the current session and signs the user out everywhere else.
   An account carried over from magic-link mode has no password yet, so it gets a set-password
   form there instead; which of the two runs is decided from the account's own state, never from
-  the fields the form submits.
+  the fields the form submits. Setting a first password signs the user out everywhere else too —
+  the account gains a credential, and anything else holding a session predates it — and both the
+  form and the confirmation say so.
 - A signed-out user whose account predates the switch to password mode is told so when they
   try to sign in, and linked to `/forgot-password` to set a first password. Sign-in otherwise
   gives one message for a wrong password and an unknown address; this case is the deliberate
@@ -58,7 +60,8 @@ change its own code after merging.
   into `controllers/auth/form-guard.ts` and now runs on `/signup` and `/forgot-password` too.
   A honeypot or captcha failure hands the parsed body back to the caller, so `/reset-password`
   can re-render behind the token the visitor already has instead of sending them off to request
-  a new email over a stale challenge.
+  a new email over a stale challenge. `/forgot-password` preserves the typed address across a
+  rejected submission, the way `/login` and `/signup` do.
 - The honeypot feign is mode-aware. Magic-link mode still borrows "check your email"; password
   mode borrows the transient-failure message instead, because claiming a link was sent to an app
   with no links strands a human who tripped it by autofill.

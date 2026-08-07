@@ -80,7 +80,8 @@ export const Account = ({
     {state?.state === "password-set" && (
       <Flash type="success">
         <span>
-          Password set. You can now sign in with your email and password.
+          Password set. You can now sign in with your email and password. You've
+          been signed out everywhere else.
         </span>
       </Flash>
     )}
@@ -128,7 +129,7 @@ export const Account = ({
         <p className="text-tertiary">
           {hasPassword
             ? "Changing your password signs you out of every other device."
-            : "This account was created before password sign-in and doesn't have one yet. Set a password to sign in with it from now on."}
+            : "This account was created before password sign-in and doesn't have one yet. Set a password to sign in with it from now on. Like a change, it signs you out of every other device."}
         </p>
 
         <form method="POST" action="/account/password">

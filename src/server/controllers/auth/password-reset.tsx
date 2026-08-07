@@ -66,9 +66,13 @@ export const passwordReset = {
         return redirect("/forgot-password");
       }
 
+      // The address survives a failed challenge: a stale captcha is nobody's
+      // mistake, and making them retype it to get a fresh one is friction with
+      // nothing to show for it.
       forgotFlash.setFlash(req, {
         state: "validation-error",
         error: "Verification failed. Please try again.",
+        email: readEmail(guard.formData),
       });
       return redirect("/forgot-password");
     }
@@ -79,6 +83,7 @@ export const passwordReset = {
       forgotFlash.setFlash(req, {
         state: "validation-error",
         error: "Invalid email address",
+        email,
       });
       return redirect("/forgot-password");
     }
