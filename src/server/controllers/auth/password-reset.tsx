@@ -44,9 +44,22 @@ export const passwordReset = {
     const authRedirect = await redirectIfAuthenticated(req);
     if (authRedirect) return authRedirect;
 
+    // /login links here with ?email= after a sign-in against an account that
+    // predates password auth. Flash wins, so a failed POST redirect back here
+    // keeps what was actually typed. Only something address-shaped is accepted
+    // — hygiene, not escaping: defaultValue is escaped on render either way.
+    const flash = forgotFlash.getFlash(req);
+    const prefill = new URL(req.url).searchParams.get("email");
+    const state = {
+      ...flash,
+      email:
+        flash.email ??
+        (prefill?.includes("@") && prefill.length <= 254 ? prefill : undefined),
+    };
+
     return render(
       <ForgotPassword
-        state={forgotFlash.getFlash(req)}
+        state={state}
         challenge={captchaEnabled() ? issueChallenge() : null}
       />,
     );

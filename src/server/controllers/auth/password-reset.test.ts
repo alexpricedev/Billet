@@ -15,6 +15,7 @@ import {
 } from "../../services/email";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { cleanupTestData } from "../../test-utils/helpers";
+import { computeHMAC } from "../../utils/crypto";
 
 // Solve a challenge the way the client would, for the captcha-enabled tests.
 const solveChallenge = (
@@ -68,8 +69,13 @@ import { passwordReset } from "./password-reset";
 const PASSWORD = "correct-horse-battery";
 const NEW_PASSWORD = "a-brand-new-passphrase";
 
-const getForgot = () =>
-  createBunRequest("http://localhost:3000/forgot-password", { method: "GET" });
+const getForgot = (email?: string) =>
+  createBunRequest(
+    `http://localhost:3000/forgot-password${
+      email ? `?email=${encodeURIComponent(email)}` : ""
+    }`,
+    { method: "GET" },
+  );
 
 const postForgot = (fields: Record<string, string>) => {
   const formData = new FormData();
@@ -125,6 +131,41 @@ describe("Password Reset Controller", () => {
       expect(html).toContain("Reset your password");
       expect(html).toContain('name="email"');
       expect(html).toContain('name="robots" content="noindex, nofollow"');
+    });
+
+    test("prefills the address handed over by the /login notice", async () => {
+      const html = await (
+        await passwordReset.index(getForgot("member@example.com"))
+      ).text();
+
+      expect(html).toContain('value="member@example.com"');
+    });
+
+    test("ignores a query param that is not address-shaped", async () => {
+      const html = await (
+        await passwordReset.index(getForgot("notanemail"))
+      ).text();
+
+      expect(html).not.toContain("notanemail");
+    });
+
+    test("flash beats the query param", async () => {
+      const request = getForgot("fromlink@example.com");
+      const payload = JSON.stringify({
+        state: "validation-error",
+        error: "Enter a valid email address",
+        email: "typed@example.com",
+      });
+      request.cookies.set(
+        "flash_state",
+        `${computeHMAC(payload)}.${payload}`,
+        {},
+      );
+
+      const html = await (await passwordReset.index(request)).text();
+
+      expect(html).toContain('value="typed@example.com"');
+      expect(html).not.toContain("fromlink@example.com");
     });
 
     test("404s in magic-link mode", async () => {
