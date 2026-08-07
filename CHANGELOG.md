@@ -7,7 +7,7 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
-## Unreleased
+## 2.1.0
 
 ### Added
 
