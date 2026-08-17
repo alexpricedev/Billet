@@ -24,11 +24,26 @@ export async function bootstrap() {
 
   try {
     console.log("  Dropping existing tables...");
-    await db`DROP TABLE IF EXISTS user_tokens CASCADE`;
-    await db`DROP TABLE IF EXISTS sessions CASCADE`;
-    await db`DROP TABLE IF EXISTS users CASCADE`;
-    await db`DROP TABLE IF EXISTS example CASCADE`;
-    await db`DROP TABLE IF EXISTS migrations CASCADE`;
+    // Discovered, not listed. A hardcoded list goes stale the moment a
+    // migration adds or renames a table (it still named `example` two
+    // migrations after that became `project`), and it can never know about a
+    // table a plugin migration created — which would then survive the "clean
+    // slate" and leak into the next run.
+    const tables = (await db`
+      SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+    `) as { tablename: string }[];
+
+    for (const { tablename } of tables) {
+      // Identifiers can't be parameterised. These names come from the
+      // database's own catalog rather than any user input, and the pattern
+      // guard keeps that true even if a table is created with an exotic name.
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tablename)) {
+        throw new Error(
+          `Refusing to drop table with unexpected name: ${tablename}`,
+        );
+      }
+      await db.unsafe(`DROP TABLE IF EXISTS "${tablename}" CASCADE`);
+    }
 
     console.log("  Clearing migration history...");
     await db`

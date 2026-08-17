@@ -87,6 +87,7 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 
 - **Auto-migrations on startup** — pending migrations run before the server accepts requests; if one fails, the server won't start
 - **Migration CLI** for manual operations (`migrate:up`, `migrate:status`, `migrate:create`)
+- **Plugin migrations** — a package can ship its own tables. List its migrations in `src/server/database/plugin-migrations.ts` and they join the same applied/pending tracking, running after your own so they can reference the core schema
 - **Seed script** scaffold for development data (`bun run seed`)
 - **Parameterised queries** throughout — no string concatenation, no SQL injection surface
 
