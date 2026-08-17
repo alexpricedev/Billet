@@ -23,6 +23,10 @@ export interface AccountProps {
   // False for an account carried over from magic-link mode, which has no
   // password until it sets one here. Always false in magic-link mode.
   hasPassword: boolean;
+  // The viewer's team, when TEAMS_ENABLED is on and they're in one. Null
+  // otherwise, which is always the case with the flag off. /team isn't in the
+  // nav — neither is /admin — so this is how a member finds it.
+  team?: { name: string; canManage: boolean } | null;
   state?: AccountState;
   csrfToken?: string;
   resendCsrfToken?: string;
@@ -40,6 +44,7 @@ export const Account = ({
   mode,
   user,
   hasPassword,
+  team,
   state,
   csrfToken,
   resendCsrfToken,
@@ -166,6 +171,16 @@ export const Account = ({
             {hasPassword ? "Update password" : "Set password"}
           </button>
         </form>
+      </section>
+    )}
+
+    {team && (
+      <section className="account-section card">
+        <h2>Team</h2>
+        <p>
+          You're in <strong>{team.name}</strong>.
+        </p>
+        {team.canManage && <a href="/team">Manage team members</a>}
       </section>
     )}
 

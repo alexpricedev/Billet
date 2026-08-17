@@ -1,12 +1,19 @@
+import { Flash } from "@server/components/flash";
 import { Layout } from "@server/components/layouts";
 import type { User } from "@server/services/users";
 
 interface HomeProps {
   user: User | null;
   csrfToken?: string;
+  // Guards that turn someone away redirect here and leave their reason in the
+  // "message" flash. Rendering it is what makes requireAdmin and requireOrgRole
+  // say anything at all — without this the user lands on the homepage with no
+  // idea why, which is the "announce dynamic updates" rule in
+  // runbooks/ACCESSIBILITY.md going unmet.
+  message?: string;
 }
 
-export const Home = ({ user, csrfToken }: HomeProps) => (
+export const Home = ({ user, csrfToken, message }: HomeProps) => (
   <Layout
     title="Billet — The AI-native TypeScript starter"
     description="Full-stack TypeScript starter for AI coding agents — server-rendered JSX, custom CSS, and PostgreSQL via Bun in a single deploy target."
@@ -15,6 +22,12 @@ export const Home = ({ user, csrfToken }: HomeProps) => (
     user={user}
     csrfToken={csrfToken}
   >
+    {message && (
+      <Flash type="error">
+        <span>{message}</span>
+      </Flash>
+    )}
+
     <section className="hero">
       <div className="hero-lottie" id="hero-lottie" />
       <a

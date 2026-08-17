@@ -42,7 +42,15 @@ const AI_CRAWLERS = [
 ] as const;
 
 // Private surfaces kept out of every crawler's reach.
-const ROBOTS_DISALLOW = ["/admin", "/account", "/api/", "/auth/"] as const;
+const ROBOTS_DISALLOW = [
+  "/admin",
+  "/account",
+  "/api/",
+  "/auth/",
+  // Private even when TEAMS_ENABLED is off, where they 404 anyway.
+  "/team",
+  "/invites/",
+] as const;
 
 // Content-Signal (an emerging IETF AI Preferences / IAB Tech Lab proposal)
 // declares downstream-use consent explicitly for crawlers that honour it.

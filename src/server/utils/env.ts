@@ -1,5 +1,6 @@
 import { AUTH_MODES, isAuthMode } from "../services/auth-mode";
 import { log } from "../services/logger";
+import { isTeamsFlagValue, TEAMS_FLAG_VALUES } from "../services/teams-mode";
 
 const REQUIRED = [
   "DATABASE_URL",
@@ -65,6 +66,25 @@ export function validateEnv(): void {
 
   if (process.env.AUTH_MODE === "password") {
     log.info("env", "Auth mode: password (email + password credentials)");
+  }
+
+  // TEAMS_ENABLED is optional and off by default. Unlike CAPTCHA_ENABLED, a
+  // typo here is worth refusing to boot over: a value outside the set silently
+  // 404s the whole team surface, and an owner hitting a 404 on their own team
+  // page reads that as a bug rather than as a mode.
+  if (
+    process.env.TEAMS_ENABLED !== undefined &&
+    !isTeamsFlagValue(process.env.TEAMS_ENABLED)
+  ) {
+    log.error(
+      "env",
+      `TEAMS_ENABLED must be one of: ${TEAMS_FLAG_VALUES.join(", ")} (got "${process.env.TEAMS_ENABLED}")`,
+    );
+    process.exit(1);
+  }
+
+  if (process.env.TEAMS_ENABLED === "true") {
+    log.info("env", "Team management enabled (org invites, roles, members)");
   }
 
   // CAPTCHA_ENABLED is optional and self-contained: the proof-of-work captcha signs

@@ -6,6 +6,7 @@
 @import "./pages/login.css";
 @import "./pages/account.css";
 @import "./pages/admin.css";
+@import "./pages/team.css";
 @import "./pages/error.css";
 
 /* Component styles */

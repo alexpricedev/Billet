@@ -7,6 +7,71 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 2.2.0
+
+### Added
+
+- Optional org-level user management, behind `TEAMS_ENABLED`. Unset (or `false`) keeps the
+  existing behaviour exactly: `/team` and `/invites/accept` 404, no org is ever created, and the
+  columns migration `008` adds stay `NULL`. Set to `true`, a signed-in user can create a team and
+  then invite people by email, change their org role, and remove them. A value outside
+  `true`/`false` stops the server at boot rather than silently 404ing the whole surface — the
+  same treatment `AUTH_MODE` gets, and for the same reason.
+- **Org role is a separate axis from `users.role`.** `users.role` (`'user' | 'admin'`) still
+  means *platform operator* and still gates `/admin` via `requireAdmin`; it is untouched. The new
+  `users.org_role` (`'owner' | 'admin' | 'member'`) means standing inside one organisation. They
+  are not merged on purpose: a platform operator answering a support ticket is not thereby an
+  owner of a customer's org, and widening the existing `CHECK` would have made "org owner who is
+  not a platform admin" inexpressible.
+- `requireOrgRole` in `src/server/middleware/org.ts`, returning a discriminated union with the
+  resolved session **and** membership, in the shape `requireAdmin` established. `membership.org.id`
+  is the documented seam a fork uses to scope its own tables by org — core deliberately does not
+  scope `project` or any other domain data.
+- Invitations in their own `organization_invites` table, not a `user_tokens` type. Reusing
+  `user_tokens` would have meant creating a shell `users` row per invited address, and because
+  `signInWithPassword` reports `no-password` distinguishably from `invalid-credentials`, that
+  would have turned `/login` into an oracle for "this address was invited to something once".
+  Seven-day expiry, single-use, revocable, idempotent re-invite, capped and rate limited.
+- Invite acceptance works in **both** auth modes. Magic-link mode signs the invitee in — the
+  emailed token is the credential, exactly as a magic link is. Password mode asks a new invitee
+  to choose a password; an address that **already** has one becomes a member but is sent to
+  `/login` without a session, because mailbox control is grounds for a reset and never a sign-in.
+  An invite accepted while signed in as a different account is refused, so forwarding the link
+  can't turn it into a join-anyone link.
+- A team must always have at least one owner, enforced inside the `UPDATE` rather than around it
+  — two owners demoting each other concurrently cannot leave the org unadministered. The template
+  hides the control too, but the server is what decides.
+- Migration `008_add_organizations.ts`: an `organizations` table, `organization_invites`, and
+  `org_id` / `org_role` / `org_joined_at` on `users`. It runs in every fork, flag or no flag,
+  and leaves the columns `NULL` when teams are off.
+- `runbooks/TEAMS.md` — the role model, invite lifecycle, the authorisation checklist for new
+  team routes, how to scope your own data, and what is deliberately not shipped.
+
+### Changed
+
+- `Badge`'s `variant` union widens from `"admin" | "user"` to include `"owner"` and `"member"`,
+  with matching classes in `src/client/components/badge.css`. Additive, but a fork that has
+  restyled that file will want to add the two rules.
+- `run-tests.ts` now pins `TEAMS_ENABLED=false` alongside `SESSION_COOKIE_NAME`, `AUTH_MODE` and
+  `CAPTCHA_ENABLED`. Same reason as those three: a developer who runs the dev server with teams
+  on has it in their `.env`, and leaked into a test run it breaks every `expect(404)` on a team
+  route.
+- `cleanupTestData` truncates the two new tables. A fork that has its own copy needs the lines.
+
+### Fixed
+
+- **Guard denials were silent.** `requireAdmin` has always written its "Admin access required"
+  message to the `"message"` flash key, but nothing ever read it — `stateHelpers` reads `"state"`
+  — so a non-admin was bounced to `/` with no explanation and the cookie was dropped unread on
+  the next request. `home` now renders it, which fixes `requireAdmin` as well as the new guard.
+  If you were debugging that, it wasn't you.
+- **Email bodies interpolated every field into HTML unescaped.** Harmless until now, since the
+  only values were URLs the server built and env vars the operator set — but the invite is the
+  first email carrying text a user typed, and an org name of `<a href="…">` would have rendered
+  as live markup in every invitee's inbox. `renderActionHtml` now escapes at the render boundary,
+  so no future email can reintroduce the hole by forgetting, and the subject is stripped of
+  CR/LF against header injection. The plaintext body is unchanged.
+
 ## 2.1.1
 
 ### Changed

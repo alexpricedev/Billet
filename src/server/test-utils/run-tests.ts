@@ -38,18 +38,21 @@ for (const file of files) {
     // Pin the session cookie name: tests hardcode `session_id=`, so a custom
     // SESSION_COOKIE_NAME in a developer's .env must not leak in and break them.
     //
-    // AUTH_MODE and CAPTCHA_ENABLED are pinned for the same reason: both are
-    // optional, both change how the auth forms behave, and both end up in a
-    // developer's .env the moment they run the dev server that way. Leaked in,
-    // they fail every test that posts to an auth form — the captcha rejects an
-    // unsolved challenge, and the magic-link tests find themselves in password
-    // mode. Files that exercise either set it themselves per-case.
+    // AUTH_MODE, CAPTCHA_ENABLED and TEAMS_ENABLED are pinned for the same
+    // reason: all three are optional, all three change how the app behaves, and
+    // all three end up in a developer's .env the moment they run the dev server
+    // that way. Leaked in, they fail every test that posts to an auth form —
+    // the captcha rejects an unsolved challenge, the magic-link tests find
+    // themselves in password mode, and every `expect(404)` on a team route
+    // stops holding. Files that exercise any of them set it themselves
+    // per-case.
     env: {
       ...process.env,
       NODE_ENV: "test",
       SESSION_COOKIE_NAME: "session_id",
       AUTH_MODE: "magic-link",
       CAPTCHA_ENABLED: "false",
+      TEAMS_ENABLED: "false",
     },
     stdout: "pipe",
     stderr: "pipe",

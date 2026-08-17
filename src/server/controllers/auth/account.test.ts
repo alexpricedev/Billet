@@ -19,6 +19,10 @@ import { findOrCreateUser } from "../../services/auth";
 import { createCsrfToken } from "../../services/csrf";
 import { db } from "../../services/database";
 import {
+  createOrganizationForUser,
+  joinOrganization,
+} from "../../services/organizations";
+import {
   signInWithPassword,
   signUpWithPassword,
 } from "../../services/passwords";
@@ -380,6 +384,71 @@ describe("Account Controller", () => {
         }),
       );
       expect(throttled.status).toBe(429);
+    });
+  });
+
+  // /team isn't in the nav, so this section is the only way a member finds it.
+  describe("team section", () => {
+    const withTeams = async <T>(run: () => Promise<T>): Promise<T> => {
+      const original = process.env.TEAMS_ENABLED;
+      process.env.TEAMS_ENABLED = "true";
+      try {
+        return await run();
+      } finally {
+        if (original === undefined) delete process.env.TEAMS_ENABLED;
+        else process.env.TEAMS_ENABLED = original;
+      }
+    };
+
+    test("is absent when the flag is off, even for someone in a team", async () => {
+      const user = await findOrCreateUser("owner@example.com");
+      await withTeams(() => createOrganizationForUser(user.id, "Acme"));
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      const html = await (await account.index(getAccount(sessionId))).text();
+
+      expect(html).not.toContain("Acme");
+      expect(html).not.toContain("/team");
+    });
+
+    test("is absent for someone with no team", async () => {
+      const user = await findOrCreateUser("nobody@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      const html = await withTeams(async () =>
+        (await account.index(getAccount(sessionId))).text(),
+      );
+
+      expect(html).not.toContain("Manage team members");
+    });
+
+    test("links an admin through to /team", async () => {
+      const user = await findOrCreateUser("owner@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      const html = await withTeams(async () => {
+        await createOrganizationForUser(user.id, "Acme");
+        return (await account.index(getAccount(sessionId))).text();
+      });
+
+      expect(html).toContain("Acme");
+      expect(html).toContain('href="/team"');
+    });
+
+    test("names the team for a plain member but offers no management link", async () => {
+      const owner = await findOrCreateUser("owner@example.com");
+      const member = await findOrCreateUser("member@example.com");
+      const sessionId = await createAuthenticatedSession(member.id);
+
+      const html = await withTeams(async () => {
+        const created = await createOrganizationForUser(owner.id, "Acme");
+        if (!created.success) throw new Error("seed failed");
+        await joinOrganization(member.id, created.organization.id, "member");
+        return (await account.index(getAccount(sessionId))).text();
+      });
+
+      expect(html).toContain("Acme");
+      expect(html).not.toContain("Manage team members");
     });
   });
 });

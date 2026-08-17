@@ -18,6 +18,7 @@ import {
   signup,
   verify,
 } from "../controllers/auth";
+import { invite, team, teamInvites, teamMembers } from "../controllers/team";
 import { createRouteHandler } from "../utils/route-handler";
 
 export const appRoutes = {
@@ -47,9 +48,10 @@ export const appRoutes = {
     GET: signup.index,
     POST: signup.create,
   }),
-  // Password-mode routes are registered unconditionally and 404 from inside the
-  // controller when AUTH_MODE isn't "password", so the route table stays static
-  // and testable rather than being rebuilt from the environment at import time.
+  // Password-mode and team routes are registered unconditionally and 404 from
+  // inside the controller when AUTH_MODE isn't "password" or TEAMS_ENABLED
+  // isn't "true", so the route table stays static and testable rather than
+  // being rebuilt from the environment at import time.
   "/forgot-password": createRouteHandler({
     GET: passwordReset.index,
     POST: passwordReset.create,
@@ -69,5 +71,28 @@ export const appRoutes = {
   }),
   "/auth/logout": createRouteHandler({
     POST: logout.create,
+  }),
+  "/team": createRouteHandler({
+    GET: team.index,
+    POST: team.create,
+  }),
+  "/team/invites": createRouteHandler({
+    POST: teamInvites.create,
+  }),
+  "/team/invites/:id/revoke": createRouteHandler({
+    POST: teamInvites.destroy<"/team/invites/:id/revoke">,
+  }),
+  "/team/members/:id/role": createRouteHandler({
+    POST: teamMembers.updateRole<"/team/members/:id/role">,
+  }),
+  "/team/members/:id/remove": createRouteHandler({
+    POST: teamMembers.destroy<"/team/members/:id/remove">,
+  }),
+  // Outside /team on purpose: the visitor spending an invite has no membership
+  // yet, so this must not sit under a path whose every other entry is behind
+  // the org guard.
+  "/invites/accept": createRouteHandler({
+    GET: invite.index,
+    POST: invite.create,
   }),
 };

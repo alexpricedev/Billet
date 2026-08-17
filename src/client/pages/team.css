@@ -1,0 +1,46 @@
+/* Per-row role control: the select and its Save button sit on one line so the
+   table doesn't grow a row's height for every member. */
+.team-role-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-role-form select,
+.team-invite select {
+  /* WCAG 2.2 target size — dense table rows are exactly where this gets
+     breached. */
+  min-height: 32px;
+}
+
+.team-role-form button {
+  min-height: 32px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.data-table .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.team-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+}
+
+/* The remove confirmation, revealed by ?remove= and jumped to via
+   #confirm-remove. */
+.team-confirm {
+  border-color: var(--color-danger, #dc2626);
+}
+
+.team-confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
