@@ -664,4 +664,83 @@ describe("Login Controller", () => {
       ).toBe(429);
     });
   });
+
+  describe("organisations enabled (magic-link mode)", () => {
+    const originalOrgs = process.env.ORGANISATIONS_ENABLED;
+    const originalMode = process.env.AUTH_MODE;
+
+    beforeEach(() => {
+      process.env.ORGANISATIONS_ENABLED = "true";
+      delete process.env.AUTH_MODE;
+    });
+
+    afterAll(() => {
+      if (originalOrgs === undefined) delete process.env.ORGANISATIONS_ENABLED;
+      else process.env.ORGANISATIONS_ENABLED = originalOrgs;
+      if (originalMode === undefined) delete process.env.AUTH_MODE;
+      else process.env.AUTH_MODE = originalMode;
+    });
+
+    const post = (fields: Record<string, string>) => {
+      const formData = new FormData();
+      for (const [key, value] of Object.entries(fields)) {
+        formData.append(key, value);
+      }
+      return createBunRequest("http://localhost:3000/login", {
+        method: "POST",
+        body: formData,
+      });
+    };
+
+    test("does not create an account for an unknown address", async () => {
+      const request = post({ email: "stranger@example.com" });
+      const response = await login.create(request);
+
+      expect(response.status).toBe(303);
+      expect(await db`SELECT id FROM users`).toHaveLength(0);
+      expect(await db`SELECT id FROM user_tokens`).toHaveLength(0);
+    });
+
+    test("says no account exists and offers sign-up", async () => {
+      const request = post({ email: "stranger@example.com" });
+      await login.create(request);
+
+      const flash = decodeURIComponent(
+        findSetCookie(request, "flash_state") ?? "",
+      );
+      expect(flash).toContain("no-account");
+      expect(flash).toContain("No account exists with that email address.");
+
+      // The state is only useful if the page renders a way forward.
+      const html = await (
+        await login.index(
+          createBunRequest("http://localhost:3000/login", {
+            method: "GET",
+            headers: { cookie: findSetCookie(request, "flash_state") ?? "" },
+          }),
+        )
+      ).text();
+      expect(html).toContain('href="/signup"');
+    });
+
+    test("still sends a link to an existing user", async () => {
+      await findOrCreateUser("member@example.com");
+
+      const request = post({ email: "member@example.com" });
+      await login.create(request);
+
+      expect(findSetCookie(request, "flash_state")).toContain("email-sent");
+      expect(await db`SELECT id FROM user_tokens`).toHaveLength(1);
+    });
+
+    test("with the flag off, an unknown address still creates an account", async () => {
+      delete process.env.ORGANISATIONS_ENABLED;
+
+      const request = post({ email: "stranger@example.com" });
+      await login.create(request);
+
+      expect(findSetCookie(request, "flash_state")).toContain("email-sent");
+      expect(await db`SELECT id FROM users`).toHaveLength(1);
+    });
+  });
 });

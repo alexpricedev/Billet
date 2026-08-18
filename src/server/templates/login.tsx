@@ -10,7 +10,12 @@ export interface LoginState {
   // "no-password" is a failed sign-in against an account carried over from
   // magic-link mode. It renders like a validation error but carries a way out,
   // because there is no password the user could have typed correctly.
-  state?: "email-sent" | "validation-error" | "no-password";
+  //
+  // "no-account" is the same idea for an address with no account at all. Only
+  // reachable with organisations on, where /login stops creating accounts —
+  // sign-up is the only way in, because that is where the organisation name is
+  // collected. Its way out is /signup.
+  state?: "email-sent" | "validation-error" | "no-password" | "no-account";
   error?: string;
   // Preserved across the redirect so a failed attempt doesn't make the user
   // retype their address. The password is deliberately never carried back —
@@ -59,13 +64,19 @@ export const Login = ({ mode, state, challenge }: LoginProps) => {
       ) : (
         <form method="POST" action="/login">
           {(state?.state === "validation-error" ||
-            state?.state === "no-password") &&
+            state?.state === "no-password" ||
+            state?.state === "no-account") &&
             state.error && (
               <Flash type="error">
                 <span>{state.error}</span>
-                {/* The message alone is a dead end — nothing on this page tells
-                    someone that the reset flow is also how you set a first
-                    password. */}
+                {/* Both messages are dead ends on their own: nothing else on
+                    this page says that sign-up is the only way in, or that the
+                    reset flow is also how you set a first password. */}
+                {state.state === "no-account" && (
+                  <p className="flash-action">
+                    <a href="/signup">Create an account</a>
+                  </p>
+                )}
                 {state.state === "no-password" && (
                   <p className="flash-action">
                     {/* Carry the address across so the reset form doesn't ask

@@ -261,4 +261,128 @@ describe("Signup Controller", () => {
       ).toBe(429);
     });
   });
+
+  describe("organisations enabled", () => {
+    const originalOrgs = process.env.ORGANISATIONS_ENABLED;
+    const originalMode = process.env.AUTH_MODE;
+
+    beforeEach(() => {
+      process.env.ORGANISATIONS_ENABLED = "true";
+      delete process.env.AUTH_MODE;
+    });
+
+    afterAll(() => {
+      if (originalOrgs === undefined) delete process.env.ORGANISATIONS_ENABLED;
+      else process.env.ORGANISATIONS_ENABLED = originalOrgs;
+      if (originalMode === undefined) delete process.env.AUTH_MODE;
+      else process.env.AUTH_MODE = originalMode;
+    });
+
+    const membershipFor = async (email: string) => {
+      const rows = await db`
+        SELECT o.name, m.role
+        FROM organisation_members m
+        JOIN organisations o ON o.id = m.organisation_id
+        JOIN users u ON u.id = m.user_id
+        WHERE u.email = ${email}
+      `;
+      return rows[0];
+    };
+
+    test("asks for an organisation name", async () => {
+      const html = await (await signup.index(get())).text();
+
+      expect(html).toContain('name="organisationName"');
+      expect(html).toContain("Organisation name");
+    });
+
+    test("does not ask for one when the flag is off", async () => {
+      delete process.env.ORGANISATIONS_ENABLED;
+      const html = await (await signup.index(get())).text();
+
+      expect(html).not.toContain('name="organisationName"');
+    });
+
+    test("creates the organisation and an owner membership (magic-link)", async () => {
+      const request = post({
+        email: "founder@example.com",
+        organisationName: "Acme",
+      });
+      const response = await signup.create(request);
+
+      expect(response.status).toBe(303);
+      expect(findSetCookie(request, "flash_state")).toContain("email-sent");
+
+      const membership = await membershipFor("founder@example.com");
+      expect(membership.name).toBe("Acme");
+      expect(membership.role).toBe("owner");
+    });
+
+    test("creates the organisation and an owner membership (password)", async () => {
+      process.env.AUTH_MODE = "password";
+
+      const request = post({
+        email: "founder@example.com",
+        password: PASSWORD,
+        organisationName: "Acme",
+      });
+      const response = await signup.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/");
+
+      const membership = await membershipFor("founder@example.com");
+      expect(membership.name).toBe("Acme");
+      expect(membership.role).toBe("owner");
+    });
+
+    test("rejects a blank organisation name and keeps the email", async () => {
+      const request = post({ email: "founder@example.com" });
+      await signup.create(request);
+
+      const flash = findSetCookie(request, "flash_state") ?? "";
+      expect(decodeURIComponent(flash)).toContain("at least");
+      expect(await db`SELECT id FROM users`).toHaveLength(0);
+      expect(await db`SELECT id FROM organisations`).toHaveLength(0);
+    });
+
+    test("hands the organisation name back after a rejected password", async () => {
+      process.env.AUTH_MODE = "password";
+
+      const request = post({
+        email: "founder@example.com",
+        password: "short",
+        organisationName: "Acme",
+      });
+      await signup.create(request);
+
+      const flash = decodeURIComponent(
+        findSetCookie(request, "flash_state") ?? "",
+      );
+      expect(flash).toContain("Acme");
+      expect(await db`SELECT id FROM organisations`).toHaveLength(0);
+    });
+
+    test("an existing user gets a link without a second organisation", async () => {
+      // Signed up before, so they already belong somewhere.
+      await signup.create(
+        post({ email: "founder@example.com", organisationName: "Acme" }),
+      );
+      clearRateLimitLog();
+
+      await signup.create(
+        post({ email: "founder@example.com", organisationName: "Second" }),
+      );
+
+      expect(await db`SELECT id FROM organisations`).toHaveLength(1);
+      const membership = await membershipFor("founder@example.com");
+      expect(membership.name).toBe("Acme");
+    });
+
+    test("leaves no user behind when the organisation name is rejected", async () => {
+      await signup.create(post({ email: "founder@example.com" }));
+
+      expect(await db`SELECT id FROM users`).toHaveLength(0);
+    });
+  });
 });

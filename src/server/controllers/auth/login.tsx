@@ -2,6 +2,7 @@ import type { BunRequest } from "bun";
 import { redirectIfAuthenticated } from "../../middleware/auth";
 import {
   createMagicLink,
+  findUserByEmail,
   MAGIC_LINK_EXPIRY_MINUTES,
   regenerateSession,
 } from "../../services/auth";
@@ -9,6 +10,7 @@ import { authMode, passwordAuthEnabled } from "../../services/auth-mode";
 import { captchaEnabled, issueChallenge } from "../../services/captcha";
 import { getEmailService } from "../../services/email";
 import { log } from "../../services/logger";
+import { organisationsEnabled } from "../../services/organisations-mode";
 import { signInWithPassword } from "../../services/passwords";
 import {
   getSessionIdFromRequest,
@@ -95,6 +97,23 @@ const sendMagicLinkAndRedirect = async (
   email: string,
 ): Promise<Response> => {
   try {
+    // With organisations on, /login must not create accounts: createMagicLink
+    // creates one for any unknown address via findOrCreateUser, and this form has
+    // no organisation name to put on it. Sign-up is the only way in, so say so
+    // rather than sending a link that would never arrive.
+    //
+    // This does make /login an account enumeration oracle — a deliberate trade,
+    // the alternative being a silent no-op that strands a real user waiting for
+    // an email. With the flag off, behaviour is unchanged.
+    if (organisationsEnabled() && !(await findUserByEmail(email))) {
+      setFlash(req, {
+        state: "no-account",
+        error: "No account exists with that email address.",
+        email,
+      });
+      return redirect("/login");
+    }
+
     const { user, rawToken } = await createMagicLink(email.toLowerCase());
 
     await getEmailService().sendMagicLink({

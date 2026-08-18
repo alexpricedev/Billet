@@ -2,15 +2,27 @@ import type { BunRequest } from "bun";
 import { redirectIfAuthenticated } from "../../middleware/auth";
 import {
   createMagicLink,
+  createUserToken,
   EMAIL_VERIFICATION_EXPIRY_HOURS,
+  findUserByEmail,
   MAGIC_LINK_EXPIRY_MINUTES,
   regenerateSession,
+  type User,
 } from "../../services/auth";
 import { authMode, passwordAuthEnabled } from "../../services/auth-mode";
 import { captchaEnabled, issueChallenge } from "../../services/captcha";
 import { getEmailService } from "../../services/email";
 import { log } from "../../services/logger";
-import { signUpWithPassword, validatePassword } from "../../services/passwords";
+import {
+  signUpWithOrganisation,
+  validateOrganisationName,
+} from "../../services/organisations";
+import { organisationsEnabled } from "../../services/organisations-mode";
+import {
+  type SignUpResult,
+  signUpWithPassword,
+  validatePassword,
+} from "../../services/passwords";
 import {
   getSessionIdFromRequest,
   setSessionCookie,
@@ -18,9 +30,15 @@ import {
 import type { SignupState } from "../../templates/signup";
 import { Signup } from "../../templates/signup";
 import { appUrl } from "../../utils/app-url";
+import { hashPassword } from "../../utils/crypto";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
-import { guardAuthForm, readEmail, readPassword } from "./form-guard";
+import {
+  guardAuthForm,
+  readEmail,
+  readOrganisationName,
+  readPassword,
+} from "./form-guard";
 
 const { getFlash, setFlash } = stateHelpers<SignupState>();
 
@@ -39,7 +57,12 @@ export const signup = {
     const challenge = captchaEnabled() ? issueChallenge() : null;
 
     return render(
-      <Signup mode={authMode()} state={state} challenge={challenge} />,
+      <Signup
+        mode={authMode()}
+        state={state}
+        challenge={challenge}
+        organisationsEnabled={organisationsEnabled()}
+      />,
     );
   },
 
@@ -72,9 +95,26 @@ export const signup = {
       return redirect("/signup");
     }
 
+    // Read regardless of the flag so the honeypot's feigned failure can hand it
+    // back; only validated, and only used, when organisations are on.
+    const organisationName = readOrganisationName(guard.formData);
+
+    if (organisationsEnabled()) {
+      const nameError = validateOrganisationName(organisationName);
+      if (nameError) {
+        setFlash(req, {
+          state: "validation-error",
+          error: nameError,
+          email,
+          organisationName,
+        });
+        return redirect("/signup");
+      }
+    }
+
     return passwordAuthEnabled()
-      ? createPasswordAccount(req, email, guard.formData)
-      : sendSignupLink(req, email);
+      ? createPasswordAccount(req, email, organisationName, guard.formData)
+      : sendSignupLink(req, email, organisationName);
   },
 };
 
@@ -90,15 +130,55 @@ const feignedFailure = (formData: FormData): SignupState =>
         state: "validation-error",
         error: "Something went wrong. Please try again.",
         email: readEmail(formData),
+        organisationName: readOrganisationName(formData),
       }
     : { state: "email-sent" };
+
+/**
+ * The organisations-mode twin of createMagicLink.
+ *
+ * createMagicLink creates the account as a side effect of findOrCreateUser,
+ * which has no organisation name to work with. Here a brand-new address gets its
+ * account, organisation and owner membership in one transaction; a known address
+ * just gets a link, because it already belongs to an organisation — or the app
+ * would have refused to boot.
+ */
+const createMagicLinkWithOrganisation = async (
+  email: string,
+  organisationName: string,
+): Promise<{ user: User; rawToken: string }> => {
+  const linkFor = async (user: User) => ({
+    user,
+    rawToken: await createUserToken(user.id, "magic_link"),
+  });
+
+  const existing = await findUserByEmail(email);
+  if (existing) return linkFor(existing);
+
+  const result = await signUpWithOrganisation(email, organisationName);
+  if (result.success) return linkFor(result.user);
+
+  // Lost the race with a concurrent sign-up for the same address — almost always
+  // a double submission. Whoever won created the organisation, so this request
+  // only owes the user a link.
+  const raced = await findUserByEmail(email);
+  if (!raced) throw new Error("sign-up failed");
+
+  return linkFor(raced);
+};
 
 const sendSignupLink = async (
   req: BunRequest,
   email: string,
+  organisationName: string,
 ): Promise<Response> => {
   try {
-    const { user, rawToken } = await createMagicLink(email.toLowerCase());
+    const { user, rawToken } = organisationsEnabled()
+      ? await createMagicLinkWithOrganisation(
+          email.toLowerCase(),
+          organisationName,
+        )
+      : await createMagicLink(email.toLowerCase());
 
     await getEmailService().sendMagicLink({
       to: { email: user.email },
@@ -117,9 +197,37 @@ const sendSignupLink = async (
   }
 };
 
+/**
+ * The organisations-mode twin of signUpWithPassword, returning the same shape so
+ * the caller handles both identically. The hashing happens here rather than
+ * inside the transaction because argon2id is deliberately slow, and holding a
+ * database transaction open for it would be a poor trade.
+ */
+const signUpPasswordWithOrganisation = async (
+  email: string,
+  password: string,
+  organisationName: string,
+): Promise<SignUpResult> => {
+  const passwordHash = await hashPassword(password);
+  const result = await signUpWithOrganisation(
+    email,
+    organisationName,
+    passwordHash,
+  );
+
+  if (!result.success) return { success: false, error: "email-taken" };
+
+  return {
+    success: true,
+    user: result.user,
+    verifyToken: await createUserToken(result.user.id, "email_verification"),
+  };
+};
+
 const createPasswordAccount = async (
   req: BunRequest,
   email: string,
+  organisationName: string,
   formData: FormData,
 ): Promise<Response> => {
   const password = readPassword(formData, "password");
@@ -130,12 +238,15 @@ const createPasswordAccount = async (
       state: "validation-error",
       error: passwordError,
       email,
+      organisationName,
     });
     return redirect("/signup");
   }
 
   try {
-    const result = await signUpWithPassword(email, password);
+    const result = organisationsEnabled()
+      ? await signUpPasswordWithOrganisation(email, password, organisationName)
+      : await signUpWithPassword(email, password);
 
     if (!result.success) {
       // Sign-up can't hide that an address is taken — the alternative is either
@@ -148,6 +259,7 @@ const createPasswordAccount = async (
             ? "An account with that email already exists. Try signing in instead."
             : "That password isn't valid. Please try another.",
         email,
+        organisationName,
       });
       return redirect("/signup");
     }
@@ -177,6 +289,7 @@ const createPasswordAccount = async (
       state: "validation-error",
       error: "Something went wrong. Please try again.",
       email,
+      organisationName,
     });
     return redirect("/signup");
   }

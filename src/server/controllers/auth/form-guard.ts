@@ -71,3 +71,12 @@ export const readEmail = (formData: FormData): string => {
   const value = formData.get("email");
   return typeof value === "string" ? value.trim() : "";
 };
+
+/**
+ * Trimmed like the email: an organisation name is a label people will read back
+ * on a members page, not a credential, so the readPassword caveat doesn't apply.
+ */
+export const readOrganisationName = (formData: FormData): string => {
+  const value = formData.get("organisationName");
+  return typeof value === "string" ? value.trim() : "";
+};

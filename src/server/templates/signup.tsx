@@ -5,21 +5,37 @@ import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
 import type { AuthMode } from "../services/auth-mode";
 import type { CaptchaChallenge } from "../services/captcha";
+import {
+  MAX_ORGANISATION_NAME_LENGTH,
+  MIN_ORGANISATION_NAME_LENGTH,
+} from "../services/organisations";
 import { MIN_PASSWORD_LENGTH } from "../services/passwords";
 
 export interface SignupState {
   state?: "email-sent" | "validation-error";
   error?: string;
   email?: string;
+  // Carried back on a failed submission so a rejected password or a taken
+  // address doesn't cost the organisation name too. Safe to put in the flash
+  // cookie — it is a display name, not a credential.
+  organisationName?: string;
 }
 
 export interface SignupProps {
   mode: AuthMode;
   state?: SignupState;
   challenge?: CaptchaChallenge | null;
+  // Passed in rather than read from the service, so the template stays a pure
+  // function of its props — same discipline as `mode`.
+  organisationsEnabled?: boolean;
 }
 
-export const Signup = ({ mode, state, challenge }: SignupProps) => {
+export const Signup = ({
+  mode,
+  state,
+  challenge,
+  organisationsEnabled = false,
+}: SignupProps) => {
   const password = mode === "password";
 
   return (
@@ -81,6 +97,22 @@ export const Signup = ({ mode, state, challenge }: SignupProps) => {
                 required
                 minLength={MIN_PASSWORD_LENGTH}
                 placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+              />
+            </FormField>
+          )}
+
+          {organisationsEnabled && (
+            <FormField label="Organisation name" id="organisationName">
+              <input
+                id="organisationName"
+                name="organisationName"
+                type="text"
+                autoComplete="organization"
+                required
+                minLength={MIN_ORGANISATION_NAME_LENGTH}
+                maxLength={MAX_ORGANISATION_NAME_LENGTH}
+                placeholder="Your company or team name"
+                defaultValue={state?.organisationName}
               />
             </FormField>
           )}
