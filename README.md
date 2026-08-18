@@ -68,6 +68,7 @@ offering both at once would mean every account has two ways in, and the weaker o
 - **Email verification** — `users.email_verified_at` records when an address was proven, with a fixed reminder banner until it is. Nothing is gated on it; forks add their own gating
 - **Session management** with 30-day sessions, automatic renewal, and secure cookie handling (HttpOnly, Secure, SameSite)
 - **Guest sessions** that auto-create for unauthenticated visitors — useful for carts, preferences, or any state you want before login
+- **Organisation memberships** (opt-in via `ORGANISATIONS_ENABLED`) — one organisation per user, created at sign-up, with an invite-by-email flow for adding members
 - **Admin middleware** with role-based route protection and a dedicated `/admin` route namespace
 - **Pluggable email providers** — ships with a console provider for development; add Resend or any custom provider via a simple interface
 
@@ -306,6 +307,7 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 | `AUTH_MODE` | No | `magic-link` (default) or `password`. Mutually exclusive; any other value stops the server at boot |
 | `CAPTCHA_ENABLED` | No | Set to `true` to add a proof-of-work captcha to the login form. Off by default; `/login` is unchanged when unset |
 | `CAPTCHA_DIFFICULTY` | No | Tunes the captcha's client-side work (search-space size). Defaults to `100000` (~sub-second for a real browser) |
+| `ORGANISATIONS_ENABLED` | No | Set to `true` to group users into organisations, one per user. Off by default; any value other than `true`/`false` stops the server at boot |
 
 > **Generating `CRYPTO_PEPPER`:** This is a secret key used to secure session tokens. Run `bun run generate:pepper` to get a value. Use a different value for each environment (development, production, etc).
 
@@ -316,6 +318,8 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 > **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
 
 > **Auth mode:** Leave `AUTH_MODE` unset for magic-link auth. Set `AUTH_MODE=password` for email-and-password instead — that enables `/forgot-password`, `/reset-password`, and the change-password form on `/account`, which all 404 in magic-link mode. Switching an existing app to `password` leaves current users with no password: `/account` offers those accounts a set-password form, and `/forgot-password` covers anyone already signed out — a failed sign-in tells them so and links them there, rather than leaving them to guess at "Invalid email or password" forever. `/signup` and `/account` exist in both modes.
+
+> **Organisations:** Leave `ORGANISATIONS_ENABLED` unset for standalone users. Set it to `true` and every user belongs to exactly one organisation: `/signup` asks for a name and creates it with the account, `/organisation` lists the members, and an owner can invite others by email. `/organisation` and `/invites/accept` 404 when the flag is off. Two consequences worth knowing before you flip it. First, `/login` stops creating accounts — in magic-link mode an unknown address currently gets an account on the spot, and that form has no organisation name to put on one, so it now says no account exists and links to `/signup`. That does let someone probe which addresses are registered; it's the deliberate trade against silently stranding a real user. Second, if the database already has users, the app **refuses to boot** and says how many have no organisation. Nothing is guessed on your behalf — a backfill migration, an onboarding page, or assignment by an admin are all reasonable, and which one fits is yours to decide.
 
 > **Signup spam:** The login form always carries a honeypot and per-IP rate limit. If bots still create accounts with random emails, set `CAPTCHA_ENABLED=true` to add a first-party proof-of-work captcha — it signs challenges with your existing `CRYPTO_PEPPER`, so there's no third party, account, or extra secret to configure.
 

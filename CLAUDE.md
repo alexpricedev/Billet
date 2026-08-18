@@ -49,11 +49,11 @@ makes the mock take effect. Don't tidy it.
 
 `bun run test` runs `src/server/test-utils/run-tests.ts`, which applies migrations first, spawns
 one process per test file (isolation + a per-file timeout), and pins `SESSION_COOKIE_NAME=session_id`,
-`AUTH_MODE=magic-link`, and `CAPTCHA_ENABLED=false`. Tests hardcode that cookie and assume the
-default auth mode with the captcha off; any of the three set in your `.env` would otherwise leak
-in and break every auth test — running the dev server in password mode or with the captcha on is
-enough to do it. Files that exercise password mode or the captcha set the variable themselves
-per-case.
+`AUTH_MODE=magic-link`, `CAPTCHA_ENABLED=false`, and `ORGANISATIONS_ENABLED=false`. Tests hardcode
+that cookie and assume the default auth mode with the captcha off and organisations off; any of the
+four set in your `.env` would otherwise leak in and break every auth test — running the dev server
+in password mode, with the captcha on, or with organisations on is enough to do it. Files that
+exercise those modes set the variable themselves per-case.
 
 `bunfig.toml` preloads `src/client/test-utils/setup.ts` for *every* test file. It registers
 happy-dom globals and then restores Bun's native `Request`/`Response`/`FormData` — server tests
@@ -70,6 +70,30 @@ answers. `/login`, `/signup`, and `/account` exist in both modes and branch on
 
 `authMode()` reads `process.env` on every call so tests can flip it mid-file; an invalid value is
 fatal at boot in `validateEnv()`.
+
+### Organisations change who is allowed to create a user
+
+`ORGANISATIONS_ENABLED` (`src/server/services/organisations-mode.ts`) is off by default and
+follows the `AUTH_MODE` pattern: lazy `process.env` read, fatal on a typo, `render404()` from
+inside `/organisation*` and `/invites/accept` controllers when it's off.
+
+The part that isn't inferable: **with the flag on, `/signup` is the only path that creates a
+user.** In magic-link mode `/login` normally creates one for any unknown address —
+`createMagicLink` → `findOrCreateUser` (`services/auth.ts`) — and that form has no organisation
+name to put on one, so `login.tsx` looks the address up instead and flashes `no-account`. This
+is a knowing trade for account enumeration; don't "fix" it back to a silent no-op, which strands
+a real user waiting for mail that was never sent.
+
+Every path that creates a user must create its membership in the *same transaction*
+(`signUpWithOrganisation` / `signUpIntoOrganisation`, both using `db.begin` — the only
+transactions in the codebase). A user without a membership makes
+`assertOrganisationsReady()` refuse to boot, which is also what happens deliberately when the
+flag is switched on for a database that already has users. Nothing is ever backfilled.
+
+Invites live in their own table, not `user_tokens`: that table's `user_id` is `NOT NULL`, and an
+invite is addressed to an email with no user row yet. Acceptance claims the invite *before*
+building the account — a burned invite is recoverable by sending another, an organisation-less
+user is not.
 
 ### Passwords are read raw, and never round-trip through flash state
 

@@ -17,8 +17,10 @@ import {
 
 validateEnv();
 await runMigrations();
-await assertOrganisationsReady();
 await seedIfEmpty();
+// After the seed, not before: seeding creates users, and the invariant this
+// checks is about the state the server is actually going to serve.
+await assertOrganisationsReady();
 await initAssets();
 
 const server = Bun.serve({

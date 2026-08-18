@@ -7,6 +7,45 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 2.2.0
+
+### Added
+
+- Optional organisation memberships, behind `ORGANISATIONS_ENABLED`. Unset (or `false`) keeps
+  the existing behaviour exactly; `true` gives every user exactly one organisation, created at
+  sign-up. A value outside `true`/`false` stops the server at boot rather than silently
+  falling back to off — an app that quietly stops grouping users is serving a different data
+  model than whoever set the variable believes.
+- `/signup` asks for an organisation name when the flag is on, in both auth modes, and creates
+  the account, the organisation and the owner membership in one transaction.
+- `/organisation` lists the members of your organisation. An owner can invite an address and
+  revoke an unaccepted invitation; a plain member sees the roster only. `/invites/accept`
+  handles the emailed link, in both auth modes, for a brand-new account or one that is already
+  signed in. All of these 404 when the flag is off.
+- Membership is an `organisation_members` join table with `UNIQUE (user_id)`, so "one
+  organisation per user" is a constraint you can drop rather than a schema rewrite, and a
+  membership can carry a role (`owner` / `member`).
+
+### Changed
+
+- With `ORGANISATIONS_ENABLED=true`, `/login` no longer creates accounts. In magic-link mode
+  an unknown address previously got an account created on the spot via `findOrCreateUser`, and
+  that form has no organisation name to put on one. It now reports that no account exists and
+  links to `/signup`. This makes magic-link `/login` an account enumeration oracle — a
+  deliberate trade against silently stranding a real user who would wait for an email that was
+  never sent. Password mode is unchanged: it never created accounts, and its generic
+  "Invalid email or password" stays as it is. With the flag off, `/login` behaves exactly as
+  before.
+
+### Breaking changes
+
+- Turning `ORGANISATIONS_ENABLED=true` on a database that already has users **stops the server
+  at boot**, logging how many users belong to no organisation. Nothing is backfilled: naming an
+  organisation after someone's email address invents data, and shipping with the feature's
+  central invariant already false is worse than not starting. Add whichever affordance suits
+  your app — a backfill migration, an onboarding page, assignment by an admin — then start
+  again. Forks that leave the flag unset are unaffected.
+
 ## 2.1.1
 
 ### Changed

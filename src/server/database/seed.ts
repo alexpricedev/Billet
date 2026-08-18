@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { db } from "../services/database";
 import { log } from "../services/logger";
+import { organisationsEnabled } from "../services/organisations-mode";
 
 export const seedIfEmpty = async (): Promise<void> => {
   const [{ count: userCount }] =
@@ -21,6 +22,27 @@ export const seedIfEmpty = async (): Promise<void> => {
       ('dave@example.com', 'user')
     ON CONFLICT (email) DO NOTHING
   `;
+
+  // Starter users have no organisation, which assertOrganisationsReady refuses
+  // to boot on. Put them all in one so a fresh database with the flag on starts,
+  // and so /organisation has a members list worth looking at.
+  if (organisationsEnabled()) {
+    const [organisation] = await db`
+      INSERT INTO organisations (name) VALUES ('Example Organisation')
+      RETURNING id
+    `;
+
+    await db`
+      INSERT INTO organisation_members (organisation_id, user_id, role)
+      SELECT
+        ${organisation.id},
+        id,
+        CASE WHEN email = 'admin@example.com' THEN 'owner' ELSE 'member' END
+      FROM users
+    `;
+
+    log.info("seed", "Seeded 1 organisation with 5 members");
+  }
 
   await db`
     INSERT INTO project (title, created_by)
