@@ -5,6 +5,7 @@ import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
 import { initAssets } from "./services/assets";
 import { log } from "./services/logger";
+import { assertOrganisationsReady } from "./services/organisations";
 import { validateEnv } from "./utils/env";
 import { render500 } from "./utils/errors";
 import { handleFallback } from "./utils/fallback";
@@ -16,6 +17,7 @@ import {
 
 validateEnv();
 await runMigrations();
+await assertOrganisationsReady();
 await seedIfEmpty();
 await initAssets();
 

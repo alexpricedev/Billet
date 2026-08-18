@@ -1,5 +1,9 @@
 import { AUTH_MODES, isAuthMode } from "../services/auth-mode";
 import { log } from "../services/logger";
+import {
+  isOrganisationsFlag,
+  ORGANISATIONS_FLAGS,
+} from "../services/organisations-mode";
 
 const REQUIRED = [
   "DATABASE_URL",
@@ -65,6 +69,25 @@ export function validateEnv(): void {
 
   if (process.env.AUTH_MODE === "password") {
     log.info("env", "Auth mode: password (email + password credentials)");
+  }
+
+  // ORGANISATIONS_ENABLED is optional and defaults to off. Fatal on a typo for the
+  // same reason as AUTH_MODE: "yes" or "1" would fall through to off, and an app
+  // that silently stops grouping users into organisations is serving a different
+  // data model than whoever set the variable believes it is.
+  if (
+    process.env.ORGANISATIONS_ENABLED !== undefined &&
+    !isOrganisationsFlag(process.env.ORGANISATIONS_ENABLED)
+  ) {
+    log.error(
+      "env",
+      `ORGANISATIONS_ENABLED must be one of: ${ORGANISATIONS_FLAGS.join(", ")} (got "${process.env.ORGANISATIONS_ENABLED}")`,
+    );
+    process.exit(1);
+  }
+
+  if (process.env.ORGANISATIONS_ENABLED === "true") {
+    log.info("env", "Organisation memberships enabled (one per user)");
   }
 
   // CAPTCHA_ENABLED is optional and self-contained: the proof-of-work captcha signs
