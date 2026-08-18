@@ -1,6 +1,7 @@
 export { forms } from "./forms";
 export { home } from "./home";
 export { llmsTxt } from "./llms-txt";
+export { organisations } from "./organisations";
 export { projects } from "./projects";
 export { robotsTxt } from "./robots-txt";
 export { securityTxt } from "./security-txt";

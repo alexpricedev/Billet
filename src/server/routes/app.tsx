@@ -2,6 +2,7 @@ import {
   forms,
   home,
   llmsTxt,
+  organisations,
   projects,
   robotsTxt,
   securityTxt,
@@ -12,6 +13,7 @@ import {
 import {
   account,
   callback,
+  invites,
   login,
   logout,
   passwordReset,
@@ -57,6 +59,19 @@ export const appRoutes = {
   "/reset-password": createRouteHandler({
     GET: passwordReset.edit,
     POST: passwordReset.update,
+  }),
+  // Organisations-mode routes are registered unconditionally for the same
+  // reason as the password-mode ones above: the controller decides.
+  "/organisation": organisations.index,
+  "/organisation/invites": createRouteHandler({
+    POST: organisations.invite,
+  }),
+  "/organisation/invites/:id/delete": createRouteHandler({
+    POST: organisations.revokeInvite<"/organisation/invites/:id/delete">,
+  }),
+  "/invites/accept": createRouteHandler({
+    GET: invites.edit,
+    POST: invites.update,
   }),
   "/account": account.index,
   "/account/password": createRouteHandler({

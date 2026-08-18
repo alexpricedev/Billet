@@ -35,6 +35,16 @@ export interface PasswordResetEmailData {
   expiryMinutes: number;
 }
 
+export interface OrganisationInviteEmailData {
+  to: EmailAddress;
+  organisationName: string;
+  // Who sent it. An invitation from a stranger's address is indistinguishable
+  // from spam, so the message names the person as well as the organisation.
+  invitedByEmail: string;
+  acceptUrl: string;
+  expiryDays: number;
+}
+
 // Every email here is a single call to action on a link, so they share one
 // inline-styled shell. Inline styles rather than a <style> block because most
 // clients strip the latter.
@@ -142,6 +152,20 @@ export class EmailService {
       url: data.resetUrl,
       footer:
         "If you didn't request a password reset, you can safely ignore this email — your password will not change.",
+    });
+  }
+
+  async sendOrganisationInvite(
+    data: OrganisationInviteEmailData,
+  ): Promise<void> {
+    await this.deliver(`Join ${data.organisationName}`, data.to, {
+      title: `Join ${data.organisationName} on ${process.env.APP_NAME as string}`,
+      heading: `Join ${data.organisationName}`,
+      intro: `${data.invitedByEmail} has invited you to join ${data.organisationName}. Click the button below to accept. This invitation will expire in ${data.expiryDays} days.`,
+      buttonLabel: "Accept invitation",
+      url: data.acceptUrl,
+      footer:
+        "If you weren't expecting this invitation, you can safely ignore this email — no account will be created.",
     });
   }
 
