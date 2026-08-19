@@ -66,6 +66,23 @@ each existing user should get a personal org would be wrong for most forks and a
 the dev server with teams on leaks it into every test run. Files exercising teams set it
 per-case.
 
+### How anyone finds `/team`
+
+It is in no navigation — not the nav bar, and `/admin` isn't either. Two paths lead to it, and
+with the flag off neither exists:
+
+- **Signing in with no membership lands on `/team`** rather than `/`, via `landingAfterAuth` in
+  `src/server/controllers/auth/landing.ts`. All four paths that establish a session go through it:
+  `callback` (magic-link sign-in *and* sign-up), `login.create`, `signup.create`, and the password
+  reset, which completes as a sign-in. It checks `teamsEnabled()` before querying — `/team` 404s
+  with the flag off, so without that guard every fork that never turned teams on would send every
+  sign-in to a dead page.
+- **`/account` names your team** and links to `/team` when you can manage it.
+
+This fires on every sign-in, not only the first: "no team yet" is the state the feature exists to
+get you out of, and being in a team makes it stop. A fork that wants it once-only needs a marker
+of its own — there is no "first login" flag to read.
+
 ---
 
 ## 4. Invitations
@@ -129,6 +146,11 @@ session, because most people accept while signed out.
 
 Accepting sets `email_verified_at` in both modes: the token only ever reached a mailbox the
 recipient could open.
+
+A new member lands on `/` with a success message, not on `/team` — they join below the `admin`
+minimum that page requires, so the guard would only bounce them. A refused accept that leaves the
+token unspent goes back to the link itself, where the GET explains the mismatch and offers the
+sign-out that resolves it.
 
 A URL with nothing live behind it — no token, an unknown one, a spent one — **renders** the
 "Invitation unavailable" page rather than redirecting. `/invites/accept` is where a refused POST
@@ -254,15 +276,27 @@ every fork an `ALTER TABLE users DROP COLUMN` to write and get right against liv
 To remove it:
 
 1. Delete `src/server/services/organizations.ts`, `invites.ts`, `teams-mode.ts`,
-   `middleware/org.ts`, `controllers/team/`, `templates/team.tsx`,
-   `templates/accept-invite.tsx`, and their tests.
+   `middleware/org.ts`, `controllers/team/`, `controllers/auth/landing.ts`,
+   `templates/team.tsx`, `templates/accept-invite.tsx`, and their tests.
 2. Drop the team routes from `src/server/routes/app.tsx` and the `TEAMS_ENABLED` case from
    `utils/env.ts`.
-3. For the schema: if the fork has not run `008` yet, delete the migration file. If it has, run its
+3. **Untangle the four references outside the team surface.** These are the ones that don't
+   announce themselves, because nothing about their filename says "teams":
+   - `controllers/auth/callback.tsx`, `login.tsx`, `signup.tsx` and `password-reset.tsx` each end
+     a successful sign-in with `redirect(await landingAfterAuth(user.id))`. Put `"/"` back.
+   - `controllers/auth/account.tsx` renders the Team section — drop the `getMembership` /
+     `atLeast` / `teamsEnabled` imports, the `membership` lookup, and the `team` prop.
+   - `templates/account.tsx` — drop the `team` prop and the section that renders it.
+   - `controllers/auth/account.test.ts` and `callback.test.ts` both import from
+     `services/organizations`; their team cases go with it.
+4. For the schema: if the fork has not run `008` yet, delete the migration file. If it has, run its
    `down` — three `DROP TABLE`s, no statement of which can reach a `users` row. Either way `users`
    ends up exactly as migration `007` left it.
-4. Remove the three `TRUNCATE`s from `cleanupTestData` and the `TEAMS_ENABLED` pin from
+5. Remove the three `TRUNCATE`s from `cleanupTestData` and the `TEAMS_ENABLED` pin from
    `run-tests.ts`.
+
+`bun run check` is what confirms you got step 3 right — every missed reference is an unresolved
+import, not a silent behaviour change.
 
 `organizations.test.ts` asserts `users` has no `org_id`, `org_role` or `org_joined_at` column, so a
 change that reintroduces one fails the suite rather than quietly costing every fork a migration.
@@ -273,7 +307,8 @@ change that reintroduces one fails the suite rather than quietly costing every f
 
 With `TEAMS_ENABLED=true`:
 
-1. Sign up, land on `/team`, create a team — you're the owner.
+1. Sign up. You land on `/team` rather than `/`, because you have no membership. Create a team —
+   you're the owner. Sign out and back in: now you land on `/`.
 2. Invite an address; read the link from the console email provider's log; open it in a private
    window and accept. The member appears with the role you granted.
 3. Sign in as a plain `member` and open `/team` — you're redirected to `/` with a message, not
@@ -291,4 +326,7 @@ With `TEAMS_ENABLED=true`:
    unavailable" — a redirect here lands back on the same URL.
 9. Repeat step 2 with `CAPTCHA_ENABLED=true` in both auth modes. The accept form shows the
    captcha and the acceptance goes through; the widget is not a password-mode thing.
-10. Unset the flag: `/team` and `/invites/accept` 404 and nothing else changes.
+10. Unset the flag: `/team` and `/invites/accept` 404, sign-in lands on `/` again for everyone
+    including users with no membership, `/account` shows no Team section, and nothing else
+    changes. The sign-in check is the one that matters — a redirect to a 404 would break every
+    fork that never turned teams on.
