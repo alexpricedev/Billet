@@ -4,18 +4,24 @@
  * Runs in every fork regardless of TEAMS_ENABLED — migrations are not
  * conditional and must not be. Nothing is backfilled: an org is created only
  * when a signed-in user deliberately submits POST /team, so with the flag off
- * these tables stay empty and the three user columns stay NULL, exactly as
- * migration 007 left password_hash NULL for magic-link forks.
+ * these tables stay empty.
  *
- * Membership is columns on `users` rather than a join table because a user
- * belongs to exactly one org. A join table permits two rows, so every read
- * would have to defend against a state that must never exist; the columns make
- * the rule structural.
+ * Every table this adds is its own; nothing here alters `users`. That is the
+ * point. A fork with no intention of using teams deletes this file along with
+ * the team code and has an untouched schema, and a fork that already ran it
+ * runs the `down` below — three DROP TABLEs that cannot reach an account row.
+ * An ALTER TABLE users would have made removal a migration someone has to write
+ * and get right against live account data.
+ *
+ * A user belongs to exactly one org, and `organization_members.user_id` is
+ * UNIQUE, so that is structural rather than defended for on every read. It also
+ * makes "half a membership" unrepresentable — the org, the role and the join
+ * date are one row, so it exists or it doesn't.
  *
  * The CHECK constraints are named, unlike migration 004's inline anonymous one.
  * That is what makes adding a fourth org role possible later: a new migration
- * drops `users_org_role_check` and `organization_invites_role_check` and
- * re-adds them. The roles are not free-form.
+ * drops `organization_members_role_check` and `organization_invites_role_check`
+ * and re-adds them. The roles are not free-form.
  */
 import type { SQL } from "bun";
 
@@ -28,22 +34,27 @@ export const up = async (db: SQL): Promise<void> => {
     )
   `;
 
-  // ON DELETE SET NULL, never CASCADE: deleting an org must not delete the
-  // accounts of everyone in it. The all-or-nothing CHECK below means the role
-  // has to be nulled in the same statement, so org deletion goes through the
-  // service rather than a bare DELETE.
+  // Both foreign keys CASCADE, and both delete only the membership. Deleting an
+  // org removes everyone's standing in it and no accounts; deleting an account
+  // removes its membership and no org. Neither direction can take the other's
+  // rows with it, which is what ON DELETE SET NULL on a users column was
+  // contorting to achieve.
   await db`
-    ALTER TABLE users
-      ADD COLUMN org_id UUID NULL REFERENCES organizations(id) ON DELETE SET NULL,
-      ADD COLUMN org_role VARCHAR(20) NULL
-        CONSTRAINT users_org_role_check
+    CREATE TABLE organization_members (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      org_role VARCHAR(20) NOT NULL
+        CONSTRAINT organization_members_role_check
         CHECK (org_role IN ('owner', 'admin', 'member')),
-      ADD COLUMN org_joined_at TIMESTAMPTZ NULL,
-      ADD CONSTRAINT users_org_all_or_nothing
-        CHECK (num_nonnulls(org_id, org_role, org_joined_at) IN (0, 3))
+      joined_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
   `;
 
-  await db`CREATE INDEX idx_users_org_id ON users(org_id)`;
+  await db`
+    CREATE INDEX idx_organization_members_org
+      ON organization_members(organization_id)
+  `;
 
   // Invites get their own table rather than a user_tokens type. user_tokens
   // requires a NOT NULL user_id, which would mean creating a shell users row
@@ -90,16 +101,10 @@ export const up = async (db: SQL): Promise<void> => {
   `;
 };
 
+// Reversible without touching `users`, which is the whole reason membership is a
+// table. A fork dropping the feature runs this and is back to a stock schema.
 export const down = async (db: SQL): Promise<void> => {
   await db`DROP TABLE IF EXISTS organization_invites`;
-
-  await db`
-    ALTER TABLE users
-      DROP CONSTRAINT IF EXISTS users_org_all_or_nothing,
-      DROP COLUMN IF EXISTS org_joined_at,
-      DROP COLUMN IF EXISTS org_role,
-      DROP COLUMN IF EXISTS org_id
-  `;
-
+  await db`DROP TABLE IF EXISTS organization_members`;
   await db`DROP TABLE IF EXISTS organizations`;
 };

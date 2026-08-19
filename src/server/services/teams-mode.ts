@@ -1,6 +1,6 @@
 // Whether org-level user management is on. Off by default: an unset flag must
 // never change behaviour for an existing fork, and with it off nothing ever
-// writes an org, so the columns and tables migration 008 adds stay empty.
+// writes an org, so the three tables migration 008 adds stay empty.
 //
 // A boolean rather than a mode string, unlike AUTH_MODE. That is a mode because
 // both of its values are real behaviours and there is no "off"; this feature is

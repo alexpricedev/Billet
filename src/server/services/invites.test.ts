@@ -277,10 +277,11 @@ describe("Invites Service with PostgreSQL", () => {
       const result = await acceptInvite(created.rawToken, null);
       expect(result.success).toBe(true);
 
-      const rows =
-        await db`SELECT role, org_role FROM users WHERE id = ${target.id}`;
+      // The platform flag lives on users, the org role on the membership row.
+      // Nothing about joining an org may reach into the other axis.
+      const rows = await db`SELECT role FROM users WHERE id = ${target.id}`;
       expect(rows[0].role).toBe("admin");
-      expect(rows[0].org_role).toBe("member");
+      expect((await getMembership(target.id))?.role).toBe("member");
     });
 
     test("refuses when signed in as a different person", async () => {

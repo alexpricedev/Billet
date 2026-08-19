@@ -99,7 +99,7 @@ describe("Organizations Service with PostgreSQL", () => {
 
       expect(second).toEqual({ success: false, error: "already-in-org" });
 
-      // The losing org row must not linger with nobody in it.
+      // The refused org must never have been created in the first place.
       const orgs = await db`SELECT id FROM organizations`;
       expect(orgs.length).toBe(1);
     });
@@ -122,7 +122,10 @@ describe("Organizations Service with PostgreSQL", () => {
 
       let rejected = false;
       try {
-        await db`UPDATE users SET org_role = 'superuser' WHERE id = ${user.id}`;
+        await db`
+          UPDATE organization_members SET org_role = 'superuser'
+          WHERE user_id = ${user.id}
+        `;
       } catch {
         rejected = true;
       }
@@ -130,14 +133,36 @@ describe("Organizations Service with PostgreSQL", () => {
       expect(rejected).toBe(true);
     });
 
-    test("a partial update is rejected, so a half-removed member can't exist", async () => {
-      const { user } = await seedOwner();
+    test("nothing is added to the users table", async () => {
+      // The whole point of membership being its own table: a fork that never
+      // turns teams on has an untouched users schema, and dropping the feature
+      // is three DROP TABLEs rather than a migration against account data.
+      const columns = await db`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'users'
+      `;
 
-      // Nulling org_id alone is exactly the bug users_org_all_or_nothing exists
-      // to make impossible.
+      const names = columns.map((row: { column_name: string }) =>
+        row.column_name.toLowerCase(),
+      );
+
+      expect(names).not.toContain("org_id");
+      expect(names).not.toContain("org_role");
+      expect(names).not.toContain("org_joined_at");
+    });
+
+    test("a second membership for one user is rejected by the database", async () => {
+      const { user } = await seedOwner();
+      const outsider = await findOrCreateUser("outsider@example.com");
+      const other = await createOrganizationForUser(outsider.id, "Other");
+      if (!other.success) throw new Error("seed failed");
+
       let rejected = false;
       try {
-        await db`UPDATE users SET org_id = NULL WHERE id = ${user.id}`;
+        await db`
+          INSERT INTO organization_members (organization_id, user_id, org_role)
+          VALUES (${other.organization.id}, ${user.id}, 'member')
+        `;
       } catch {
         rejected = true;
       }
@@ -148,15 +173,21 @@ describe("Organizations Service with PostgreSQL", () => {
     test("deleting the org clears membership instead of deleting accounts", async () => {
       const { user, org } = await seedOwner();
 
-      await db`
-        UPDATE users SET org_id = NULL, org_role = NULL, org_joined_at = NULL
-        WHERE org_id = ${org.id}
-      `;
       await db`DELETE FROM organizations WHERE id = ${org.id}`;
 
-      const rows = await db`SELECT id, org_id FROM users WHERE id = ${user.id}`;
+      const rows = await db`SELECT id FROM users WHERE id = ${user.id}`;
       expect(rows.length).toBe(1);
-      expect(rows[0].org_id).toBeNull();
+      expect(await getMembership(user.id)).toBeNull();
+    });
+
+    test("deleting the account clears membership instead of the org", async () => {
+      const { user, org } = await seedOwner();
+
+      await db`DELETE FROM users WHERE id = ${user.id}`;
+
+      const orgs = await db`SELECT id FROM organizations WHERE id = ${org.id}`;
+      expect(orgs.length).toBe(1);
+      expect(await listMembers(org.id)).toEqual([]);
     });
   });
 
@@ -177,7 +208,7 @@ describe("Organizations Service with PostgreSQL", () => {
         "member@example.com",
       ]);
       expect(members[0].org_role).toBe("owner");
-      expect(members[0].org_joined_at).toBeInstanceOf(Date);
+      expect(members[0].joined_at).toBeInstanceOf(Date);
     });
 
     test("counts owners in this org only", async () => {
@@ -234,19 +265,15 @@ describe("Organizations Service with PostgreSQL", () => {
   });
 
   describe("removeMember", () => {
-    test("nulls all three columns and leaves the account intact", async () => {
+    test("drops the membership row and leaves the account intact", async () => {
       const { org } = await seedOwner();
       const member = await seedMember(org.id, "m@example.com", "member");
 
       expect(await removeMember(org.id, member.id)).toEqual({ success: true });
 
-      const rows = await db`
-        SELECT id, org_id, org_role, org_joined_at FROM users WHERE id = ${member.id}
-      `;
+      const rows = await db`SELECT id FROM users WHERE id = ${member.id}`;
       expect(rows.length).toBe(1);
-      expect(rows[0].org_id).toBeNull();
-      expect(rows[0].org_role).toBeNull();
-      expect(rows[0].org_joined_at).toBeNull();
+      expect(await getMembership(member.id)).toBeNull();
     });
 
     test("refuses to remove the last owner", async () => {

@@ -31,16 +31,18 @@ export const invite = {
     const token = new URL(req.url).searchParams.get("token") ?? "";
     const state = getFlash(req);
 
-    if (!token) return deadEnd(req, "invalid-token");
-
     // Unlike /reset-password, this GET *does* look the invite up without
     // spending it. That page is byte-identical either way, so a peek there
     // would only sort real tokens from guesses; this page genuinely differs —
     // it names the team, and in password mode it decides whether to ask for a
     // password — so a page that works is worth the narrow oracle against a
     // 256-bit token on a rate-limited route.
-    const preview = await peekInvite(token);
-    if (!preview) return deadEnd(req, "invalid-token");
+    const preview = token ? await peekInvite(token) : null;
+
+    // Nothing live behind this URL. Rendered, never redirected: this *is*
+    // where deadEnd sends a refused POST, so a redirect here would point at
+    // itself and loop until the browser or the rate limiter gave up.
+    if (!preview) return unavailable(state);
 
     const ctx = await getSessionContext(req);
 
@@ -67,6 +69,11 @@ export const invite = {
 
     const needsPassword = await needsNewPassword(preview.email);
 
+    // Gated on captchaEnabled() alone, never on needsPassword as well:
+    // guardAuthForm verifies the solution on every POST this form makes, so a
+    // page rendered without the widget is one nobody can submit.
+    const challenge = captchaEnabled() ? issueChallenge() : null;
+
     return render(
       <AcceptInvite
         token={token}
@@ -80,7 +87,7 @@ export const invite = {
             : null
         }
         logoutCsrfToken={null}
-        challenge={needsPassword && captchaEnabled() ? issueChallenge() : null}
+        challenge={challenge}
       />,
     );
   },
@@ -148,7 +155,12 @@ export const invite = {
     const result = await acceptInvite(token, ctx.user?.id ?? null);
 
     if (!result.success) {
-      return deadEnd(req, result.error);
+      // A mismatch is checked before the token is spent, so the link still
+      // works — send them back to it rather than to the dead end, and the GET
+      // renders the mismatch with the sign-out button that resolves it.
+      return result.error === "email-mismatch"
+        ? redirect(`/invites/accept?token=${encodeURIComponent(token)}`)
+        : deadEnd(req, result.error);
     }
 
     if (!needsPassword) {
@@ -167,6 +179,7 @@ export const invite = {
       // signs nobody in. An invite must not become a way around that.
       setFlashCookie(req, "message", {
         text: `You've joined ${result.organization.name}. Sign in to continue.`,
+        type: "success",
       });
       return redirect("/login");
     }
@@ -180,6 +193,7 @@ export const invite = {
       if (set.error === "already-set") {
         setFlashCookie(req, "message", {
           text: `You've joined ${result.organization.name}. Sign in to continue.`,
+          type: "success",
         });
         return redirect("/login");
       }
@@ -189,6 +203,7 @@ export const invite = {
       log.error("invite", `failed to set password after accept: ${set.error}`);
       setFlashCookie(req, "message", {
         text: `You've joined ${result.organization.name}, but your password wasn't set. Use "Forgot password" to choose one.`,
+        type: "warning",
       });
       return redirect("/login");
     }
@@ -230,11 +245,19 @@ const finish = async (
 
   // A new member joins below the /team threshold, so send them home rather
   // than to a page the guard would bounce them from.
-  setFlashCookie(req, "message", { text: `You've joined ${orgName}` });
+  setFlashCookie(req, "message", {
+    text: `You've joined ${orgName}`,
+    type: "success",
+  });
   return redirect("/");
 };
 
-/** The token is gone, spent, or not theirs — only a new invite gets them back. */
+/**
+ * The token is gone, spent, or not theirs — only a new invite gets them back.
+ *
+ * A refused POST redirects rather than rendering, so a reload can't resubmit
+ * it; the GET it lands on renders the page below from the flash.
+ */
 const deadEnd = (
   req: BunRequest,
   state: AcceptInviteState["state"],
@@ -242,6 +265,30 @@ const deadEnd = (
   setFlash(req, { state });
   return redirect("/invites/accept");
 };
+
+// Only these say something a visitor with no live invite can act on. Anything
+// else — a stale "validation-error" from a form whose token has since been
+// spent — means the same thing to them as an unknown token.
+const DEAD_END_STATES = ["invalid-token", "already-in-org"] as const;
+
+/** The "Invitation unavailable" page: no live invite behind the URL. */
+const unavailable = (state?: AcceptInviteState): Response =>
+  render(
+    <AcceptInvite
+      token=""
+      preview={null}
+      state={{
+        state: DEAD_END_STATES.some((known) => known === state?.state)
+          ? state?.state
+          : "invalid-token",
+      }}
+      signedInAs={null}
+      needsPassword={false}
+      csrfToken={null}
+      logoutCsrfToken={null}
+      challenge={null}
+    />,
+  );
 
 /** Recoverable: the token is untouched, so re-render the form behind it. */
 const retryWithToken = (

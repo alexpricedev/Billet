@@ -22,7 +22,7 @@ const member = (
   id,
   email,
   org_role,
-  org_joined_at: new Date("2026-01-02"),
+  joined_at: new Date("2026-01-02"),
   email_verified_at: null,
   created_at: new Date("2026-01-01"),
 });
@@ -113,6 +113,27 @@ describe("Team template", () => {
 
     expect(html).toContain("/team?remove=user-2");
     expect(html).not.toContain("/team?remove=user-1");
+  });
+
+  test("does not offer a role control on your own row", () => {
+    const html = render(
+      <Team
+        {...props({
+          user: user({ id: "user-2", email: "admin@example.com" }),
+          membership: membership("admin"),
+          members: [
+            member("user-1", "owner@example.com", "owner"),
+            member("user-2", "admin@example.com", "admin"),
+            member("user-3", "member@example.com"),
+          ],
+          roleCsrfTokens: { "user-2": "self-token", "user-3": "role-token" },
+        })}
+      />,
+    );
+
+    expect(html).not.toContain("/team/members/user-2/role");
+    expect(html).toContain("/team/members/user-3/role");
+    expect(html).toContain("badge-admin");
   });
 
   test("hides the owner option from an admin", () => {

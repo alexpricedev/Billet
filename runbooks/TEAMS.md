@@ -20,9 +20,12 @@ Routes are registered unconditionally in `src/server/routes/app.tsx`; each contr
 `render404()` when `!teamsEnabled()`. A route existing tells you nothing about whether it answers
 — the same contract the password-mode routes follow.
 
-Schema is migration `008_add_organizations.ts`: an `organizations` table, three nullable columns
-on `users` (`org_id`, `org_role`, `org_joined_at`), and an `organization_invites` table. The
-migration runs in every fork; with the flag off nothing writes to any of it.
+Schema is migration `008_add_organizations.ts`: an `organizations` table, an
+`organization_members` table, and an `organization_invites` table. The migration runs in every
+fork; with the flag off nothing writes to any of them.
+
+**It alters no existing table.** That is a hard rule for this feature, not an accident of the
+design — see §9.
 
 ---
 
@@ -31,7 +34,7 @@ migration runs in every fork; with the flag off nothing writes to any of it.
 `users.role` is `'user' | 'admin'`. It means **platform operator**, it gates `/admin` through
 `requireAdmin`, and this feature does not touch it.
 
-`users.org_role` is `'owner' | 'admin' | 'member'`. It means **standing inside one
+`organization_members.org_role` is `'owner' | 'admin' | 'member'`. It means **standing inside one
 organisation**, and it gates `/team` through `requireOrgRole`.
 
 They are deliberately not merged. A platform operator answering a support ticket is not thereby
@@ -41,7 +44,8 @@ data grant. Concretely: widening the `users_role_check` constraint to hold org r
 inexpressible.
 
 The form field is named `org_role`, never `role`, so a copy-paste can never write a member's
-input into `users.role` and hand them the admin console.
+input into `users.role` and hand them the admin console. The two axes also live in two different
+tables, so a query against one cannot accidentally return the other.
 
 ---
 
@@ -54,8 +58,8 @@ on their own team page reads that as a bug rather than as a mode.
 `teamsEnabled()` reads `process.env` on every call, so a test can flip it between cases.
 
 **Enabling it over an existing database backfills nothing.** Every current user has no
-membership and lands on the "create a team" empty state. That is deliberate: guessing that each
-existing user should get a personal org would be wrong for most forks and awkward to undo.
+membership row and lands on the "create a team" empty state. That is deliberate: guessing that
+each existing user should get a personal org would be wrong for most forks and awkward to undo.
 
 **The test runner pins `TEAMS_ENABLED=false`** in `src/server/test-utils/run-tests.ts`, alongside
 `SESSION_COOKIE_NAME`, `AUTH_MODE` and `CAPTCHA_ENABLED`. Without the pin, a developer who runs
@@ -126,6 +130,16 @@ session, because most people accept while signed out.
 Accepting sets `email_verified_at` in both modes: the token only ever reached a mailbox the
 recipient could open.
 
+A URL with nothing live behind it — no token, an unknown one, a spent one — **renders** the
+"Invitation unavailable" page rather than redirecting. `/invites/accept` is where a refused POST
+is sent, so a redirect on that path would point at itself and loop until the browser or the rate
+limiter gave up.
+
+The form is guarded by `guardAuthForm`, exactly like `/login` and `/signup`, so with
+`CAPTCHA_ENABLED=true` it renders the widget on **every** rendering. Gating it on "does this
+invitee need a password" would leave magic-link mode — where nobody ever does — serving a form
+whose POST the guard always rejects.
+
 ---
 
 ## 5. The last-owner invariant
@@ -134,11 +148,13 @@ An org must always have at least one owner. This is a **guard, not a constraint*
 express *at most* one of something via a partial unique index, which is the opposite of what is
 needed.
 
-The guard lives **inside** the `UPDATE`, in `updateMemberRole` and `removeMember`:
+The guard lives **inside** the statement — the `UPDATE` in `updateMemberRole`, the `DELETE` in
+`removeMember`:
 
 ```sql
 AND (org_role <> 'owner' OR EXISTS (
-      SELECT 1 FROM users WHERE org_id = $1 AND org_role = 'owner' AND id <> $2))
+      SELECT 1 FROM organization_members
+      WHERE organization_id = $1 AND org_role = 'owner' AND user_id <> $2))
 ```
 
 Zero rows back means it was refused. A check-then-write would let two owners each demote the
@@ -154,8 +170,8 @@ server decides. If you add a new path to change roles, it must go through these 
 1. Open the controller method with `if (!teamsEnabled()) return render404();`. `requireOrgRole`
    repeats the check as a backstop, but the line at the top is what a reader sees.
 2. Call `requireOrgRole(req, minimum)` and return `result.response` when it refuses.
-3. **Scope every `:id` lookup by the caller's org** — `WHERE id = $1 AND org_id = $2`, never by id
-   alone. The guard proves you administer *an* org, not that the row you named is in it. Nothing
+3. **Scope every `:id` lookup by the caller's org** — `WHERE user_id = $1 AND organization_id = $2`,
+   never by id alone. The guard proves you administer *an* org, not that the row you named is in it. Nothing
    else in the codebase catches this; it is the one authorisation bug class this feature adds.
 4. Resolve not-found to a flash and a redirect, never a 404 — so "wrong org" and "already gone"
    stay indistinguishable.
@@ -197,12 +213,22 @@ the predicate eventually will be.
   seam in §7.
 - **No multi-org membership and no org switcher.** One user, one org. Multi-org means a switcher,
   a current-org value on the session, and re-scoping every query — a different feature. The
-  one-org rule is enforced by `joinOrganization` and `createOrganizationForUser` guarding on
-  `org_id IS NULL`.
+  one-org rule is enforced by the `UNIQUE` on `organization_members.user_id`, which
+  `joinOrganization` and `createOrganizationForUser` read as an answer rather than an error.
 - **No read-only roster for plain members.** `/team` requires `admin`. Lower the minimum at the
   call site and branch the template if your product wants one.
-- **No ownership transfer as a single action.** An owner can promote another owner and then leave;
-  there is no atomic "transfer and go".
+- **No changing your own role.** Both self-actions are somebody else's to take. The upward case
+  was already blocked — only an owner grants ownership — so the only self-change the roles allowed
+  was a *demotion*, which drops you below the `admin` minimum `/team` requires and leaves you
+  unable to undo it. An owner stepping down promotes their successor first and is demoted by them.
+  The row renders a badge instead of the select, and `teamMembers.updateRole` refuses it.
+- **No leaving a team.** Removal is something another owner or admin does to you; the members
+  table hides `Remove` on your own row and `teamMembers.destroy` refuses it, so the two agree.
+  A member who left would land on a `/team` they can no longer load, and with one org per user
+  they would have no way back without a fresh invitation — that is a flow to design, not a
+  side effect of the remove button.
+- **No ownership transfer as a single action.** An owner can promote another owner, but there is
+  no atomic "transfer and go", and no going.
 - **No `?next=` on `/login`.** A signed-out invitee is told to sign in and re-open the link. A
   post-login redirect parameter is an open-redirect footgun and would touch the auth flow
   directly; a fork adding one must allowlist paths rather than accept arbitrary URLs.
@@ -211,7 +237,39 @@ the predicate eventually will be.
 
 ---
 
-## 9. How to verify
+## 9. Removing the feature
+
+A fork that will never use teams should be able to drop it without writing a migration against
+its own account data, so **migration `008` creates three tables and alters none**. Membership is a
+row in `organization_members` with a `UNIQUE` `user_id`, not `org_id` / `org_role` /
+`org_joined_at` columns on `users`.
+
+The unique index is what makes that free rather than a trade: one org per user stays structural,
+and because the org, the role and the join date are one row, "half a membership" is unrepresentable
+— the state a three-column `CHECK` would otherwise have to forbid.
+
+Never move any of it onto `users`. The columns would be marginally fewer joins and would hand
+every fork an `ALTER TABLE users DROP COLUMN` to write and get right against live accounts.
+
+To remove it:
+
+1. Delete `src/server/services/organizations.ts`, `invites.ts`, `teams-mode.ts`,
+   `middleware/org.ts`, `controllers/team/`, `templates/team.tsx`,
+   `templates/accept-invite.tsx`, and their tests.
+2. Drop the team routes from `src/server/routes/app.tsx` and the `TEAMS_ENABLED` case from
+   `utils/env.ts`.
+3. For the schema: if the fork has not run `008` yet, delete the migration file. If it has, run its
+   `down` — three `DROP TABLE`s, no statement of which can reach a `users` row. Either way `users`
+   ends up exactly as migration `007` left it.
+4. Remove the three `TRUNCATE`s from `cleanupTestData` and the `TEAMS_ENABLED` pin from
+   `run-tests.ts`.
+
+`organizations.test.ts` asserts `users` has no `org_id`, `org_role` or `org_joined_at` column, so a
+change that reintroduces one fails the suite rather than quietly costing every fork a migration.
+
+---
+
+## 10. How to verify
 
 With `TEAMS_ENABLED=true`:
 
@@ -220,12 +278,17 @@ With `TEAMS_ENABLED=true`:
    window and accept. The member appears with the role you granted.
 3. Sign in as a plain `member` and open `/team` — you're redirected to `/` with a message, not
    shown the page and not 404'd.
-4. As the only owner, try to demote or remove yourself. Both are refused with a flash. Then post
-   to `/team/members/:id/role` directly with a valid token to confirm the *server* refuses it,
-   not just the hidden button.
+4. Your own row shows a badge, never a role select or a Remove link — as an owner, and again as an
+   admin with an owner above you. Post to `/team/members/:id/role` and `/team/members/:id/remove`
+   with your own id and valid tokens to confirm the *server* refuses both, not just the hidden
+   controls.
 5. Take a member id from another org and post it to your own org's role endpoint. Nothing changes.
 6. Forward an invite link and open it while signed in as someone else. It must refuse.
 7. Repeat step 2 with `AUTH_MODE=password`, twice: once for an address with no account (it asks
    for a password and signs them in) and once for an address that already has one (it joins them
    and sends them to `/login` **without** a session).
-8. Unset the flag: `/team` and `/invites/accept` 404 and nothing else changes.
+8. Open `/invites/accept` with no token, and again with a spent one. Both render "Invitation
+   unavailable" — a redirect here lands back on the same URL.
+9. Repeat step 2 with `CAPTCHA_ENABLED=true` in both auth modes. The accept form shows the
+   captcha and the acceptance goes through; the widget is not a password-mode thing.
+10. Unset the flag: `/team` and `/invites/accept` 404 and nothing else changes.

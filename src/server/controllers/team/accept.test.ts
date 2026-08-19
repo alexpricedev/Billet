@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { SQL } from "bun";
 import { clearRateLimitLog } from "../../middleware/rate-limit";
 import { cleanupTestData } from "../../test-utils/helpers";
@@ -15,6 +16,7 @@ mock.module("../../services/database", () => ({
 }));
 
 import { findOrCreateUser } from "../../services/auth";
+import { clearUsedChallenges, issueChallenge } from "../../services/captcha";
 import { createCsrfToken } from "../../services/csrf";
 import { db } from "../../services/database";
 import { createInvite, peekInvite } from "../../services/invites";
@@ -49,6 +51,31 @@ afterAll(async () => {
   await connection.end();
   mock.restore();
 });
+
+// Solve a challenge the way the client would, for the captcha-enabled cases.
+const solveChallenge = (
+  challenge: ReturnType<typeof issueChallenge>,
+): string => {
+  let answer = 0;
+  for (let n = 0; n <= challenge.maxnumber; n++) {
+    if (
+      createHash("sha256").update(`${challenge.salt}${n}`).digest("hex") ===
+      challenge.challenge
+    ) {
+      answer = n;
+      break;
+    }
+  }
+  return Buffer.from(
+    JSON.stringify({
+      salt: challenge.salt,
+      challenge: challenge.challenge,
+      expires: challenge.expires,
+      signature: challenge.signature,
+      number: answer,
+    }),
+  ).toString("base64");
+};
 
 const seedInvite = async (email = "invitee@example.com") => {
   const owner = await findOrCreateUser("owner@example.com");
@@ -124,8 +151,19 @@ describe("Invite acceptance", () => {
     test("shows a dead end for an unknown token", async () => {
       const response = await invite.index(getAccept("nope"));
 
-      expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/invites/accept");
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain("Invitation unavailable");
+    });
+
+    // The page a refused POST redirects to. Rendering it rather than
+    // redirecting again is what keeps that from pointing at itself.
+    test("shows the dead end for no token at all, without redirecting", async () => {
+      const response = await invite.index(
+        createBunRequest("http://localhost:3000/invites/accept"),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain("Invitation unavailable");
     });
 
     test("warns when signed in as someone else, and offers a way out", async () => {
@@ -200,9 +238,12 @@ describe("Invite acceptance", () => {
         ),
       );
 
-      expect(response.headers.get("location")).toBe("/invites/accept");
+      // Back to the link itself, where the GET explains the mismatch and
+      // offers a way out — the token is unspent, so it still works.
+      expect(response.headers.get("location")).toBe(
+        `/invites/accept?token=${encodeURIComponent(seeded.rawToken)}`,
+      );
       expect(await getMembership(other.id)).toBeNull();
-      // Not spent — the real invitee can still use it.
       expect(await peekInvite(seeded.rawToken)).not.toBeNull();
     });
   });
@@ -285,6 +326,53 @@ describe("Invite acceptance", () => {
       const html = await response.text();
       expect(html).toContain("Accept invitation");
       expect(html).not.toContain('type="password"');
+    });
+  });
+
+  // guardAuthForm verifies a solution on every POST regardless of mode, so the
+  // widget has to be on every rendering of the form. Gating it on
+  // needsNewPassword as well made magic-link mode — where nobody ever needs a
+  // password — unacceptable in its entirety.
+  describe("with captcha enabled", () => {
+    const ORIGINAL_CAPTCHA = process.env.CAPTCHA_ENABLED;
+    const ORIGINAL_DIFFICULTY = process.env.CAPTCHA_DIFFICULTY;
+
+    beforeEach(() => {
+      process.env.CAPTCHA_ENABLED = "true";
+      process.env.CAPTCHA_DIFFICULTY = "2000";
+      clearUsedChallenges();
+    });
+
+    afterAll(() => {
+      if (ORIGINAL_CAPTCHA === undefined) delete process.env.CAPTCHA_ENABLED;
+      else process.env.CAPTCHA_ENABLED = ORIGINAL_CAPTCHA;
+      if (ORIGINAL_DIFFICULTY === undefined)
+        delete process.env.CAPTCHA_DIFFICULTY;
+      else process.env.CAPTCHA_DIFFICULTY = ORIGINAL_DIFFICULTY;
+    });
+
+    test("the form carries a challenge in magic-link mode", async () => {
+      const seeded = await seedInvite();
+
+      const html = await (
+        await invite.index(getAccept(seeded.rawToken))
+      ).text();
+
+      expect(html).toContain("captcha");
+    });
+
+    test("a solved challenge accepts the invitation", async () => {
+      const seeded = await seedInvite();
+      const request = postAccept({
+        token: seeded.rawToken,
+        captcha_solution: solveChallenge(issueChallenge()),
+      });
+
+      const response = await invite.create(request);
+
+      expect(response.headers.get("location")).toBe("/");
+      const joined = await findOrCreateUser("invitee@example.com");
+      expect((await getMembership(joined.id))?.org.id).toBe(seeded.org.id);
     });
   });
 });

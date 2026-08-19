@@ -77,9 +77,9 @@ fatal at boot in `validateEnv()`.
 `users.role` (`'user' | 'admin'`) is the **platform operator** flag. It gates `/admin` via
 `requireAdmin` and nothing else touches it.
 
-`users.org_role` (`'owner' | 'admin' | 'member'`, migration `008`) is standing inside **one
-organisation**, behind `TEAMS_ENABLED` (`src/server/services/teams-mode.ts`, a boolean, fatal at
-boot on anything but `true`/`false`). It gates `/team` via `requireOrgRole`
+`organization_members.org_role` (`'owner' | 'admin' | 'member'`, migration `008`) is standing
+inside **one organisation**, behind `TEAMS_ENABLED` (`src/server/services/teams-mode.ts`, a
+boolean, fatal at boot on anything but `true`/`false`). It gates `/team` via `requireOrgRole`
 (`src/server/middleware/org.ts`), which returns the resolved membership the way `requireAdmin`
 returns the context.
 
@@ -87,9 +87,17 @@ Do not widen `users_role_check` to hold org roles: "org owner who is not a platf
 common case and merging the axes makes it inexpressible. Team forms name the field `org_role`,
 never `role`, so a copy-paste can't write a member's input into the platform flag.
 
-Every `:id` in a team route is scoped `WHERE id = $1 AND org_id = $2`. The guard proves you
-administer *an* org, not that the row you named is in it — nothing else catches that. The
-last-owner rule lives inside the `UPDATE`, not around it; the hidden button is cosmetic.
+Migration `008` adds three tables and **alters nothing**. Membership is a row in
+`organization_members` (`user_id` UNIQUE, so one org per user is structural) rather than columns on
+`users`, because that is what makes the feature removable: a fork that doesn't want teams deletes
+the migration and the team code, or runs `down` for three `DROP TABLE`s that cannot reach an
+account row. Never add an org column to `users` — you would be handing every fork a migration to
+write against live account data. Scope your own tables instead; `runbooks/TEAMS.md` has the seam.
+
+Every `:id` in a team route is scoped `WHERE user_id = $1 AND organization_id = $2`. The guard
+proves you administer *an* org, not that the row you named is in it — nothing else catches that.
+The last-owner rule lives inside the `UPDATE`/`DELETE`, not around it; the hidden button is
+cosmetic.
 
 Core does not scope domain data by org — `runbooks/TEAMS.md` has the seam and the reasoning.
 

@@ -13,13 +13,14 @@ change its own code after merging.
 
 - Optional org-level user management, behind `TEAMS_ENABLED`. Unset (or `false`) keeps the
   existing behaviour exactly: `/team` and `/invites/accept` 404, no org is ever created, and the
-  columns migration `008` adds stay `NULL`. Set to `true`, a signed-in user can create a team and
+  three tables migration `008` adds stay empty. Set to `true`, a signed-in user can create a team and
   then invite people by email, change their org role, and remove them. A value outside
   `true`/`false` stops the server at boot rather than silently 404ing the whole surface — the
   same treatment `AUTH_MODE` gets, and for the same reason.
 - **Org role is a separate axis from `users.role`.** `users.role` (`'user' | 'admin'`) still
   means *platform operator* and still gates `/admin` via `requireAdmin`; it is untouched. The new
-  `users.org_role` (`'owner' | 'admin' | 'member'`) means standing inside one organisation. They
+  `organization_members.org_role` (`'owner' | 'admin' | 'member'`) means standing inside one
+  organisation. They
   are not merged on purpose: a platform operator answering a support ticket is not thereby an
   owner of a customer's org, and widening the existing `CHECK` would have made "org owner who is
   not a platform admin" inexpressible.
@@ -27,6 +28,14 @@ change its own code after merging.
   resolved session **and** membership, in the shape `requireAdmin` established. `membership.org.id`
   is the documented seam a fork uses to scope its own tables by org — core deliberately does not
   scope `project` or any other domain data.
+- **Migration `008` adds tables and alters none**, so a fork that will never use teams can drop the
+  feature without writing a migration against its own account data. Membership is a row in
+  `organization_members` with a `UNIQUE` `user_id` rather than `org_id` / `org_role` /
+  `org_joined_at` columns on `users`. The unique index keeps "one org per user" structural, and
+  since the org, role and join date are one row, a half-removed member is unrepresentable rather
+  than merely forbidden by a `CHECK`. Removal is the migration's `down` — three `DROP TABLE`s, none
+  of which can reach a `users` row — and `runbooks/TEAMS.md` §9 lists the rest. A test asserts
+  `users` has none of the three columns, so reintroducing one fails the suite.
 - Invitations in their own `organization_invites` table, not a `user_tokens` type. Reusing
   `user_tokens` would have meant creating a shell `users` row per invited address, and because
   `signInWithPassword` reports `no-password` distinguishably from `invalid-credentials`, that
@@ -38,14 +47,20 @@ change its own code after merging.
   `/login` without a session, because mailbox control is grounds for a reset and never a sign-in.
   An invite accepted while signed in as a different account is refused, so forwarding the link
   can't turn it into a join-anyone link.
-- A team must always have at least one owner, enforced inside the `UPDATE` rather than around it
+- A team must always have at least one owner, enforced inside the statement rather than around it
   — two owners demoting each other concurrently cannot leave the org unadministered. The template
   hides the control too, but the server is what decides.
-- Migration `008_add_organizations.ts`: an `organizations` table, `organization_invites`, and
-  `org_id` / `org_role` / `org_joined_at` on `users`. It runs in every fork, flag or no flag,
-  and leaves the columns `NULL` when teams are off.
+- Both self-actions belong to somebody else: your own row has no `Remove` control and no role
+  select, and the server refuses either. Granting ownership was already owner-only, so the only
+  self-change the roles allowed was a demotion — which drops you below the `admin` minimum `/team`
+  requires, with no way to undo it. Leaving a team is not shipped for the same reason: with one org
+  per user, a member who left would need a fresh invitation to get back. See `runbooks/TEAMS.md` §8.
+- Migration `008_add_organizations.ts`: `organizations`, `organization_members`, and
+  `organization_invites`. It runs in every fork, flag or no flag, and all three stay empty when
+  teams are off.
 - `runbooks/TEAMS.md` — the role model, invite lifecycle, the authorisation checklist for new
-  team routes, how to scope your own data, and what is deliberately not shipped.
+  team routes, how to scope your own data, how to remove the feature, and what is deliberately not
+  shipped.
 
 ### Changed
 
@@ -56,7 +71,7 @@ change its own code after merging.
   `CAPTCHA_ENABLED`. Same reason as those three: a developer who runs the dev server with teams
   on has it in their `.env`, and leaked into a test run it breaks every `expect(404)` on a team
   route.
-- `cleanupTestData` truncates the two new tables. A fork that has its own copy needs the lines.
+- `cleanupTestData` truncates the three new tables. A fork that has its own copy needs the lines.
 
 ### Fixed
 
@@ -64,7 +79,10 @@ change its own code after merging.
   message to the `"message"` flash key, but nothing ever read it — `stateHelpers` reads `"state"`
   — so a non-admin was bounced to `/` with no explanation and the cookie was dropped unread on
   the next request. `home` now renders it, which fixes `requireAdmin` as well as the new guard.
-  If you were debugging that, it wasn't you.
+  If you were debugging that, it wasn't you. The payload is `FlashMessage` — `text` plus a
+  required `type` — because the same key carries "Admin access required" and "You've joined Acme",
+  and a default would have rendered one of them in the wrong style. `/login` reads it too, since
+  that is where invite acceptance sends an account that already has a password.
 - **Email bodies interpolated every field into HTML unescaped.** Harmless until now, since the
   only values were URLs the server built and env vars the operator set — but the invite is the
   first email carrying text a user typed, and an org name of `<a href="…">` would have rendered

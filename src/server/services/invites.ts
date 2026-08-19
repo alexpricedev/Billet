@@ -93,8 +93,10 @@ export const createInvite = async (
   }
 
   const alreadyMember = await db`
-    SELECT id FROM users
-    WHERE email = ${normalizedEmail} AND org_id = ${orgId}
+    SELECT m.id
+    FROM organization_members m
+    JOIN users u ON u.id = m.user_id
+    WHERE u.email = ${normalizedEmail} AND m.organization_id = ${orgId}
   `;
 
   if (alreadyMember.length > 0) {
@@ -264,7 +266,10 @@ export const acceptInvite = async (
 
   if (signedInUserId) {
     const signedIn = await db`
-      SELECT email, org_id FROM users WHERE id = ${signedInUserId}
+      SELECT u.email, m.organization_id
+      FROM users u
+      LEFT JOIN organization_members m ON m.user_id = u.id
+      WHERE u.id = ${signedInUserId}
     `;
 
     if (signedIn.length === 0) {
@@ -275,7 +280,7 @@ export const acceptInvite = async (
       return { success: false, error: "email-mismatch" };
     }
 
-    if (signedIn[0].org_id) {
+    if (signedIn[0].organization_id) {
       return { success: false, error: "already-in-org" };
     }
   }

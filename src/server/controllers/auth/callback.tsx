@@ -5,6 +5,7 @@ import {
   setSessionCookie,
 } from "../../services/sessions";
 import { redirect } from "../../utils/response";
+import { landingAfterAuth } from "./landing";
 
 export const callback = {
   async index(req: BunRequest): Promise<Response> {
@@ -26,7 +27,7 @@ export const callback = {
 
       return new Response("", {
         status: 303,
-        headers: { Location: "/" },
+        headers: { Location: await landingAfterAuth(result.user.id) },
       });
     } catch {
       return redirect("/login?error=Authentication failed. Please try again.");

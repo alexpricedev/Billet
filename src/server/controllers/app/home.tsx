@@ -3,7 +3,7 @@ import { getSessionContext } from "../../middleware/auth";
 import { createCsrfToken } from "../../services/csrf";
 import { setSessionCookie } from "../../services/sessions";
 import { Home } from "../../templates/home";
-import { getFlashCookie } from "../../utils/flash";
+import { type FlashMessage, getFlashCookie } from "../../utils/flash";
 import { render } from "../../utils/response";
 
 export const home = {
@@ -23,10 +23,14 @@ export const home = {
     // this key since it was written, but nothing ever read it, so the message
     // was dropped unread on the next request. stateHelpers only reads "state",
     // which is why this one is fetched directly.
-    const { text } = getFlashCookie<{ text?: string }>(req, "message");
+    const message = getFlashCookie<Partial<FlashMessage>>(req, "message");
 
     return render(
-      <Home user={ctx.user} csrfToken={csrfToken} message={text} />,
+      <Home
+        user={ctx.user}
+        csrfToken={csrfToken}
+        message={message.text ? (message as FlashMessage) : undefined}
+      />,
     );
   },
 };

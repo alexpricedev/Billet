@@ -25,11 +25,34 @@
   min-height: 32px;
 }
 
-.team-invite {
+/* Both single-column forms on this page. .form-field carries no bottom margin,
+   so without the gap the submit button sits flush against the input above it,
+   and without the cap a one-word team name gets a card-wide field. */
+.team-invite,
+.team-create {
   display: flex;
   flex-direction: column;
   gap: 12px;
   max-width: 420px;
+}
+
+/* The paragraph above the create form is part of the empty state, not the
+   form, so it gets its own separation rather than riding on the flex gap. */
+.team-create-intro {
+  margin-bottom: 20px;
+  max-width: 60ch;
+}
+
+/* /invites/accept is one sentence and one action, so it reads as a centred
+   block under the centred heading rather than as a left-aligned form. Inputs
+   and their labels stay left-aligned — a centred label floating above a
+   full-width field reads as decoration, not as the field's name. */
+.invite-form {
+  text-align: center;
+
+  .form-field {
+    text-align: left;
+  }
 }
 
 /* The remove confirmation, revealed by ?remove= and jumped to via

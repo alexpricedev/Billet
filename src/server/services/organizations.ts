@@ -40,7 +40,7 @@ export interface Member {
   id: string;
   email: string;
   org_role: OrgRole;
-  org_joined_at: Date;
+  joined_at: Date;
   email_verified_at: Date | null;
   created_at: Date;
 }
@@ -68,14 +68,14 @@ const toMember = (row: {
   id: string;
   email: string;
   org_role: OrgRole;
-  org_joined_at: string | Date;
+  joined_at: string | Date;
   email_verified_at: string | Date | null;
   created_at: string | Date;
 }): Member => ({
   id: row.id,
   email: row.email,
   org_role: row.org_role,
-  org_joined_at: new Date(row.org_joined_at),
+  joined_at: new Date(row.joined_at),
   email_verified_at: row.email_verified_at
     ? new Date(row.email_verified_at)
     : null,
@@ -108,10 +108,10 @@ export const getMembership = async (
   userId: string,
 ): Promise<Membership | null> => {
   const results = await db`
-    SELECT o.id, o.name, o.created_at, u.org_role, u.org_joined_at
-    FROM users u
-    JOIN organizations o ON o.id = u.org_id
-    WHERE u.id = ${userId}
+    SELECT o.id, o.name, o.created_at, m.org_role, m.joined_at
+    FROM organization_members m
+    JOIN organizations o ON o.id = m.organization_id
+    WHERE m.user_id = ${userId}
   `;
 
   if (results.length === 0) return null;
@@ -121,16 +121,18 @@ export const getMembership = async (
   return {
     org: toOrganization(row),
     role: row.org_role as OrgRole,
-    joinedAt: new Date(row.org_joined_at),
+    joinedAt: new Date(row.joined_at),
   };
 };
 
 export const listMembers = async (orgId: string): Promise<Member[]> => {
   const results = await db`
-    SELECT id, email, org_role, org_joined_at, email_verified_at, created_at
-    FROM users
-    WHERE org_id = ${orgId}
-    ORDER BY org_joined_at ASC
+    SELECT u.id, u.email, m.org_role, m.joined_at,
+           u.email_verified_at, u.created_at
+    FROM organization_members m
+    JOIN users u ON u.id = m.user_id
+    WHERE m.organization_id = ${orgId}
+    ORDER BY m.joined_at ASC
   `;
 
   return results.map(toMember);
@@ -139,8 +141,8 @@ export const listMembers = async (orgId: string): Promise<Member[]> => {
 export const countOwners = async (orgId: string): Promise<number> => {
   const [{ count }] = await db`
     SELECT count(*)::int AS count
-    FROM users
-    WHERE org_id = ${orgId} AND org_role = 'owner'
+    FROM organization_members
+    WHERE organization_id = ${orgId} AND org_role = 'owner'
   `;
 
   return count as number;
@@ -153,9 +155,12 @@ export type CreateOrgResult =
 /**
  * Create an org and make the caller its owner.
  *
- * The UPDATE guards on `org_id IS NULL` rather than reading first: someone who
- * submits the create form in one tab and accepts an invite in another must not
- * end up in both, and a check-then-write leaves exactly that window open.
+ * Both statements guard rather than read first: someone who submits the create
+ * form in one tab and accepts an invite in another must not end up in both, and
+ * a check-then-write leaves exactly that window open. The INSERT ... SELECT
+ * WHERE NOT EXISTS means the ordinary "already in an org" answer never creates
+ * an org row at all, and the ON CONFLICT below is the backstop for the narrow
+ * race between the two — the only path that has anything to clean up.
  */
 export const createOrganizationForUser = async (
   userId: string,
@@ -169,36 +174,32 @@ export const createOrganizationForUser = async (
 
   const created = await db`
     INSERT INTO organizations (id, name)
-    VALUES (${orgId}, ${name.trim()})
+    SELECT ${orgId}, ${name.trim()}
+    WHERE NOT EXISTS (
+      SELECT 1 FROM organization_members WHERE user_id = ${userId}
+    )
     RETURNING id, name, created_at
   `;
 
+  if (created.length === 0) {
+    return { success: false, error: "already-in-org" };
+  }
+
   const claimed = await db`
-    UPDATE users
-    SET org_id = ${orgId},
-        org_role = 'owner',
-        org_joined_at = CURRENT_TIMESTAMP
-    WHERE id = ${userId}
-      AND org_id IS NULL
+    INSERT INTO organization_members (organization_id, user_id, org_role)
+    VALUES (${orgId}, ${userId}, 'owner')
+    ON CONFLICT (user_id) DO NOTHING
     RETURNING id
   `;
 
   if (claimed.length === 0) {
-    // Lost the race, or the caller already had an org. The org row we just
-    // created has nobody in it, so it would otherwise linger forever.
+    // Lost the race. The org row we just created has nobody in it, so it would
+    // otherwise linger forever.
     await db`DELETE FROM organizations WHERE id = ${orgId}`;
     return { success: false, error: "already-in-org" };
   }
 
   return { success: true, organization: toOrganization(created[0]) };
-};
-
-export const renameOrg = async (orgId: string, name: string): Promise<void> => {
-  await db`
-    UPDATE organizations
-    SET name = ${name.trim()}
-    WHERE id = ${orgId}
-  `;
 };
 
 export type RoleChangeResult =
@@ -214,8 +215,8 @@ export type RoleChangeResult =
  * other in parallel would both pass a check-then-write and leave the org with
  * nobody who can administer it.
  *
- * Scoped by org_id as well as id: the caller has been proven an admin of *an*
- * org, not of the org this row belongs to.
+ * Scoped by organization_id as well as user_id: the caller has been proven an
+ * admin of *an* org, not of the org this row belongs to.
  */
 export const updateMemberRole = async (
   orgId: string,
@@ -223,18 +224,18 @@ export const updateMemberRole = async (
   role: OrgRole,
 ): Promise<RoleChangeResult> => {
   const updated = await db`
-    UPDATE users
+    UPDATE organization_members
     SET org_role = ${role}
-    WHERE id = ${targetUserId}
-      AND org_id = ${orgId}
+    WHERE user_id = ${targetUserId}
+      AND organization_id = ${orgId}
       AND (
         org_role <> 'owner'
         OR ${role} = 'owner'
         OR EXISTS (
-          SELECT 1 FROM users
-          WHERE org_id = ${orgId}
+          SELECT 1 FROM organization_members
+          WHERE organization_id = ${orgId}
             AND org_role = 'owner'
-            AND id <> ${targetUserId}
+            AND user_id <> ${targetUserId}
         )
       )
     RETURNING id
@@ -252,29 +253,25 @@ export type RemoveMemberResult =
 /**
  * Remove someone from the org.
  *
- * All three columns are nulled together — `users_org_all_or_nothing` rejects a
- * partial update, so a half-removed member is impossible rather than merely
- * discouraged. The user row itself is untouched: this is identity management,
- * not account deletion.
+ * Deleting the membership row is the whole operation, so a half-removed member
+ * is unrepresentable rather than merely discouraged. The `users` row is not
+ * touched at all: this is identity management, not account deletion.
  */
 export const removeMember = async (
   orgId: string,
   targetUserId: string,
 ): Promise<RemoveMemberResult> => {
   const removed = await db`
-    UPDATE users
-    SET org_id = NULL,
-        org_role = NULL,
-        org_joined_at = NULL
-    WHERE id = ${targetUserId}
-      AND org_id = ${orgId}
+    DELETE FROM organization_members
+    WHERE user_id = ${targetUserId}
+      AND organization_id = ${orgId}
       AND (
         org_role <> 'owner'
         OR EXISTS (
-          SELECT 1 FROM users
-          WHERE org_id = ${orgId}
+          SELECT 1 FROM organization_members
+          WHERE organization_id = ${orgId}
             AND org_role = 'owner'
-            AND id <> ${targetUserId}
+            AND user_id <> ${targetUserId}
         )
       )
     RETURNING id
@@ -286,7 +283,7 @@ export const removeMember = async (
 };
 
 /**
- * Why a guarded UPDATE matched nothing — for the message only, never for the
+ * Why a guarded statement matched nothing — for the message only, never for the
  * decision. The decision was already made, atomically, by the statement itself.
  */
 const whyRefused = async (
@@ -294,8 +291,8 @@ const whyRefused = async (
   targetUserId: string,
 ): Promise<"not-a-member" | "last-owner"> => {
   const existing = await db`
-    SELECT id FROM users
-    WHERE id = ${targetUserId} AND org_id = ${orgId}
+    SELECT id FROM organization_members
+    WHERE user_id = ${targetUserId} AND organization_id = ${orgId}
   `;
 
   return existing.length > 0 ? "last-owner" : "not-a-member";
@@ -305,8 +302,9 @@ const whyRefused = async (
  * Put a user into an org. Used by invite acceptance, which has already proven
  * the invite is live and bound to this address.
  *
- * Guarded on `org_id IS NULL` for the same reason as createOrganizationForUser:
- * a second org must never silently replace the first.
+ * The UNIQUE on user_id is the guard, for the same reason as
+ * createOrganizationForUser: a second org must never silently replace the
+ * first, and DO NOTHING makes that the answer rather than an exception.
  */
 export const joinOrganization = async (
   userId: string,
@@ -314,12 +312,9 @@ export const joinOrganization = async (
   role: OrgRole,
 ): Promise<boolean> => {
   const joined = await db`
-    UPDATE users
-    SET org_id = ${orgId},
-        org_role = ${role},
-        org_joined_at = CURRENT_TIMESTAMP
-    WHERE id = ${userId}
-      AND org_id IS NULL
+    INSERT INTO organization_members (organization_id, user_id, org_role)
+    VALUES (${orgId}, ${userId}, ${role})
+    ON CONFLICT (user_id) DO NOTHING
     RETURNING id
   `;
 

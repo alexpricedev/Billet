@@ -71,7 +71,7 @@ export const requireOrgRole = async (
 };
 
 const denied = (req: BunRequest, text: string): Response => {
-  setFlashCookie(req, "message", { text });
+  setFlashCookie(req, "message", { text, type: "error" });
 
   return new Response("", { status: 303, headers: { Location: "/" } });
 };

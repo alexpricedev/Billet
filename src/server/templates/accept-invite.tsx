@@ -83,7 +83,7 @@ export const AcceptInvite = ({
           </span>
         </Flash>
         {logoutCsrfToken && (
-          <form method="POST" action="/auth/logout">
+          <form className="invite-form" method="POST" action="/auth/logout">
             <CsrfField token={logoutCsrfToken} />
             <button type="submit">Sign out</button>
           </form>
@@ -92,7 +92,7 @@ export const AcceptInvite = ({
     )}
 
     {preview && !state?.state && (
-      <form method="POST" action="/invites/accept">
+      <form className="invite-form" method="POST" action="/invites/accept">
         {/* The token travels in the form rather than the action URL so it stays
             out of the Referer header when the browser follows a link from this
             page. */}
@@ -126,7 +126,7 @@ export const AcceptInvite = ({
     )}
 
     {preview && state?.state === "validation-error" && (
-      <form method="POST" action="/invites/accept">
+      <form className="invite-form" method="POST" action="/invites/accept">
         <Flash type="error">
           <span>{state.error}</span>
         </Flash>

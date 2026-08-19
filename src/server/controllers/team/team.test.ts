@@ -24,7 +24,7 @@ import {
   type OrgRole,
 } from "../../services/organizations";
 import { createAuthenticatedSession } from "../../services/sessions";
-import { createBunRequest } from "../../test-utils/bun-request";
+import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { team } from "./dashboard";
 import { teamInvites } from "./invites";
 import { teamMembers } from "./members";
@@ -63,7 +63,7 @@ const withOrg = async (
   if (!created.success) throw new Error("seed failed");
 
   if (role !== "owner") {
-    await db`UPDATE users SET org_role = ${role} WHERE id = ${actor.user.id}`;
+    await db`UPDATE organization_members SET org_role = ${role} WHERE user_id = ${actor.user.id}`;
   }
 
   return { ...actor, org: created.organization };
@@ -375,21 +375,43 @@ describe("Team members", () => {
     expect(await getMembership(owner.user.id)).not.toBeNull();
   });
 
-  test("the last owner cannot demote themselves", async () => {
+  // Nobody edits their own role, whatever it is. The last-owner invariant is a
+  // separate rule, enforced inside the UPDATE and covered in
+  // organizations.test.ts — this is the one that stops the trapdoor.
+  test("an owner cannot demote themselves", async () => {
     const owner = await withOrg();
 
     const path = `/team/members/${owner.user.id}/role`;
-    await teamMembers.updateRole(
-      await post(
-        path,
-        owner.cookie,
-        owner.sessionId,
-        { org_role: "member" },
-        { id: owner.user.id },
-      ),
+    const request = await post(
+      path,
+      owner.cookie,
+      owner.sessionId,
+      { org_role: "member" },
+      { id: owner.user.id },
     );
+    await teamMembers.updateRole(request);
 
+    expect(findSetCookie(request, "flash_state")).toContain("self-role-change");
     expect((await getMembership(owner.user.id))?.role).toBe("owner");
+  });
+
+  test("an admin cannot demote themselves out of the page", async () => {
+    const owner = await withOrg();
+    const admin = await addMember(owner.org.id, "admin@example.com", "admin");
+    const sessionId = await createAuthenticatedSession(admin.id);
+
+    const path = `/team/members/${admin.id}/role`;
+    const request = await post(
+      path,
+      `session_id=${sessionId}`,
+      sessionId,
+      { org_role: "member" },
+      { id: admin.id },
+    );
+    await teamMembers.updateRole(request);
+
+    expect(findSetCookie(request, "flash_state")).toContain("self-role-change");
+    expect((await getMembership(admin.id))?.role).toBe("admin");
   });
 
   test("a member of another org is inert, not a mutation", async () => {
@@ -414,27 +436,26 @@ describe("Team members", () => {
     expect((await getMembership(theirs.id))?.role).toBe("member");
   });
 
-  test("removing yourself lands on / rather than bouncing off the guard", async () => {
+  test("removing yourself is refused, not a way to leave the team", async () => {
     const owner = await withOrg();
     const admin = await addMember(owner.org.id, "admin@example.com", "admin");
     const sessionId = await createAuthenticatedSession(admin.id);
 
     const path = `/team/members/${admin.id}/remove`;
-    const response = await teamMembers.destroy(
-      await post(
-        path,
-        `session_id=${sessionId}`,
-        sessionId,
-        {},
-        {
-          id: admin.id,
-        },
-      ),
+    const request = await post(
+      path,
+      `session_id=${sessionId}`,
+      sessionId,
+      {},
+      { id: admin.id },
     );
+    const response = await teamMembers.destroy(request);
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("/");
-    expect(await getMembership(admin.id)).toBeNull();
+    expect(response.headers.get("location")).toBe("/team");
+    // The hidden button is cosmetic; this is the server refusing.
+    expect(findSetCookie(request, "flash_state")).toContain("self-removal");
+    expect((await getMembership(admin.id))?.role).toBe("admin");
   });
 
   test("a role change without a CSRF token is refused", async () => {

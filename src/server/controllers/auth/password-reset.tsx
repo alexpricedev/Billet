@@ -26,6 +26,7 @@ import { render404 } from "../../utils/errors";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { guardAuthForm, readEmail, readPassword } from "./form-guard";
+import { landingAfterAuth } from "./landing";
 
 const forgotFlash = stateHelpers<ForgotPasswordState>();
 const resetFlash = stateHelpers<ResetPasswordState>();
@@ -222,7 +223,7 @@ export const passwordReset = {
     );
     setSessionCookie(req, sessionId);
 
-    return redirect("/");
+    return redirect(await landingAfterAuth(result.user.id));
   },
 };
 

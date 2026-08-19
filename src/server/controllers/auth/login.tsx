@@ -17,9 +17,11 @@ import {
 import type { LoginState } from "../../templates/login";
 import { Login } from "../../templates/login";
 import { appUrl } from "../../utils/app-url";
+import { type FlashMessage, getFlashCookie } from "../../utils/flash";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { guardAuthForm, readEmail, readPassword } from "./form-guard";
+import { landingAfterAuth } from "./landing";
 
 const { getFlash, setFlash } = stateHelpers<LoginState>();
 
@@ -31,8 +33,19 @@ export const login = {
     const state = getFlash(req);
     const challenge = captchaEnabled() ? issueChallenge() : null;
 
+    // A flow that finishes by sending someone here to sign in leaves its line
+    // on the "message" key — invite acceptance in password mode is the one
+    // that does. Read here as well as on the homepage, or the cookie survives
+    // unread and surfaces on whichever page happens to read it next.
+    const message = getFlashCookie<Partial<FlashMessage>>(req, "message");
+
     return render(
-      <Login mode={authMode()} state={state} challenge={challenge} />,
+      <Login
+        mode={authMode()}
+        state={state}
+        challenge={challenge}
+        message={message.text ? (message as FlashMessage) : undefined}
+      />,
     );
   },
 
@@ -156,7 +169,7 @@ const signInWithPasswordAndRedirect = async (
     );
     setSessionCookie(req, sessionId);
 
-    return redirect("/");
+    return redirect(await landingAfterAuth(result.user.id));
   } catch {
     setFlash(req, {
       state: "validation-error",

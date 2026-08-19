@@ -25,6 +25,8 @@ export interface TeamState {
     | "member-gone"
     | "owner-only"
     | "last-owner"
+    | "self-removal"
+    | "self-role-change"
     | "already-member"
     | "already-in-org"
     | "too-many-invites"
@@ -192,11 +194,11 @@ export const Team = (props: TeamProps) => (
     ) : (
       <section className="card">
         <h2>Create a team</h2>
-        <p>
+        <p className="team-create-intro">
           You're not in a team yet. Create one and you'll be its owner, able to
           invite others and manage what they can do.
         </p>
-        <form method="post" action="/team">
+        <form method="post" action="/team" className="team-create">
           <CsrfField token={props.createCsrfToken} />
           <FormField label="Team name" id="team-name">
             <input
@@ -241,9 +243,15 @@ const MembersTable = ({
           const isLastOwner = member.org_role === "owner" && ownerCount === 1;
           // Whether the *server* would allow it. The controls below are hidden
           // to match, but hiding them is cosmetic — the server decides.
+          //
+          // Never your own row: the only self-change the roles permit is a
+          // demotion, which drops you below the threshold /team requires and
+          // leaves you unable to undo it. Same reasoning as removal.
           const touchesOwnership = member.org_role === "owner";
           const mayChange =
-            !isLastOwner && (!touchesOwnership || membership.role === "owner");
+            !isSelf &&
+            !isLastOwner &&
+            (!touchesOwnership || membership.role === "owner");
 
           return (
             <tr key={member.id}>
@@ -285,7 +293,7 @@ const MembersTable = ({
                   roleBadge(member.org_role)
                 )}
               </td>
-              <td>{formatDate(member.org_joined_at)}</td>
+              <td>{formatDate(member.joined_at)}</td>
               <td>
                 {isSelf || isLastOwner || !mayChange ? null : (
                   <a
@@ -329,6 +337,10 @@ const TeamFlash = ({ state }: { state?: TeamState }) => {
     "owner-only": "Only an owner can grant or change ownership.",
     "last-owner":
       "A team needs at least one owner. Make someone else an owner first.",
+    "self-removal":
+      "You can't remove yourself from the team. Ask another owner or admin.",
+    "self-role-change":
+      "You can't change your own role. Ask another owner or admin.",
     "already-member": `${state.email} is already in your team.`,
     "already-in-org": "You're already in a team.",
     "too-many-invites":
