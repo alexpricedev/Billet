@@ -35,6 +35,48 @@ export interface PasswordResetEmailData {
   expiryMinutes: number;
 }
 
+export interface OrgInviteEmailData {
+  to: EmailAddress;
+  organizationName: string;
+  invitedByEmail: string;
+  acceptUrl: string;
+  expiryDays: number;
+}
+
+/**
+ * Escape a value on its way into the HTML body.
+ *
+ * Applied by renderActionHtml to every field rather than by each caller. That
+ * was not needed while the only interpolated values were URLs the server built
+ * and env vars the operator set — but the org invite is the first email
+ * carrying text a *user* typed, and an org name of `<a href="…">` would
+ * otherwise render as live markup in every invitee's inbox. Doing it at the
+ * render boundary means no future email can reintroduce the hole by forgetting.
+ *
+ * Only the HTML body needs it: the plaintext part is not markup, so it keeps
+ * the raw text and stays readable.
+ */
+export const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    // Double quotes only. Every interpolation below is either element text or
+    // a double-quoted attribute value, and an apostrophe can't escape either —
+    // encoding it would only turn every "didn't" in the copy into "didn&#39;t"
+    // for anyone reading the message source.
+    .replace(/"/g, "&quot;");
+
+/**
+ * Strip anything that would break out of a Subject header.
+ *
+ * A newline in a subject is header injection at the provider boundary, and the
+ * subject is the one field that isn't HTML — so it needs this rather than
+ * escapeHtml.
+ */
+const singleLine = (value: string): string =>
+  value.replace(/[\r\n]+/g, " ").trim();
+
 // Every email here is a single call to action on a link, so they share one
 // inline-styled shell. Inline styles rather than a <style> block because most
 // clients strip the latter.
@@ -47,14 +89,18 @@ interface ActionEmail {
   footer: string;
 }
 
-const renderActionHtml = ({
-  title,
-  heading,
-  intro,
-  buttonLabel,
-  url,
-  footer,
-}: ActionEmail): string => `
+const renderActionHtml = (content: ActionEmail): string => {
+  // Every field is escaped here, at the one boundary where they become markup.
+  const { title, heading, intro, buttonLabel, url, footer } = {
+    title: escapeHtml(content.title),
+    heading: escapeHtml(content.heading),
+    intro: escapeHtml(content.intro),
+    buttonLabel: escapeHtml(content.buttonLabel),
+    url: escapeHtml(content.url),
+    footer: escapeHtml(content.footer),
+  };
+
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -93,6 +139,7 @@ const renderActionHtml = ({
   </div>
 </body>
 </html>`;
+};
 
 const renderActionText = ({ title, intro, url, footer }: ActionEmail): string =>
   `${title}
@@ -143,6 +190,28 @@ export class EmailService {
       footer:
         "If you didn't request a password reset, you can safely ignore this email — your password will not change.",
     });
+  }
+
+  /**
+   * The one email carrying user-supplied text, so the org name and the
+   * inviter's address are escaped on the way in — see escapeHtml above.
+   */
+  async sendOrgInvite(data: OrgInviteEmailData): Promise<void> {
+    const appName = process.env.APP_NAME as string;
+
+    await this.deliver(
+      singleLine(`You've been invited to join ${data.organizationName}`),
+      data.to,
+      {
+        title: `Join ${data.organizationName} on ${appName}`,
+        heading: "You've been invited",
+        intro: `${data.invitedByEmail} invited you to join ${data.organizationName} on ${appName}. This invitation expires in ${data.expiryDays} days.`,
+        buttonLabel: "Accept invitation",
+        url: data.acceptUrl,
+        footer:
+          "If you weren't expecting this invitation, you can safely ignore this email.",
+      },
+    );
   }
 
   private async deliver(

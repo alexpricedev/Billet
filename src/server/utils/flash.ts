@@ -10,6 +10,20 @@ const FLASH_COOKIE_MAX_AGE = 300; // 5 minutes
 // see fitFlashState in ./state.ts for trimming state down before it gets here.
 const FLASH_COOKIE_WARN_BYTES = 3500;
 
+/**
+ * The cross-page "message" flash: a line left for whichever page the visitor
+ * lands on next, written by guards that turn someone away and by flows that
+ * finish somewhere other than where they started.
+ *
+ * `type` is not optional. It picks the Flash variant, and a default would have
+ * to be one or the other — which is how "You've joined Acme" ends up rendered
+ * in the red error style.
+ */
+export interface FlashMessage {
+  text: string;
+  type: "success" | "error" | "warning";
+}
+
 interface FlashCookieOptions {
   httpOnly: boolean;
   secure: boolean;

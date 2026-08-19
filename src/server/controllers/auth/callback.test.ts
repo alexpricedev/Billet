@@ -15,6 +15,7 @@ mock.module("../../services/database", () => ({
 
 import { createMagicLink } from "../../services/auth";
 import { db } from "../../services/database";
+import { createOrganizationForUser } from "../../services/organizations";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { callback } from "./callback";
 
@@ -197,4 +198,51 @@ describe("Callback Controller", () => {
       );
     });
   });
+
+  // /team is in no navigation, so a signed-in user with no team has no link to
+  // the create-a-team page. Landing them there is the only way they find it.
+  describe("landing after sign-in with teams enabled", () => {
+    const ORIGINAL_TEAMS = process.env.TEAMS_ENABLED;
+
+    beforeEach(() => {
+      process.env.TEAMS_ENABLED = "true";
+    });
+
+    afterAll(() => {
+      if (ORIGINAL_TEAMS === undefined) delete process.env.TEAMS_ENABLED;
+      else process.env.TEAMS_ENABLED = ORIGINAL_TEAMS;
+    });
+
+    const signIn = async (email: string) => {
+      const { user, rawToken } = await createMagicLink(email);
+      const response = await callback.index(
+        createBunRequest(
+          `http://localhost:3000/auth/callback?token=${rawToken}`,
+        ),
+      );
+
+      return { user, location: response.headers.get("location") };
+    };
+
+    test("sends a user with no team to /team", async () => {
+      const { location } = await signIn("teamless@example.com");
+
+      expect(location).toBe("/team");
+    });
+
+    test("sends a user who is already in a team home", async () => {
+      const first = await createMagicLink("member@example.com");
+      const created = await createOrganizationForUser(first.user.id, "Acme");
+      if (!created.success) throw new Error("seed failed");
+
+      const { location } = await signIn("member@example.com");
+
+      expect(location).toBe("/");
+    });
+  });
 });
+
+// The flag-off case is covered by every other test in this file: run-tests.ts
+// pins TEAMS_ENABLED=false, and they all assert "/". That matters more than it
+// looks — /team 404s with teams off, so a redirect there would break sign-in
+// for every fork that never turned the feature on.

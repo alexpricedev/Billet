@@ -5,6 +5,7 @@ import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
 import type { AuthMode } from "../services/auth-mode";
 import type { CaptchaChallenge } from "../services/captcha";
+import type { FlashMessage } from "../utils/flash";
 
 export interface LoginState {
   // "no-password" is a failed sign-in against an account carried over from
@@ -22,9 +23,12 @@ export interface LoginProps {
   mode: AuthMode;
   state?: LoginState;
   challenge?: CaptchaChallenge | null;
+  // The cross-page "message" flash, not this page's own state: something
+  // finished elsewhere and sent them here to sign in.
+  message?: FlashMessage;
 }
 
-export const Login = ({ mode, state, challenge }: LoginProps) => {
+export const Login = ({ mode, state, challenge, message }: LoginProps) => {
   const password = mode === "password";
 
   return (
@@ -50,6 +54,16 @@ export const Login = ({ mode, state, challenge }: LoginProps) => {
         </>
       }
     >
+      {/* Left by a flow that ended somewhere else and sent them here to sign
+          in — accepting an invitation on an account that already has a
+          password. Rendered above the form, since it explains why they're
+          looking at it. */}
+      {message && (
+        <Flash type={message.type}>
+          <span>{message.text}</span>
+        </Flash>
+      )}
+
       {state?.state === "email-sent" ? (
         <Flash type="success">
           <p>Check your email!</p>

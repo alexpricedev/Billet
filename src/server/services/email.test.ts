@@ -162,6 +162,65 @@ describe("Email Service", () => {
       expect(message.text).toContain("your password will not change");
     });
 
+    test("sends an org invite naming the team and the inviter", async () => {
+      await emailService.sendOrgInvite({
+        to: { email: "invitee@example.com" },
+        organizationName: "Acme",
+        invitedByEmail: "owner@example.com",
+        acceptUrl: "https://example.com/invites/accept?token=inv789",
+        expiryDays: 7,
+      });
+
+      const message = mockProvider.sentMessages[0];
+
+      expect(message.subject).toBe("You've been invited to join Acme");
+      expect(message.to.email).toBe("invitee@example.com");
+      expect(message.html).toContain("Acme");
+      expect(message.html).toContain("owner@example.com");
+      expect(message.html).toContain(
+        "https://example.com/invites/accept?token=inv789",
+      );
+      expect(message.html).toContain("7 days");
+      expect(message.text).toContain(
+        "https://example.com/invites/accept?token=inv789",
+      );
+      expect(message.text).toContain("7 days");
+    });
+
+    // The invite is the first email carrying text a *user* typed, which is what
+    // makes renderActionHtml's interpolation exploitable for the first time.
+    test("escapes a team name that tries to smuggle markup into the inbox", async () => {
+      await emailService.sendOrgInvite({
+        to: { email: "invitee@example.com" },
+        organizationName: '<a href="https://evil.test">Click me</a>',
+        invitedByEmail: "owner@example.com",
+        acceptUrl: "https://example.com/invites/accept?token=x",
+        expiryDays: 7,
+      });
+
+      const message = mockProvider.sentMessages[0];
+
+      expect(message.html).not.toContain('<a href="https://evil.test">');
+      expect(message.html).toContain(
+        "&lt;a href=&quot;https://evil.test&quot;",
+      );
+    });
+
+    test("keeps a newline in the team name out of the subject header", async () => {
+      await emailService.sendOrgInvite({
+        to: { email: "invitee@example.com" },
+        organizationName: "Acme\r\nBcc: victim@example.com",
+        invitedByEmail: "owner@example.com",
+        acceptUrl: "https://example.com/invites/accept?token=x",
+        expiryDays: 7,
+      });
+
+      const message = mockProvider.sentMessages[0];
+
+      expect(message.subject).not.toContain("\n");
+      expect(message.subject).not.toContain("\r");
+    });
+
     test("threads every auth email separately with its own X-Entity-Ref-ID", async () => {
       await emailService.sendVerifyEmail({
         to: { email: "same@example.com" },

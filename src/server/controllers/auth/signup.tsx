@@ -21,6 +21,7 @@ import { appUrl } from "../../utils/app-url";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { guardAuthForm, readEmail, readPassword } from "./form-guard";
+import { landingAfterAuth } from "./landing";
 
 const { getFlash, setFlash } = stateHelpers<SignupState>();
 
@@ -171,7 +172,7 @@ const createPasswordAccount = async (
       log.error("signup", `failed to send verification email: ${error}`);
     }
 
-    return redirect("/");
+    return redirect(await landingAfterAuth(result.user.id));
   } catch {
     setFlash(req, {
       state: "validation-error",

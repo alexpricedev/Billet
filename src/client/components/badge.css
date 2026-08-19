@@ -16,3 +16,13 @@
   background: var(--color-surface-hover);
   color: var(--color-text-quaternary);
 }
+
+.badge-owner {
+  background: rgba(234, 179, 8, 0.14);
+  color: #a16207;
+}
+
+.badge-member {
+  background: var(--color-surface-hover);
+  color: var(--color-text-quaternary);
+}

@@ -5,6 +5,7 @@ import { rateLimit } from "../../middleware/rate-limit";
 import { authMode, passwordAuthEnabled } from "../../services/auth-mode";
 import { createCsrfToken } from "../../services/csrf";
 import { log } from "../../services/logger";
+import { atLeast, getMembership } from "../../services/organizations";
 import {
   type ChangePasswordResult,
   changePassword,
@@ -12,6 +13,7 @@ import {
   setInitialPassword,
   userHasPassword,
 } from "../../services/passwords";
+import { teamsEnabled } from "../../services/teams-mode";
 import type { AccountState } from "../../templates/account";
 import { Account } from "../../templates/account";
 import { render404 } from "../../utils/errors";
@@ -55,11 +57,23 @@ export const account = {
       ? await userHasPassword(ctx.user.id)
       : false;
 
+    // /team is not in the nav — neither is /admin — so this page is where
+    // someone finds their team. One query, and only when the flag is on.
+    const membership = teamsEnabled() ? await getMembership(ctx.user.id) : null;
+
     return render(
       <Account
         mode={authMode()}
         user={ctx.user}
         hasPassword={hasPassword}
+        team={
+          membership
+            ? {
+                name: membership.org.name,
+                canManage: atLeast(membership.role, "admin"),
+              }
+            : null
+        }
         state={getFlash(req)}
         csrfToken={csrfToken}
         resendCsrfToken={resendCsrfToken}

@@ -21,7 +21,10 @@ export const requireAdmin = async (req: BunRequest): Promise<AdminResult> => {
   }
 
   if (ctx.user?.role !== "admin") {
-    setFlashCookie(req, "message", { text: "Admin access required" });
+    setFlashCookie(req, "message", {
+      text: "Admin access required",
+      type: "error",
+    });
     return {
       authorized: false,
       response: new Response("", {

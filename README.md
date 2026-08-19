@@ -69,6 +69,7 @@ offering both at once would mean every account has two ways in, and the weaker o
 - **Session management** with 30-day sessions, automatic renewal, and secure cookie handling (HttpOnly, Secure, SameSite)
 - **Guest sessions** that auto-create for unauthenticated visitors — useful for carts, preferences, or any state you want before login
 - **Admin middleware** with role-based route protection and a dedicated `/admin` route namespace
+- **Org-level user management** behind `TEAMS_ENABLED` (off by default) — a `/team` page to invite people by email, see the member list, change org roles, and remove people. `organization_members.org_role` is a separate axis from `users.role`, so an org owner is not a platform admin; migration `008` adds three tables and alters none, so a fork that won't use it can drop it without touching account data
 - **Pluggable email providers** — ships with a console provider for development; add Resend or any custom provider via a simple interface
 
 ### Security
@@ -240,11 +241,12 @@ src/
 │   ├── controllers/            # Route handlers
 │   │   ├── app/                # View controllers — return HTML
 │   │   ├── api/                # API controllers — return JSON
-│   │   └── auth/               # Auth controllers — login/signup/logout/account/reset/verify
+│   │   ├── auth/               # Auth controllers — login/signup/logout/account/reset/verify
+│   │   └── team/               # Team controllers (TEAMS_ENABLED) — dashboard/invites/members/accept
 │   ├── templates/              # Full-page JSX templates
 │   ├── components/             # Reusable server JSX components
 │   ├── services/               # Business logic & data access
-│   ├── middleware/             # Auth, CSRF, rate limiting, admin
+│   ├── middleware/             # Auth, CSRF, rate limiting, admin, org roles
 │   ├── utils/                  # Response helpers, crypto, env validation
 │   └── database/
 │       ├── cli.ts / migrate.ts # Migration tooling
@@ -306,6 +308,7 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 | `AUTH_MODE` | No | `magic-link` (default) or `password`. Mutually exclusive; any other value stops the server at boot |
 | `CAPTCHA_ENABLED` | No | Set to `true` to add a proof-of-work captcha to the login form. Off by default; `/login` is unchanged when unset |
 | `CAPTCHA_DIFFICULTY` | No | Tunes the captcha's client-side work (search-space size). Defaults to `100000` (~sub-second for a real browser) |
+| `TEAMS_ENABLED` | No | Set to `true` for org-level user management — invite by email, member list, org roles. Off by default; `/team` and `/invites/accept` 404 when unset. Any value other than `true`/`false` stops the server at boot |
 
 > **Generating `CRYPTO_PEPPER`:** This is a secret key used to secure session tokens. Run `bun run generate:pepper` to get a value. Use a different value for each environment (development, production, etc).
 
@@ -316,6 +319,8 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 > **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
 
 > **Auth mode:** Leave `AUTH_MODE` unset for magic-link auth. Set `AUTH_MODE=password` for email-and-password instead — that enables `/forgot-password`, `/reset-password`, and the change-password form on `/account`, which all 404 in magic-link mode. Switching an existing app to `password` leaves current users with no password: `/account` offers those accounts a set-password form, and `/forgot-password` covers anyone already signed out — a failed sign-in tells them so and links them there, rather than leaving them to guess at "Invalid email or password" forever. `/signup` and `/account` exist in both modes.
+
+> **Team management:** Leave `TEAMS_ENABLED` unset and nothing changes — `/team` and `/invites/accept` 404, no org is ever created, and the three tables migration `008` adds stay empty. Set it to `true` and a signed-in user can create a team, invite people by email, change their org role, and remove them. Three things are worth knowing before you turn it on. **The org role is a separate axis from `users.role`** — that one still means *platform operator* and still gates `/admin`, so making someone an org owner does not give them your admin console. **One user belongs to one org**; there is no switcher, and accepting a second invite is refused. And **core does not scope your own data by org** — the `project` table is untouched, deliberately; `requireOrgRole` hands you the resolved membership so you can scope your own queries. See [runbooks/TEAMS.md](runbooks/TEAMS.md) for the authorisation model, the invite lifecycle, and what is deliberately not shipped. Two behaviours are worth expecting: `/team` is in no navigation, so **signing in without a membership lands on `/team`** instead of `/` (and `/account` links to it once you're in a team), and **neither self-action is yours to take** — you can't change your own org role or remove yourself, because the only self-change the roles allow is a demotion out of the page you'd need to undo it. Turning the flag on over an existing database leaves every current user with no team, so they'll see the "create a team" page first.
 
 > **Signup spam:** The login form always carries a honeypot and per-IP rate limit. If bots still create accounts with random emails, set `CAPTCHA_ENABLED=true` to add a first-party proof-of-work captcha — it signs challenges with your existing `CRYPTO_PEPPER`, so there's no third party, account, or extra secret to configure.
 
