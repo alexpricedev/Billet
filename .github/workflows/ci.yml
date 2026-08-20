@@ -36,24 +36,33 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: san-jose-test
+          POSTGRES_DB: ci-test
+          # The cluster lives in RAM. Every test truncates the tables, and on a
+          # runner's disk each of those waits on an fsync. Test data is
+          # disposable by definition, so durability buys nothing but wall clock.
+          PGDATA: /dev/shm/pgdata
         ports:
           - 5432:5432
         options: >-
+          --shm-size=1g
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/san-jose-test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ci-test
       CRYPTO_PEPPER: test-pepper-do-not-use-in-production
       PORT: "3000"
-      APP_NAME: San Jose
+      APP_NAME: CI Test
       APP_URL: http://localhost:3000
       EMAIL_PROVIDER: console
       FROM_EMAIL: test@example.com
       FROM_NAME: Test
       NODE_ENV: test
+      # The per-file cap in run-tests.ts is a hang detector, not a speed limit.
+      # A runner is slower than a laptop even with the database in RAM, and
+      # killing a file that needed another few seconds loses every test in it.
+      TEST_FILE_TIMEOUT_MS: "180000"
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2

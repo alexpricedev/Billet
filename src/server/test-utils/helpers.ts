@@ -7,17 +7,20 @@ import type { SQL } from "bun";
  * @param db - The database connection to use (should be the mocked testDb from each test file)
  */
 export const cleanupTestData = async (db: SQL): Promise<void> => {
-  await db`TRUNCATE TABLE organization_invites CASCADE`;
-  await db`TRUNCATE TABLE organization_members CASCADE`;
-  await db`TRUNCATE TABLE user_tokens CASCADE`;
-  await db`TRUNCATE TABLE sessions CASCADE`;
-  await db`TRUNCATE TABLE users CASCADE`;
-  await db`TRUNCATE TABLE organizations CASCADE`;
-  await db`TRUNCATE TABLE project CASCADE`;
+  /* One statement rather than seven, because every test in the suite calls this
+     and the round trips add up — on CI each one waits on an fsync. Truncating
+     the tables together also removes the ordering problem: a single TRUNCATE
+     checks its foreign keys once, at the end.
 
-  try {
-    await db`ALTER SEQUENCE project_id_seq RESTART WITH 1`;
-  } catch {}
+     RESTART IDENTITY resets `project_id_seq`, which the project tests assert
+     against by literal id. */
+  await db`
+    TRUNCATE TABLE
+      organization_invites, organization_members, organizations,
+      user_tokens, sessions, users,
+      project
+    RESTART IDENTITY CASCADE
+  `;
 };
 
 /**
