@@ -62,11 +62,7 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
         </span>
       </a>
       <p className="hero-tag">Full-stack TypeScript starter</p>
-      <h1>
-        Put your agents
-        <br />
-        on rails
-      </h1>
+      <h1>Put your agents on&nbsp;rails</h1>
       <p className="hero-sub">
         Auth, security, migrations and 300+ tests, already laid down.
         Server-rendered JSX on Bun and PostgreSQL — one codebase, one test
