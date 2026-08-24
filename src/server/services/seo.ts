@@ -5,7 +5,7 @@
 export const SITE_URL = "https://billet.alexprice.dev";
 export const SITE_NAME = "Billet";
 export const SITE_DESCRIPTION =
-  "Full-stack TypeScript starter — designed to be built on by AI coding agents";
+  "Guardrails for your AI coding agents — a full-stack TypeScript starter on Bun";
 
 // Public, indexable routes included in the sitemap. Private or noindex routes
 // (/login, /admin), API endpoints, and auth callbacks are intentionally omitted.
@@ -56,9 +56,9 @@ const ROBOTS_DISALLOW = [
 // declares downstream-use consent explicitly for crawlers that honour it.
 const CONTENT_SIGNAL = "Content-Signal: search=yes, ai-input=yes, ai-train=yes";
 
-// Builds the /robots.txt body. Billet is designed to be built on by AI coding
-// agents, so the posture is deliberately open: search engines and the major AI
-// crawlers are all allowed, with only private surfaces disallowed.
+// Builds the /robots.txt body. Billet is built for AI coding agents, so the
+// posture is deliberately open: search engines and the major AI crawlers are
+// all allowed, with only private surfaces disallowed.
 export const buildRobotsTxt = (): string => {
   const group = (agents: readonly string[]): string =>
     [
@@ -69,8 +69,8 @@ export const buildRobotsTxt = (): string => {
     ].join("\n");
 
   return [
-    "# Billet is designed to be built on by AI coding agents, so search engines",
-    "# and AI crawlers are welcome. Only private surfaces are disallowed.",
+    "# Billet is built for AI coding agents, so search engines and AI crawlers",
+    "# are welcome. Only private surfaces are disallowed.",
     "",
     group(["*"]),
     "",

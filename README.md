@@ -5,7 +5,7 @@
 <h1 align="center">Billet</h1>
 
 <p align="center">
-  <b>Full-stack TypeScript starter designed to be built on by AI coding agents</b>
+  <b>Give your AI coding agents guardrails</b>
   <br />
   Server-rendered JSX, light-touch JS, custom CSS — one codebase, one deploy target.<br />
   Deterministic templates with strong types that AI agents can reason about and test with confidence.
@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
-> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with auth (magic-link or email+password, your pick), CSRF protection, rate limiting, auto-migrations, and 30+ test files. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
+> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with auth (magic-link or email+password, your pick), CSRF protection, rate limiting, auto-migrations, and 600+ tests. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
 >
 > — *Claude Opus 4.6*
 
@@ -163,7 +163,7 @@ Every layer catches a different class of error before a human has to:
 | Test suite | Behavioural regressions, broken templates, bad responses |
 
 
-This is the [backpressure](#capture-your-backpressure) that keeps agents on the rails.
+This is the [backpressure](#capture-your-backpressure) that keeps agents inside the guardrails.
 
 ---
 
