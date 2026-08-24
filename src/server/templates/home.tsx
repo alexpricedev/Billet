@@ -19,7 +19,7 @@ interface HomeProps {
 export const Home = ({ user, csrfToken, message }: HomeProps) => (
   <Layout
     title="Billet — The AI-native TypeScript starter"
-    description="Put your AI coding agents on rails: server-rendered JSX, PostgreSQL via Bun, auth, security and 300+ tests in a single deploy target."
+    description="Give your AI coding agents guardrails: server-rendered JSX, PostgreSQL via Bun, auth, security and 600+ tests in a single deploy target."
     canonicalPath="/"
     name="home"
     user={user}
@@ -62,9 +62,9 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
         </span>
       </a>
       <p className="hero-tag">Full-stack TypeScript starter</p>
-      <h1>Put your agents on&nbsp;rails</h1>
+      <h1>Give your agents guardrails</h1>
       <p className="hero-sub">
-        Auth, security, migrations and 300+ tests, already laid down.
+        Auth, security, migrations and 600+ tests, already bolted down.
         Server-rendered JSX on Bun and PostgreSQL — one codebase, one test
         runner, one deploy target. Your agent starts on your product, not on the
         parts every app needs.
@@ -183,7 +183,7 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
         <div className="feature-card">
           <h3>Testing</h3>
           <p>
-            300+ tests, deterministic templates, real database testing, no
+            600+ tests, deterministic templates, real database testing, no
             browser simulation
           </p>
         </div>

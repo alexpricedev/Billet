@@ -1,6 +1,6 @@
 {
   "name": "billet",
-  "description": "A full-stack TypeScript starter designed to be built on by AI coding agents",
+  "description": "A full-stack TypeScript starter that gives AI coding agents guardrails",
   "version": "2.1.1",
   "scripts": {
     "build": "bun run build:client && bun run build:css",
