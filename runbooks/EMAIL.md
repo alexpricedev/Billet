@@ -7,7 +7,7 @@ almost entirely on DNS: SPF, DKIM, and DMARC. This runbook is domain-agnostic �
 replace `<your-domain>` with your real sending domain throughout.
 
 There are no marketing/bulk sends here, so List-Unsubscribe, BIMI, MTA-STS, and
-open/click tracking are intentionally out of scope (see [Non-goals](#5-non-goals)).
+open/click tracking are intentionally out of scope (see [Non-goals](#6-non-goals)).
 
 ## 1. Resend domain verification
 
@@ -66,7 +66,35 @@ misconfiguration.
 - **[Google Postmaster Tools](https://postmaster.google.com)** — add and verify
   `<your-domain>` to watch domain reputation and spam rate over time.
 
-## 5. Non-goals
+## 5. Link scanners spend single-use tokens
+
+Corporate mail security (Microsoft Defender Safe Links, Proofpoint URL Defense,
+Google's own scanners) fetches every URL it delivers, before any human sees the
+message. A `GET` that redeems a single-use token is therefore redeemed by the
+scanner, and the recipient clicks a link that is already dead — with no way for
+the page to explain why.
+
+So every link the app emails renders a confirm step on `GET` and spends its token
+on `POST`: `/auth/callback` (sign-in), `/auth/verify` (address confirmation),
+`/reset-password` and `/invites/accept` (which were always two-step). Scanners
+follow links; they don't submit forms. Do not "simplify" any of these back into
+a one-shot `GET`, and give any new emailed link the same shape.
+
+Two rules that are not symmetrical between them:
+
+- **`/auth/callback` POSTs are CSRF-checked**, because a cross-site auto-submit
+  there is login CSRF — dropping a visitor into a session they never asked for.
+  The `GET` mints a guest session so the form has a secret to sign with, which
+  means it needs cookies to work.
+- **`/auth/verify` POSTs are not**, and set no cookie. Confirming an address
+  creates no session, and the token is the only thing presented, so there is
+  nothing to forge; keeping it cookie-free is what lets the link work from a
+  mail client's own browser. The rate limit is the guard there instead.
+
+Neither confirm page may be cached — both carry a live token, so both send
+`Cache-Control: no-store`.
+
+## 6. Non-goals
 
 Deliberately **not** implemented, and why:
 

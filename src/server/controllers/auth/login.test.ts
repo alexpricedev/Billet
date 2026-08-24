@@ -126,6 +126,67 @@ describe("Login Controller", () => {
       expect(html).toContain("Invalid email");
     });
 
+    // /auth/callback and the other single-use-link dead ends redirect here with
+    // ?error=; for a while the page dropped it and showed a pristine form.
+    test("renders the error a redirect left in the query string", async () => {
+      const request = createBunRequest(
+        "http://localhost:3000/login?error=Invalid%20or%20expired%20token",
+        { method: "GET" },
+      );
+
+      const html = await (await login.index(request)).text();
+
+      expect(html).toContain("Invalid or expired token");
+    });
+
+    test("prefers flash state over the query string", async () => {
+      const request = createBunRequest(
+        "http://localhost:3000/login?error=from%20the%20query",
+        { method: "GET" },
+      );
+
+      const { setFlash } = stateHelpers<LoginState>();
+      setFlash(request, { state: "validation-error", error: "from the flash" });
+
+      const html = await (await login.index(request)).text();
+
+      expect(html).toContain("from the flash");
+      expect(html).not.toContain("from the query");
+    });
+
+    describe("the console magic-link hint", () => {
+      const ORIGINAL_PROVIDER = process.env.EMAIL_PROVIDER;
+
+      afterAll(() => {
+        if (ORIGINAL_PROVIDER === undefined) delete process.env.EMAIL_PROVIDER;
+        else process.env.EMAIL_PROVIDER = ORIGINAL_PROVIDER;
+      });
+
+      const sentPage = async () => {
+        const request = createBunRequest("http://localhost:3000/login", {
+          method: "GET",
+        });
+        const { setFlash } = stateHelpers<LoginState>();
+        setFlash(request, { state: "email-sent" });
+
+        return (await login.index(request)).text();
+      };
+
+      test("appears when mail goes to the console", async () => {
+        process.env.EMAIL_PROVIDER = "console";
+
+        expect(await sentPage()).toContain("Check the server console");
+      });
+
+      // Anywhere else the link really is in an inbox, and the hint points at a
+      // terminal the reader has no way to see.
+      test("is absent for a real provider", async () => {
+        process.env.EMAIL_PROVIDER = "resend";
+
+        expect(await sentPage()).not.toContain("Check the server console");
+      });
+    });
+
     test("redirects authenticated user to home", async () => {
       // Mock the redirectIfAuthenticated function to return a redirect response
       const mockRedirectIfAuthenticated = mock(

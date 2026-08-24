@@ -104,6 +104,17 @@ change its own code after merging.
   on has it in their `.env`, and leaked into a test run it breaks every `expect(404)` on a team
   route.
 - `cleanupTestData` truncates the three new tables. A fork that has its own copy needs the lines.
+- **`/auth/callback` and `/auth/verify` answer both `GET` and `POST`.** The `GET` renders a
+  confirm step and the `POST` spends the token, so a fork that has replaced either controller
+  needs the second handler and the `createRouteHandler` entry. `/auth/callback` mints a guest
+  session on the `GET` to sign its form's CSRF token; `/auth/verify` deliberately does neither,
+  so a confirmation link still works from a mail client that keeps no cookies.
+- `render()` in `src/server/utils/response.ts` takes an optional second argument of
+  content-specific headers, used for the `Cache-Control: no-store` both confirm pages need.
+  Purely additive — existing calls are unchanged, and `Content-Type` still can't be overridden.
+- `Login` takes a `showConsoleHint` prop, and the "check the server console for the magic link"
+  line only renders when it is true. It was unconditional, so every fork running a real mail
+  provider was telling users to read a terminal they have no access to.
 
 ### Fixed
 
@@ -121,6 +132,17 @@ change its own code after merging.
   as live markup in every invitee's inbox. `renderActionHtml` now escapes at the render boundary,
   so no future email can reintroduce the hole by forgetting, and the subject is stripped of
   CR/LF against header injection. The plaintext body is unchanged.
+- **Mail scanners spent single-use links before the recipient could.** Corporate mail security
+  (Microsoft Defender Safe Links and friends) fetches every URL it delivers, and both
+  `/auth/callback` and `/auth/verify` redeemed on `GET` — so the token was gone before the click,
+  and the visitor landed on a login form or an "invalid link" page that explained nothing. Both
+  now render a confirm step and redeem on `POST`: scanners follow links, they don't submit forms.
+  `runbooks/EMAIL.md` §5 has the rule for any new emailed link, and why the CSRF treatment of the
+  two differs.
+- **`/login` ignored the `?error=` it was redirected with.** Every dead end in the sign-in flow
+  sends the visitor to `/login?error=…`, and the page rendered a pristine form instead of the
+  message. Flash state still wins where both are present, and the query value is capped and
+  rendered as text.
 
 ## 2.1.1
 

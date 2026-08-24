@@ -30,6 +30,14 @@ const getVerify = (token?: string) =>
     method: "GET",
   });
 
+/** The POST behind the confirm button — the step that spends the token. */
+const postVerify = (token?: string) =>
+  createBunRequest(`${ORIGIN}/auth/verify`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(token ? { token } : {}).toString(),
+  });
+
 const postResend = async (sessionId?: string) => {
   const formData = new FormData();
 
@@ -67,13 +75,87 @@ describe("Verify Controller", () => {
   });
 
   describe("GET /auth/verify", () => {
-    test("marks the address verified and renders the confirmation", async () => {
+    // The reason the confirm step exists: mail filters fetch every link they
+    // deliver, and a fetch that spent the token would leave the recipient
+    // reading "that link didn't work" about a link that worked.
+    test("renders the confirm step without spending the token", async () => {
       const signUp = await signUpWithPassword("confirm@example.com", PASSWORD);
+      expect(signUp.success).toBe(true);
+      if (!signUp.success) return;
+
+      const response = await verify.index(getVerify(signUp.verifyToken));
+
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      expect(html).toContain("Confirm your email");
+      expect(html).toContain(`name="token" value="${signUp.verifyToken}"`);
+
+      const rows =
+        await db`SELECT email_verified_at FROM users WHERE id = ${signUp.user.id}`;
+      expect(rows[0].email_verified_at).toBeNull();
+    });
+
+    test("still confirms after a scanner has fetched the link twice", async () => {
+      const signUp = await signUpWithPassword("scanned@example.com", PASSWORD);
+      expect(signUp.success).toBe(true);
+      if (!signUp.success) return;
+
+      await verify.index(getVerify(signUp.verifyToken));
+      await verify.index(getVerify(signUp.verifyToken));
+
+      const response = await verify.create(postVerify(signUp.verifyToken));
+
+      expect(await response.text()).toContain("Email confirmed");
+    });
+
+    // Nothing here asks for a cookie, deliberately: the link has to work from a
+    // mail client's browser, so the form carries no CSRF token to bind.
+    test("sets no cookie, so the link works from anywhere", async () => {
+      const signUp = await signUpWithPassword("nocookie@example.com", PASSWORD);
       expect(signUp.success).toBe(true);
       if (!signUp.success) return;
 
       const request = getVerify(signUp.verifyToken);
       const response = await verify.index(request);
+
+      expect(findSetCookie(request, "session_id")).toBeUndefined();
+      expect(await response.text()).not.toContain('name="_csrf"');
+    });
+
+    test("is never cached", async () => {
+      const response = await verify.index(getVerify("some-token"));
+
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    });
+
+    // Judging the token here would either spend it or sort real ones from
+    // guesses, so an unknown token gets the same page as a good one.
+    test("renders the form for an unknown token without judging it", async () => {
+      const response = await verify.index(getVerify("not-a-real-token"));
+
+      expect(await response.text()).toContain("Confirm your email");
+    });
+
+    test("shows the dead end when there is no token at all", async () => {
+      expect(await (await verify.index(getVerify())).text()).toContain(
+        "That link didn't work",
+      );
+    });
+
+    test("404s in magic-link mode", async () => {
+      delete process.env.AUTH_MODE;
+
+      expect((await verify.index(getVerify("anything"))).status).toBe(404);
+    });
+  });
+
+  describe("POST /auth/verify", () => {
+    test("marks the address verified and renders the confirmation", async () => {
+      const signUp = await signUpWithPassword("spend@example.com", PASSWORD);
+      expect(signUp.success).toBe(true);
+      if (!signUp.success) return;
+
+      const response = await verify.create(postVerify(signUp.verifyToken));
 
       // Its own page rather than a redirect to /account: the link is as likely
       // to be opened from a mail client with no session, where an auth-gated
@@ -91,8 +173,8 @@ describe("Verify Controller", () => {
       expect(signUp.success).toBe(true);
       if (!signUp.success) return;
 
-      const request = getVerify(signUp.verifyToken);
-      await verify.index(request);
+      const request = postVerify(signUp.verifyToken);
+      await verify.create(request);
 
       expect(findSetCookie(request, "session_id")).toBeUndefined();
     });
@@ -102,20 +184,30 @@ describe("Verify Controller", () => {
       expect(signUp.success).toBe(true);
       if (!signUp.success) return;
 
-      for (const request of [getVerify(), getVerify("not-a-real-token")]) {
-        const response = await verify.index(request);
+      for (const request of [postVerify(), postVerify("not-a-real-token")]) {
+        const response = await verify.create(request);
         expect(await response.text()).toContain("That link didn't work");
       }
 
-      await verify.index(getVerify(signUp.verifyToken));
-      const replay = await verify.index(getVerify(signUp.verifyToken));
+      await verify.create(postVerify(signUp.verifyToken));
+      const replay = await verify.create(postVerify(signUp.verifyToken));
       expect(await replay.text()).toContain("That link didn't work");
+    });
+
+    // No captcha and no session stand in front of this POST, so the rate limit
+    // is the only thing bounding guesses at a token.
+    test("throttles attempts per IP", async () => {
+      for (let i = 0; i < 10; i++) {
+        await verify.create(postVerify("guess"));
+      }
+
+      expect((await verify.create(postVerify("guess"))).status).toBe(429);
     });
 
     test("404s in magic-link mode", async () => {
       delete process.env.AUTH_MODE;
 
-      expect((await verify.index(getVerify("anything"))).status).toBe(404);
+      expect((await verify.create(postVerify("anything"))).status).toBe(404);
     });
   });
 
@@ -229,7 +321,7 @@ describe("Verify Controller", () => {
         "password_reset",
       );
 
-      const response = await verify.index(getVerify(resetToken));
+      const response = await verify.create(postVerify(resetToken));
 
       expect(await response.text()).toContain("That link didn't work");
 

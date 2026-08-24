@@ -26,9 +26,18 @@ export interface LoginProps {
   // The cross-page "message" flash, not this page's own state: something
   // finished elsewhere and sent them here to sign in.
   message?: FlashMessage;
+  // Only true under the console email provider. Anywhere else the link really
+  // is in an inbox, and the hint sends people to a terminal they can't see.
+  showConsoleHint?: boolean;
 }
 
-export const Login = ({ mode, state, challenge, message }: LoginProps) => {
+export const Login = ({
+  mode,
+  state,
+  challenge,
+  message,
+  showConsoleHint,
+}: LoginProps) => {
   const password = mode === "password";
 
   return (
@@ -68,7 +77,9 @@ export const Login = ({ mode, state, challenge, message }: LoginProps) => {
         <Flash type="success">
           <p>Check your email!</p>
           <p>We've sent you a magic link. Click it to sign in instantly.</p>
-          <p>For testing: Check the server console for the magic link.</p>
+          {showConsoleHint && (
+            <p>For testing: Check the server console for the magic link.</p>
+          )}
         </Flash>
       ) : (
         <form method="POST" action="/login">

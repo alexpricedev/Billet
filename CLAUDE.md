@@ -121,6 +121,11 @@ answers. `/login`, `/signup`, and `/account` exist in both modes and branch on
 `authMode()` reads `process.env` on every call so tests can flip it mid-file; an invalid value is
 fatal at boot in `validateEnv()`.
 
+Every emailed link renders a confirm step on `GET` and spends its token on `POST` — mail security
+scanners fetch each link they deliver, and a `GET` that redeemed would burn the token before the
+recipient clicked. `runbooks/EMAIL.md` has the rule and the reason `/auth/callback` is CSRF-checked
+while `/auth/verify` deliberately isn't.
+
 ### Two role axes, and they must never merge
 
 `users.role` (`'user' | 'admin'`) is the **platform operator** flag. It gates `/admin` via
