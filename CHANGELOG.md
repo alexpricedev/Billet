@@ -74,9 +74,28 @@ change its own code after merging.
   `scripts/wip` builds a snapshot. `.gitignore` stops ignoring both paths (`.claude/settings.local.json`
   is still ignored), and `tsconfig.json` now typechecks `.claude/hooks/**/*`. A fork that already
   keeps its own `.claude/settings.json` will hit a merge conflict here and should keep both hooks.
+- **`scripts/workspace.ts`, giving each Conductor workspace its own port and databases.** The
+  setup script copies one `.env` into every workspace, so all of them shared a dev database, a
+  test database, port 3000 and a session cookie name. `provision` rewrites this workspace's
+  `.env` with `PORT`/`APP_URL` from `CONDUCTOR_PORT`, a `DATABASE_URL` named `<base>-<workspace>`,
+  and a workspace-specific `SESSION_COOKIE_NAME` — cookies are not scoped by port, so a sign-in
+  on `:3001` was overwriting the session on `:3002`. `.env.test` gets a `DATABASE_URL` and nothing
+  else, because `cleanupTestData` truncates every table and two agents on one `billet-test` fail
+  each other's suites at random. It derives the base name from the **root** checkout, so re-running
+  setup can't compound the suffix. `destroy` runs on archive and drops the pair, refusing any
+  database whose name doesn't carry that workspace's slug — an unprovisioned workspace still points
+  at the shared `billet`, and dropping that would take every other agent down with it. Both are
+  no-ops where `CONDUCTOR_PORT` is unset (cloud workspaces, plain clones), so nothing changes for a
+  fork that doesn't use Conductor.
+- `.conductor/settings.toml` calls both, and sets `run_mode = "concurrent"` now that two
+  workspaces can run `bun run dev` at once.
 
 ### Changed
 
+- `run-tests.ts` pins `PORT=3000` and `APP_URL=http://localhost:3000` alongside the four variables
+  it already pinned. Tests hardcode `http://localhost:3000` in request URLs and `csrf.test.ts`
+  builds its expected Origin from `APP_URL`, so a workspace port leaking in from `.env` would 403
+  every form post. `DATABASE_URL` is deliberately not pinned — that one is per-workspace on purpose.
 - `Badge`'s `variant` union widens from `"admin" | "user"` to include `"owner"` and `"member"`,
   with matching classes in `src/client/components/badge.css`. Additive, but a fork that has
   restyled that file will want to add the two rules.

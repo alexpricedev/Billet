@@ -181,6 +181,8 @@ bun run wip drop                               # forget the newest
 
 A `PreToolUse` hook in [`.claude/settings.json`](.claude/settings.json) denies `git stash` and points the agent at the table above, so this isn't a convention an agent can forget — it's enforced.
 
+The other thing worktrees share is everything in `.env`. [`.conductor/settings.toml`](.conductor/settings.toml) runs `scripts/workspace.ts provision` on setup, which gives each workspace its own port (`CONDUCTOR_PORT`), its own dev and test databases (`<base>-<workspace>`), and its own session cookie name — cookies aren't scoped by port, so two apps on localhost otherwise share one. The test database matters most: `cleanupTestData` truncates every table, so two agents on one `billet-test` fail each other's suites at random. `scripts/workspace.ts destroy` runs on archive and drops the pair, refusing any name that doesn't carry that workspace's slug. Both are no-ops in cloud workspaces. If you don't use Conductor, run `bun run scripts/workspace.ts provision` with `CONDUCTOR_WORKSPACE_NAME` and `CONDUCTOR_PORT` set, or ignore it — the defaults are unchanged.
+
 ---
 
 ## Built to a public standard
@@ -272,7 +274,8 @@ src/
 └── types/                      # Global TypeScript declarations
 
 scripts/
-└── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
+├── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
+└── workspace.ts                # Per-workspace port + dev/test databases (provision/destroy)
 
 .claude/
 ├── settings.json               # Hooks shared with every agent on the repo
