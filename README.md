@@ -288,6 +288,8 @@ scripts/
 
 ## Works well with
 
+- **[Conductor](https://conductor.build)** — runs several coding agents in parallel, one git worktree each. Billet ships a [`.conductor/settings.toml`](.conductor/settings.toml) that gives every workspace its own port, dev database, test database, and session cookie name on setup, and drops the databases again on archive, so parallel agents can't truncate each other's test data or fight over port 3000. None of it is required: the scripts no-op when `CONDUCTOR_PORT` is unset, and `scripts/wip` is plain `git worktree`, so the same protections work under any agent harness.
+
 A couple of small, zero-dependency packages built alongside Billet that drop straight in:
 
 - **[billet-cookie-consent](https://github.com/alexpricedev/billet-cookie-consent)** — GDPR-friendly cookie consent banner. Lightweight, framework-agnostic, designed to slot into a server-rendered template.
