@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Per-worktree WIP snapshots.
+#
+# `git stash` writes refs/stash, which lives in the shared .git directory — every
+# worktree pushes onto and pops off the same stack, so two agents working in
+# parallel steal each other's changes. refs/worktree/* is per-worktree by
+# definition (see gitrepository-layout(5)), so a snapshot saved here is invisible
+# to every other worktree.
+set -euo pipefail
+
+REF=refs/worktree/wip
+
+usage() {
+  cat <<'USAGE'
+Usage: bun run wip <command>
+
+  save [message]     Snapshot tracked changes. Working tree is left alone.
+  stash [message]    Snapshot tracked changes, then revert them (git reset --hard).
+  list               Show this worktree's snapshots, newest first.
+  show [n]           Diffstat for snapshot n (default 0).
+  restore [n]        Apply snapshot n (default 0) onto the working tree. Keeps it.
+  drop               Forget the newest snapshot.
+
+Snapshots are per-worktree. No other agent can see or restore them.
+USAGE
+}
+
+require_repo() {
+  git rev-parse --git-dir >/dev/null 2>&1 || { echo "wip: not a git repository" >&2; exit 1; }
+}
+
+warn_untracked() {
+  local untracked
+  untracked=$(git ls-files --others --exclude-standard)
+  if [ -n "$untracked" ]; then
+    echo "wip: untracked files are NOT snapshotted and are left in place:" >&2
+    echo "$untracked" | sed 's/^/  /' >&2
+    echo "wip: run 'git add' on them first if you need them in the snapshot." >&2
+  fi
+}
+
+snapshot() {
+  local message="${1:-WIP on $(git rev-parse --abbrev-ref HEAD)}"
+  local sha
+  sha=$(git stash create "$message")
+  if [ -z "$sha" ]; then
+    echo "wip: no tracked changes to save"
+    return 1
+  fi
+  git update-ref --create-reflog "$REF" "$sha" -m "$message"
+  echo "wip: saved ${sha:0:8}  $message"
+  warn_untracked
+}
+
+resolve() {
+  local n="${1:-0}"
+  git rev-parse --verify --quiet "$REF@{$n}" || {
+    echo "wip: no snapshot at $REF@{$n}" >&2
+    exit 1
+  }
+}
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift || true
+
+case "$cmd" in
+  save)
+    require_repo
+    snapshot "${1:-}"
+    ;;
+  stash)
+    require_repo
+    snapshot "${1:-}"
+    git reset --hard --quiet
+    echo "wip: tracked changes reverted. Restore with: bun run wip restore"
+    ;;
+  list)
+    require_repo
+    if ! git rev-parse --verify --quiet "$REF" >/dev/null; then
+      echo "wip: no snapshots in this worktree"
+      exit 0
+    fi
+    git reflog "$REF" --format='%gd  %h  %gs'
+    ;;
+  show)
+    require_repo
+    git stash show --stat "$(resolve "${1:-0}")"
+    ;;
+  restore)
+    require_repo
+    sha=$(resolve "${1:-0}")
+    git stash apply "$sha"
+    echo "wip: applied ${sha:0:8}. Snapshot kept — drop it with: bun run wip drop"
+    ;;
+  drop)
+    require_repo
+    if git rev-parse --verify --quiet "$REF@{1}" >/dev/null; then
+      git update-ref "$REF" "$(git rev-parse "$REF@{1}")"
+      echo "wip: dropped newest snapshot"
+    elif git rev-parse --verify --quiet "$REF" >/dev/null; then
+      git update-ref -d "$REF"
+      echo "wip: dropped the only snapshot"
+    else
+      echo "wip: nothing to drop"
+    fi
+    ;;
+  ""|-h|--help|help)
+    usage
+    ;;
+  *)
+    echo "wip: unknown command '$cmd'" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

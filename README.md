@@ -165,6 +165,22 @@ Every layer catches a different class of error before a human has to:
 
 This is the [backpressure](#capture-your-backpressure) that keeps agents inside the guardrails.
 
+### Running several agents at once
+
+The usual way to parallelise agents is one git worktree each, and it has a sharp edge: worktrees share a single `.git` directory, and `refs/stash` lives there. The stash is one global stack across every worktree, so an agent that pops in its own checkout can silently walk off with work another agent pushed a moment ago.
+
+Billet closes that hole. `scripts/wip` snapshots to `refs/worktree/wip` — the one ref namespace git keeps per-worktree — so a snapshot is invisible to every other agent:
+
+```bash
+bun run wip save "trying the other approach"   # snapshot, working tree untouched
+bun run wip stash                              # snapshot, then revert tracked changes
+bun run wip list                               # this worktree's snapshots
+bun run wip restore                            # apply the newest, and keep it
+bun run wip drop                               # forget the newest
+```
+
+A `PreToolUse` hook in [`.claude/settings.json`](.claude/settings.json) denies `git stash` and points the agent at the table above, so this isn't a convention an agent can forget — it's enforced.
+
 ---
 
 ## Built to a public standard
@@ -254,6 +270,15 @@ src/
 │       └── migrations/         # Numbered migration files
 │
 └── types/                      # Global TypeScript declarations
+
+scripts/
+└── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
+
+.claude/
+├── settings.json               # Hooks shared with every agent on the repo
+├── hooks/
+│   └── no-shared-stash.ts      # Denies `git stash`, points at `bun run wip`
+└── skills/                     # Progressive-disclosure guides for agents
 ```
 
 ---

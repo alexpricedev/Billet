@@ -61,6 +61,19 @@ change its own code after merging.
 - `runbooks/TEAMS.md` — the role model, invite lifecycle, the authorisation checklist for new
   team routes, how to scope your own data, how to remove the feature, and what is deliberately not
   shipped.
+- **`scripts/wip`, a per-worktree replacement for `git stash`.** Running several agents at once
+  usually means a worktree each, and worktrees share one `.git` directory — so `refs/stash` is a
+  single global stack and an agent that pops in its own checkout can silently take work another
+  agent pushed seconds earlier. `bun run wip save|stash|list|show|restore|drop` snapshots to
+  `refs/worktree/wip`, the one ref namespace git keeps per-worktree, so a snapshot is invisible to
+  every other checkout. `restore` applies without dropping; losing a snapshot takes an explicit
+  `drop`.
+- **A checked-in `.claude/settings.json`**, registering one `PreToolUse` hook,
+  `.claude/hooks/no-shared-stash.ts`, which denies `git stash` and prints the `wip` commands
+  instead. `git stash create` and anything naming `refs/worktree/` pass through — that is how
+  `scripts/wip` builds a snapshot. `.gitignore` stops ignoring both paths (`.claude/settings.local.json`
+  is still ignored), and `tsconfig.json` now typechecks `.claude/hooks/**/*`. A fork that already
+  keeps its own `.claude/settings.json` will hit a merge conflict here and should keep both hooks.
 
 ### Changed
 
