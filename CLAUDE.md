@@ -6,8 +6,9 @@ spec for everything else. This file is for the things you can't learn by reading
 
 ## Working agreements
 
-- The dev server is already running on port 3000 in another tab — don't start one, and don't
-  add a second. `bun run dev` here will fail on the port or fight the watcher.
+- The dev server is already running in another tab, on this workspace's own port — don't start
+  one, and don't add a second. `bun run dev` here will fail on the port or fight the watcher.
+  Read `PORT` from `.env` rather than assuming 3000; only the root checkout is on 3000.
 - Run test and lint suites through the `package.json` scripts (`bun run test`, `bun run check`).
   Invoking `bun test` directly skips migrations and leaks your `.env` into the run — see the
   `verifying-changes` skill.
@@ -44,6 +45,26 @@ survive `wip stash` in place. `save` warns and lists them.
 A `PreToolUse` hook (`.claude/hooks/no-shared-stash.ts`, wired in `.claude/settings.json`) denies
 `git stash` outright and prints the table above. `git stash create` and anything naming
 `refs/worktree/` are allowed through — that is how `scripts/wip` does its work.
+
+### Each workspace owns its port and its two databases
+
+`scripts/workspace.ts provision` runs from the Conductor setup script and rewrites this
+workspace's env files: `.env` gets `PORT` / `APP_URL` from `CONDUCTOR_PORT`, a `DATABASE_URL`
+named `<base>-<workspace>`, and a workspace-specific `SESSION_COOKIE_NAME` (cookies aren't scoped
+by port, so two workspaces on localhost otherwise overwrite each other's session). `.env.test`
+gets `DATABASE_URL` **only** — `PORT` and `APP_URL` stay at 3000 there, because tests hardcode
+`http://localhost:3000` in request URLs and `csrf.test.ts` builds its expected Origin from
+`APP_URL`; a workspace port in that file 403s every form post. `run-tests.ts` pins both as well.
+
+The test database is the reason this exists: `cleanupTestData` truncates every table, so two
+agents sharing one `billet-test` fail each other's suites in ways neither can reproduce.
+
+`provision` is idempotent — it derives the base database name from the **root** checkout's `.env`,
+never from this workspace's, so re-running setup can't compound the suffix. `destroy` runs on
+archive and drops both databases, but only after checking the name carries this workspace's slug:
+a workspace that was never provisioned still points at the shared `billet`, and the guard refuses
+it rather than dropping the database every other agent is using. Both are no-ops in cloud
+workspaces, where `CONDUCTOR_PORT` is unset and there is one checkout anyway.
 
 ### One JSX runtime, two execution models
 

@@ -46,6 +46,14 @@ for (const file of files) {
     // themselves in password mode, and every `expect(404)` on a team route
     // stops holding. Files that exercise any of them set it themselves
     // per-case.
+    //
+    // PORT and APP_URL are pinned because a Conductor workspace runs its dev
+    // server on its own allocated port. Tests hardcode `http://localhost:3000`
+    // in request URLs and csrf.test.ts builds its expected Origin from
+    // APP_URL — a workspace port leaking in makes the two disagree and 403s
+    // every form post. DATABASE_URL is deliberately *not* pinned: that one is
+    // per-workspace on purpose, so two agents' suites don't truncate the same
+    // tables (see scripts/workspace.ts).
     env: {
       ...process.env,
       NODE_ENV: "test",
@@ -53,6 +61,8 @@ for (const file of files) {
       AUTH_MODE: "magic-link",
       CAPTCHA_ENABLED: "false",
       TEAMS_ENABLED: "false",
+      PORT: "3000",
+      APP_URL: "http://localhost:3000",
     },
     stdout: "pipe",
     stderr: "pipe",

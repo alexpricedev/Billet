@@ -16,6 +16,6 @@
       "@server/*": ["server/*"]
     }
   },
-  "include": ["src/**/*", ".claude/hooks/**/*"],
+  "include": ["src/**/*", "scripts/**/*.ts", ".claude/hooks/**/*"],
   "exclude": ["node_modules", "dist", "src/server/services/email-providers/resend.ts"]
 }

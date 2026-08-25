@@ -1,7 +1,12 @@
 "$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
 
 [scripts]
-setup = "main_dir=\"$(cd \"$(git rev-parse --git-common-dir)/..\" && pwd)\" && cp \"$main_dir/.env\" \"$main_dir/.env.test\" . && bun install"
+setup = "main_dir=\"$(cd \"$(git rev-parse --git-common-dir)/..\" && pwd)\" && cp \"$main_dir/.env\" \"$main_dir/.env.test\" . && bun install && bun run scripts/workspace.ts provision"
+archive = "bun run scripts/workspace.ts destroy"
+# Safe now that provision gives every workspace its own port and its own dev and
+# test databases. Without it, two workspaces running `bun run dev` fight over
+# port 3000 and two test runs truncate the same tables mid-suite.
+run_mode = "concurrent"
 
 [tasks.Run]
 available_in = "local"
