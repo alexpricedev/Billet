@@ -14,8 +14,36 @@ spec for everything else. This file is for the things you can't learn by reading
 - Write code that reads like the surrounding code: match its comment density, naming, and idiom.
 - When you try several approaches to a problem, delete the ones you abandoned before you finish.
 - Check work in the browser with the `/browse` skill when the change is user-visible.
+- Never `git stash`. Use `bun run wip` — see "The stash is shared, the worktrees are not".
 
 ## Gotchas
+
+### The stash is shared, the worktrees are not
+
+This repo is usually checked out several times at once — one worktree per agent — over a single
+shared `.git` directory. `refs/stash` lives in that shared directory, so the stash is **one global
+stack**: an agent that pops in its own worktree can pop the changes another agent pushed seconds
+earlier, and neither of them sees anything go wrong until the work is gone.
+
+`refs/worktree/*` is the one ref namespace git keeps per-worktree. `scripts/wip` (run it as
+`bun run wip`) snapshots to `refs/worktree/wip`, which no other worktree can read, list, or drop:
+
+```
+bun run wip save [message]     snapshot tracked changes, working tree left alone
+bun run wip stash [message]    snapshot, then revert tracked changes (git reset --hard)
+bun run wip list               this worktree's snapshots, newest first
+bun run wip show [n]           diffstat for snapshot n (default 0)
+bun run wip restore [n]        apply snapshot n and keep it
+bun run wip drop               forget the newest snapshot
+```
+
+`restore` applies without dropping — losing a snapshot takes an explicit `drop`, which is the
+whole point. Snapshots cover tracked changes only; untracked files are never touched, so they
+survive `wip stash` in place. `save` warns and lists them.
+
+A `PreToolUse` hook (`.claude/hooks/no-shared-stash.ts`, wired in `.claude/settings.json`) denies
+`git stash` outright and prints the table above. `git stash create` and anything naming
+`refs/worktree/` are allowed through — that is how `scripts/wip` does its work.
 
 ### One JSX runtime, two execution models
 

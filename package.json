@@ -16,6 +16,7 @@
     "test:setup": "NODE_ENV=test bun run src/server/test-utils/bootstrap.ts",
     "test:file": "NODE_ENV=test bun run src/server/database/cli.ts up && NODE_ENV=test bun test",
     "commit": "git add --all && git commit",
+    "wip": "bash scripts/wip",
     "lint": "bunx @biomejs/biome@beta check src",
     "lint:write": "bunx @biomejs/biome@beta check src --write",
     "typecheck": "bun --bun tsc --noEmit",
