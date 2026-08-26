@@ -47,7 +47,9 @@ const WORKERS = Math.max(
 
 const baseUrl = process.env.DATABASE_URL;
 if (!baseUrl) {
-  console.error("DATABASE_URL is required for tests — see START_PROMPT.md §1");
+  console.error(
+    "DATABASE_URL is required for tests — set it in .env.test (see .env.example)",
+  );
   process.exit(1);
 }
 

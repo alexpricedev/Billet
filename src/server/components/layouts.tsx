@@ -176,8 +176,8 @@ export function Layout({
   );
 }
 
-// Shared site footer for the full Layout and the ErrorLayout, so the repo-specific
-// links (see START_PROMPT.md §3) live in one place.
+// Shared site footer for the full Layout and the ErrorLayout, so the links back to
+// the original Billet repo live in one place for a fork to replace.
 function SiteFooter() {
   return (
     <footer>
