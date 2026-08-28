@@ -149,9 +149,10 @@ export const createInvite = async (
 /**
  * Live, unexpired invites for an org.
  *
- * Expiry is filtered at read time rather than relying on a sweep — cleanupExpired
- * in auth.ts has no caller, and an invite list that showed dead invites as
- * pending would be actively misleading.
+ * Expiry is filtered at read time rather than relying on the hourly sweep in
+ * cleanup.ts: the sweep is best-effort bloat control, and an invite list that
+ * showed dead invites as pending between two sweeps would be actively
+ * misleading.
  */
 export const listInvites = async (orgId: string): Promise<Invite[]> => {
   const results = await db`
@@ -329,4 +330,32 @@ export const acceptInvite = async (
       created_at: new Date(organization[0].created_at),
     },
   };
+};
+
+/**
+ * Delete expired invites that were never accepted.
+ *
+ * `accepted_at IS NULL` is the whole point of the predicate. Migration `008`
+ * keeps accepted invites deliberately — they are the audit trail of who let
+ * whom in, which is why acceptance sets a timestamp instead of deleting the row
+ * — so sweeping them would undo a decision made in the schema. Revoked and
+ * simply-lapsed invites carry no such record: nobody joined, and all the row
+ * still holds is the invitee's **email address**, which `listInvites` stopped
+ * showing the moment it expired.
+ *
+ * One `expires_at` predicate covers both, because the column is stamped at
+ * creation and never moved: a revoked invite is swept once its original
+ * `ORG_INVITE_EXPIRY_DAYS` are up rather than immediately, which costs nothing
+ * and keeps this a single index-backed statement.
+ *
+ * Not load-bearing for `createInvite`: it already revokes any live invite for
+ * the address before inserting, so the partial unique index never sees a
+ * conflict this could have prevented.
+ */
+export const cleanupExpiredInvites = async (): Promise<void> => {
+  await db`
+    DELETE FROM organization_invites
+    WHERE expires_at < CURRENT_TIMESTAMP
+      AND accepted_at IS NULL
+  `;
 };

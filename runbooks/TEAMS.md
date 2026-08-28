@@ -280,7 +280,7 @@ To remove it:
    `templates/team.tsx`, `templates/accept-invite.tsx`, and their tests.
 2. Drop the team routes from `src/server/routes/app.tsx` and the `TEAMS_ENABLED` case from
    `utils/env.ts`.
-3. **Untangle the four references outside the team surface.** These are the ones that don't
+3. **Untangle the five references outside the team surface.** These are the ones that don't
    announce themselves, because nothing about their filename says "teams":
    - `controllers/auth/callback.tsx`, `login.tsx`, `signup.tsx` and `password-reset.tsx` each end
      a successful sign-in with `redirect(await landingAfterAuth(user.id))`. Put `"/"` back.
@@ -289,6 +289,9 @@ To remove it:
    - `templates/account.tsx` — drop the `team` prop and the section that renders it.
    - `controllers/auth/account.test.ts` and `callback.test.ts` both import from
      `services/organizations`; their team cases go with it.
+   - `services/cleanup.ts` sweeps expired invites alongside the auth tables — drop the
+     `cleanupExpiredInvites` / `teamsEnabled` imports and the guarded call, and the invite cases
+     in `cleanup.test.ts`. The rest of the sweep is core and stays.
 4. For the schema: if the fork has not run `008` yet, delete the migration file. If it has, run its
    `down` — three `DROP TABLE`s, no statement of which can reach a `users` row. Either way `users`
    ends up exactly as migration `007` left it.
