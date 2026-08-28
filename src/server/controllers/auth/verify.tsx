@@ -11,6 +11,7 @@ import { getEmailService } from "../../services/email";
 import { log } from "../../services/logger";
 import { verifyEmailToken } from "../../services/passwords";
 import type { AccountState } from "../../templates/account";
+import { AuthConfirm } from "../../templates/auth-confirm";
 import { VerifyResult } from "../../templates/verify-result";
 import { appUrl } from "../../utils/app-url";
 import { render404 } from "../../utils/errors";
@@ -24,11 +25,45 @@ const { setFlash } = stateHelpers<AccountState>();
  * verified by the act of signing in, so there is nothing here for it to do.
  */
 export const verify = {
+  /**
+   * The confirm step. Spends nothing: mail filters fetch every link they
+   * deliver, and a fetch that redeemed the token would leave the recipient
+   * looking at "that link didn't work" for a link that worked perfectly.
+   */
   async index(req: BunRequest): Promise<Response> {
     if (!passwordAuthEnabled()) return render404();
 
     const token = new URL(req.url).searchParams.get("token");
-    const user = token ? await verifyEmailToken(token) : null;
+
+    // Nothing to confirm and nothing to ask about, so this is the one case that
+    // renders the outcome page straight from the GET.
+    if (!token) return render(<VerifyResult status="invalid" />);
+
+    return render(
+      <AuthConfirm
+        intent="email-verification"
+        token={token}
+        // No session is minted here and none is required to submit — the form
+        // is CSRF-free on purpose, so the link still works from a mail client's
+        // browser that keeps no cookies. `AuthConfirm` has the reasoning.
+        csrfToken={null}
+      />,
+      { "Cache-Control": "no-store" },
+    );
+  },
+
+  /** Spends the token. Still signs nobody in — see `VerifyResult`. */
+  async create(req: BunRequest): Promise<Response> {
+    if (!passwordAuthEnabled()) return render404();
+
+    // The only guess-rate limit this route has, now that the token is spent by
+    // a POST no captcha or session stands in front of.
+    const limited = rateLimit(req, 10, 60_000);
+    if (limited) return limited;
+
+    const token = (await req.formData()).get("token");
+    const user =
+      typeof token === "string" && token ? await verifyEmailToken(token) : null;
 
     // Renders its own page rather than redirecting to /account, and deliberately
     // does not sign anyone in: the token proves the address is reachable, not

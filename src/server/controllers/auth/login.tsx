@@ -39,12 +39,23 @@ export const login = {
     // unread and surfaces on whichever page happens to read it next.
     const message = getFlashCookie<Partial<FlashMessage>>(req, "message");
 
+    // /auth/callback and the other single-use-link dead ends send people here
+    // with ?error=. Flash wins when both are present — it belongs to something
+    // that just happened on this page. Capped and rendered as text, never as
+    // markup, so the query string can't put anything but words on the page.
+    const queryError = new URL(req.url).searchParams.get("error");
+    const resolved: LoginState =
+      state.state || !queryError
+        ? state
+        : { state: "validation-error", error: queryError.slice(0, 200) };
+
     return render(
       <Login
         mode={authMode()}
-        state={state}
+        state={resolved}
         challenge={challenge}
         message={message.text ? (message as FlashMessage) : undefined}
+        showConsoleHint={process.env.EMAIL_PROVIDER === "console"}
       />,
     );
   },

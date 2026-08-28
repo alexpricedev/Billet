@@ -64,8 +64,17 @@ export const appRoutes = {
   "/account/password": createRouteHandler({
     POST: account.updatePassword,
   }),
-  "/auth/callback": callback.index,
-  "/auth/verify": verify.index,
+  // Both of these arrive as a link in an email, so both render a confirm step
+  // on GET and spend the token on POST: a single-use token a mail scanner can
+  // burn by fetching the link is a token the recipient never gets to use.
+  "/auth/callback": createRouteHandler({
+    GET: callback.index,
+    POST: callback.create,
+  }),
+  "/auth/verify": createRouteHandler({
+    GET: verify.index,
+    POST: verify.create,
+  }),
   "/auth/verify/resend": createRouteHandler({
     POST: verify.resend,
   }),
