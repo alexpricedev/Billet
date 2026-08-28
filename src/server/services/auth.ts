@@ -250,8 +250,19 @@ export const verifyMagicLink = async (
 };
 
 /**
- * Clean up expired tokens and sessions
- * Should be run periodically to prevent database bloat
+ * Delete expired rows from the two auth tables.
+ *
+ * Not a correctness measure — every read in this file, `sessions.ts` and
+ * `csrf.ts` already filters `expires_at > CURRENT_TIMESTAMP`, so an expired row
+ * is inert whether or not it is still here. What it buys is bloat (guest
+ * sessions churn faster than anything else in the schema) and retention: a
+ * spent `user_tokens` row keeps a live-looking `token_hash` indefinitely.
+ *
+ * Scoped to auth's own tables on purpose. `organization_invites` expires too,
+ * but auth must not import the team surface — `cleanup.ts` composes the two.
+ *
+ * Called on a timer by `startCleanupSweep`; safe to run concurrently with
+ * anything, and safe to run twice.
  */
 export const cleanupExpired = async (): Promise<void> => {
   await db`

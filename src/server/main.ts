@@ -4,6 +4,7 @@ import { adminRoutes } from "./routes/admin";
 import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
 import { initAssets, warnOnMissingDevBundles } from "./services/assets";
+import { startCleanupSweep } from "./services/cleanup";
 import { log } from "./services/logger";
 import { validateEnv } from "./utils/env";
 import { render500 } from "./utils/errors";
@@ -19,6 +20,10 @@ await runMigrations();
 await seedIfEmpty();
 await initAssets();
 await warnOnMissingDevBundles();
+
+// Not awaited: the first sweep runs alongside the first requests rather than
+// delaying the listen.
+startCleanupSweep();
 
 const server = Bun.serve({
   port: Number(process.env.PORT),

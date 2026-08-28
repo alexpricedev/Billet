@@ -7,6 +7,41 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 2.3.0
+
+### Added
+
+- **Expired rows are now swept.** `src/server/services/cleanup.ts` starts an hourly timer from
+  `main.ts` that deletes expired `user_tokens` and `sessions`, and — only with `TEAMS_ENABLED=true`
+  — expired `organization_invites` that were never accepted. `cleanupExpired` had existed in
+  `auth.ts` since the first release with no caller, so every fork has been accumulating dead rows
+  in the two highest-churn tables in the schema.
+- The sweep is **not** a correctness fix and forks should not treat it as one. Every read already
+  filters `expires_at > CURRENT_TIMESTAMP` — in `auth.ts`, `sessions.ts`, `csrf.ts` and
+  `invites.ts` — so an expired row has never been honoured whether or not it was still present.
+  What the sweep buys is bloat control on guest sessions, which churn faster than anything else
+  here, and the retention window `runbooks/PRIVACY.md` §7 asks for: a spent `user_tokens` row keeps
+  a live-looking `token_hash` indefinitely, and a lapsed invite keeps the invitee's email address.
+- **Accepted invites are kept**, expired or not. Migration `008` records acceptance with a
+  timestamp rather than deleting the row precisely so it survives as the record of who joined via
+  whom; the sweep's `accepted_at IS NULL` predicate is what preserves that. Revoked and lapsed
+  invites are deleted once their original seven days are up.
+- `startCleanupSweep()` returns a stop handle and its timer is `unref`'d, so it never holds a
+  process or the test runner open. The first sweep runs immediately — a deploy that restarts more
+  often than the interval would otherwise never sweep — and is not awaited at boot, so a database
+  blip during it cannot stop the server listening. A rejection is logged and retried next hour
+  rather than escaping the interval callback, where Bun would treat it as fatal.
+- Every instance of a multi-instance deployment runs the sweep. That needs no lock: the statements
+  are unconditional `DELETE`s over rows nothing can still use, so the losers of the race delete
+  nothing.
+
+### Changed
+
+- `cleanupExpired` in `auth.ts` stays scoped to `user_tokens` and `sessions`. Invites are swept by
+  `cleanupExpiredInvites` in `invites.ts`, composed by `cleanup.ts`, so auth never imports the team
+  surface. `runbooks/TEAMS.md` §9 now lists `cleanup.ts` as the fifth reference to untangle when
+  removing teams — the import is what `bun run check` reports if you miss it.
+
 ## 2.2.0
 
 ### Added

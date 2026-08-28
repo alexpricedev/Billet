@@ -222,6 +222,16 @@ keep it out of logs. Billet's request path already logs no PII — preserve that
   and never persists it — keep it that way if you wire it into routes.
 - **Redact secrets and personal data** before logging; separate identifiers from
   behavioural data; set and enforce retention windows on anything you do store.
+- **Expired rows are swept hourly**, not left to accumulate.
+  [`services/cleanup.ts`](../src/server/services/cleanup.ts) starts a timer from
+  `main.ts` that deletes expired `user_tokens` and `sessions`, plus — with
+  `TEAMS_ENABLED=true` — expired invites that were never accepted. Nothing reads
+  an expired row either way (every query filters `expires_at`), so this is
+  purely a retention measure: a spent magic-link token keeps a live-looking hash,
+  and a lapsed invite keeps the invitee's email address. Accepted invites are
+  kept deliberately as the record of who joined via whom. **A new table with an
+  expiry needs its own sweep added there** — the runbook's "enforce retention
+  windows" line is that file, and nothing else will notice the omission.
 
 > Framework maintainer note: `ConsoleLogProvider`
 > ([`email-providers/console.ts`](../src/server/services/email-providers/console.ts))
