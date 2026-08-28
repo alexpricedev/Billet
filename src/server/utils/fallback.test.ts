@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { setAssetsDirForTest } from "../services/assets";
 import { handleFallback } from "./fallback";
 
 const req = (path: string) =>
@@ -32,11 +33,29 @@ describe("handleFallback", () => {
     expect(res.headers.get("ETag")).toBeTruthy();
   });
 
-  test("returns 404 for a missing asset under /assets/", async () => {
+  test("returns 404 for a path that was never one of our assets", async () => {
     const res = await req("/assets/does-not-exist.js");
 
     expect(res.status).toBe(404);
     expect(await res.text()).toBe("Asset not found");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  test("returns 503 for one of our own bundles that is not built", async () => {
+    // An empty scratch directory rather than deleting the real dist/assets:
+    // the dev server serves that one off disk, and a failure here would leave
+    // it deleted.
+    setAssetsDirForTest("dist/.fallback-test-unbuilt");
+    try {
+      const res = await req("/assets/main.css");
+
+      expect(res.status).toBe(503);
+      expect(res.headers.get("Retry-After")).toBe("1");
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(await res.text()).toContain("bun run build");
+    } finally {
+      setAssetsDirForTest(null);
+    }
   });
 
   test("returns a styled HTML 404 page for an unknown path", async () => {
