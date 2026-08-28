@@ -192,6 +192,18 @@ carrying `max-age=3600`, and the stylesheet would stay missing for an hour. `ser
 the whole file into memory, answers an empty read with a 503 + `Retry-After`, and sets `no-store`
 throughout — so a mid-rebuild request costs one reload, never a cached blank.
 
+A bundle that is *absent* rather than empty gets the same 503, not a 404: `handleFallback` checks
+the name against `BUNDLE_FILENAMES` (`src/server/services/assets.ts`), so `/assets/main.css` with
+no build behind it reads as build state the next `bun run build` fixes, while `/assets/typo.js`
+stays a 404. `warnOnMissingDevBundles()` says the same thing at boot, and `bun run dev` builds once
+before starting the watchers.
+
+Anything that writes to `dist/assets` in a test must point `ASSETS_DIR` at a scratch directory
+first. `assets.test.ts` used to build its fixtures in the real `dist/assets` and `rmSync` the whole
+directory in `afterAll` — running that one file (`bun test src/server/services/assets.test.ts`, an
+editor's test button) deleted the running dev server's bundles, and every page went unstyled until
+someone ran `bun run build`. `assetsDir()` reads the env per call so a test can redirect it.
+
 ### Linting
 
 Biome runs with `recommended` on and `noConsole: error` — use `log` from

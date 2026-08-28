@@ -1,4 +1,4 @@
-import { handleAssetRequest } from "../services/assets";
+import { handleAssetRequest, isBundleFilename } from "../services/assets";
 import { render404 } from "./errors";
 import { serveDevBundle, serveFile } from "./static-files";
 
@@ -34,7 +34,28 @@ export const handleFallback = async (req: Request): Promise<Response> => {
 
     const file = Bun.file(`dist${url.pathname}`);
     if (await file.exists()) return serveDevBundle(file);
-    return new Response("Asset not found", { status: 404 });
+
+    // A build artefact that is absent is not the same as a URL that was never
+    // an asset. dist/ is gitignored and rewritten by the watchers, so one of our
+    // own bundles going missing is a build-state problem the next `bun run
+    // build` fixes — same class as the mid-rebuild empty read, so same answer:
+    // 503 + Retry-After, uncached, never a 404 the browser treats as settled.
+    // Anything else under /assets/ really is not there: 404.
+    const filename = url.pathname.split("/").pop() ?? "";
+    if (isBundleFilename(filename)) {
+      return new Response(
+        `Bundle ${filename} is not built — run \`bun run build\``,
+        {
+          status: 503,
+          headers: { "Retry-After": "1", "Cache-Control": "no-store" },
+        },
+      );
+    }
+
+    return new Response("Asset not found", {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   if (url.pathname.startsWith("/")) {

@@ -8,9 +8,27 @@ import {
   test,
 } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { getAssetUrl, handleAssetRequest, initAssets } from "./assets";
+import {
+  getAssetUrl,
+  handleAssetRequest,
+  initAssets,
+  isBundleFilename,
+  warnOnMissingDevBundles,
+} from "./assets";
 
 const originalNodeEnv = Bun.env.NODE_ENV;
+const originalAssetsDir = Bun.env.ASSETS_DIR;
+
+// Never the real dist/assets: this suite deletes the directory it builds in, and
+// the dev server serves the real one off disk.
+const FIXTURE_DIR = "dist/.assets-test";
+
+const writeBundles = () => {
+  mkdirSync(FIXTURE_DIR, { recursive: true });
+  writeFileSync(`${FIXTURE_DIR}/main.js`, "console.log('test')");
+  writeFileSync(`${FIXTURE_DIR}/captcha.js`, "console.log('captcha')");
+  writeFileSync(`${FIXTURE_DIR}/main.css`, "body { color: red }");
+};
 
 describe("assets (non-production)", () => {
   beforeEach(() => {
@@ -37,14 +55,13 @@ describe("assets (non-production)", () => {
 
 describe("assets (production)", () => {
   beforeAll(() => {
-    mkdirSync("dist/assets", { recursive: true });
-    writeFileSync("dist/assets/main.js", "console.log('test')");
-    writeFileSync("dist/assets/captcha.js", "console.log('captcha')");
-    writeFileSync("dist/assets/main.css", "body { color: red }");
+    Bun.env.ASSETS_DIR = FIXTURE_DIR;
+    writeBundles();
   });
 
   afterAll(() => {
-    rmSync("dist/assets", { recursive: true, force: true });
+    rmSync(FIXTURE_DIR, { recursive: true, force: true });
+    Bun.env.ASSETS_DIR = originalAssetsDir;
   });
 
   beforeEach(async () => {
@@ -108,5 +125,76 @@ describe("assets (production)", () => {
   test("handleAssetRequest returns null for non-matching path", () => {
     const url = new URL("http://localhost/other/path");
     expect(handleAssetRequest(url)).toBeNull();
+  });
+});
+
+describe("isBundleFilename", () => {
+  test("recognises the bundles the build produces", () => {
+    expect(isBundleFilename("main.css")).toBe(true);
+    expect(isBundleFilename("main.js")).toBe(true);
+    expect(isBundleFilename("captcha.js")).toBe(true);
+  });
+
+  test("rejects anything else under /assets/", () => {
+    expect(isBundleFilename("does-not-exist.js")).toBe(false);
+    expect(isBundleFilename("main.abc12345.js")).toBe(false);
+  });
+});
+
+describe("warnOnMissingDevBundles", () => {
+  const warnings: string[] = [];
+  let restoreWarn: () => void;
+
+  beforeEach(() => {
+    Bun.env.NODE_ENV = "test";
+    Bun.env.ASSETS_DIR = FIXTURE_DIR;
+    warnings.length = 0;
+    const original = console.warn;
+    console.warn = (message: string) => warnings.push(message);
+    restoreWarn = () => {
+      console.warn = original;
+    };
+  });
+
+  afterEach(() => {
+    restoreWarn();
+    rmSync(FIXTURE_DIR, { recursive: true, force: true });
+    Bun.env.NODE_ENV = originalNodeEnv;
+    Bun.env.ASSETS_DIR = originalAssetsDir;
+  });
+
+  test("says nothing when every bundle is built", async () => {
+    writeBundles();
+    await warnOnMissingDevBundles();
+
+    expect(warnings).toHaveLength(0);
+  });
+
+  test("names the missing bundles and the command that restores them", async () => {
+    writeBundles();
+    rmSync(`${FIXTURE_DIR}/main.css`);
+
+    await warnOnMissingDevBundles();
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("main.css");
+    expect(warnings[0]).toContain("bun run build");
+  });
+
+  test("treats a bundle left empty by a broken build as missing", async () => {
+    writeBundles();
+    writeFileSync(`${FIXTURE_DIR}/main.js`, "");
+
+    await warnOnMissingDevBundles();
+
+    expect(warnings[0]).toContain("main.js");
+  });
+
+  test("stays quiet in production, where initAssets throws instead", async () => {
+    Bun.env.NODE_ENV = "production";
+
+    await warnOnMissingDevBundles();
+
+    expect(warnings).toHaveLength(0);
   });
 });

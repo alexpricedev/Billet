@@ -2,16 +2,28 @@ import { log } from "./logger";
 
 const assetHashes = new Map<string, string>();
 
-const ASSETS_TO_HASH = ["main.js", "captcha.js", "main.css"];
-const DIST_ASSETS_PATH = "dist/assets";
+// The bundles `bun run build` produces. In production they get fingerprinted and
+// hashed at boot; in development they are served un-hashed straight off disk, so
+// the same list is what tells a missing dev bundle apart from a typo'd URL.
+export const BUNDLE_FILENAMES = ["main.js", "captcha.js", "main.css"];
+// Where the built bundles live. Overridable so tests can point their fixtures at
+// a scratch directory: this module's tests write and then delete the whole
+// directory, and with the path hardcoded that deletion took out the real
+// dist/assets of whichever workspace ran the suite — leaving every page unstyled
+// until the next `bun run build`. Read per call, not once at import, so a test
+// can set it after the module is loaded.
+const assetsDir = (): string => Bun.env.ASSETS_DIR ?? "dist/assets";
+
+export const isBundleFilename = (filename: string): boolean =>
+  BUNDLE_FILENAMES.includes(filename);
 
 export async function initAssets(): Promise<void> {
   if (Bun.env.NODE_ENV !== "production") {
     return;
   }
 
-  for (const filename of ASSETS_TO_HASH) {
-    const filePath = `${DIST_ASSETS_PATH}/${filename}`;
+  for (const filename of BUNDLE_FILENAMES) {
+    const filePath = `${assetsDir()}/${filename}`;
     const file = Bun.file(filePath);
 
     if (!(await file.exists())) {
@@ -28,6 +40,32 @@ export async function initAssets(): Promise<void> {
     log.info(
       "assets",
       `${filename} → ${filename.replace(/\.(\w+)$/, `.${hash}.$1`)}`,
+    );
+  }
+}
+
+// dist/ is gitignored and rebuilt by the dev watchers, so it can be missing (a
+// fresh checkout) or half-there (something cleared it mid-session). Neither is
+// fatal — the server still boots — but every page then renders unstyled with no
+// explanation, so say so at boot with the command that fixes it. Production
+// doesn't reach here: initAssets() throws on a missing asset instead.
+export async function warnOnMissingDevBundles(): Promise<void> {
+  if (Bun.env.NODE_ENV === "production") {
+    return;
+  }
+
+  const missing: string[] = [];
+  for (const filename of BUNDLE_FILENAMES) {
+    const file = Bun.file(`${assetsDir()}/${filename}`);
+    if (!(await file.exists()) || file.size === 0) {
+      missing.push(filename);
+    }
+  }
+
+  if (missing.length > 0) {
+    log.warn(
+      "assets",
+      `${assetsDir()} is missing ${missing.join(", ")} — pages will render unstyled. Run \`bun run build\` to restore it.`,
     );
   }
 }
@@ -72,7 +110,7 @@ export function handleAssetRequest(url: URL): Response | null {
     return new Response("Asset not found", { status: 404 });
   }
 
-  const file = Bun.file(`${DIST_ASSETS_PATH}/${filename}`);
+  const file = Bun.file(`${assetsDir()}/${filename}`);
   const contentType =
     extension === "js" ? "application/javascript" : "text/css";
 

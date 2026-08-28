@@ -3,7 +3,7 @@ import { seedIfEmpty } from "./database/seed";
 import { adminRoutes } from "./routes/admin";
 import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
-import { initAssets } from "./services/assets";
+import { initAssets, warnOnMissingDevBundles } from "./services/assets";
 import { log } from "./services/logger";
 import { validateEnv } from "./utils/env";
 import { render500 } from "./utils/errors";
@@ -18,6 +18,7 @@ validateEnv();
 await runMigrations();
 await seedIfEmpty();
 await initAssets();
+await warnOnMissingDevBundles();
 
 const server = Bun.serve({
   port: Number(process.env.PORT),
