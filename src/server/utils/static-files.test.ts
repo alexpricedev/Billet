@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { createBunRequest } from "../test-utils/bun-request";
-import { etagMatches, fileEtag, serveFile } from "./static-files";
+import {
+  etagMatches,
+  fileEtag,
+  serveDevBundle,
+  serveFile,
+} from "./static-files";
 
 // A real file on disk so size/mtime (and thus the ETag) are stable within a run.
 const FIXTURE = Bun.file("public/logo.svg");
@@ -73,5 +78,29 @@ describe("serveFile", () => {
 
     expect(res.status).toBe(200);
     expect((await res.text()).length).toBeGreaterThan(0);
+  });
+});
+
+describe("serveDevBundle", () => {
+  test("serves the bundle uncached so a bad read heals on the next reload", async () => {
+    const res = await serveDevBundle(FIXTURE);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/svg+xml");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect((await res.text()).length).toBeGreaterThan(0);
+  });
+
+  test("answers 503 rather than serving a bundle caught mid-rebuild", async () => {
+    const path = `${import.meta.dir}/../../../dist/.mid-rebuild.css`;
+    await Bun.write(path, "");
+
+    const res = await serveDevBundle(Bun.file(path));
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("Retry-After")).toBe("1");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+
+    await Bun.file(path).delete();
   });
 });

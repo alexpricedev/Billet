@@ -47,3 +47,28 @@ export const serveFile = (req: Request, file: Bun.BunFile): Response => {
 
   return new Response(file, { headers });
 };
+
+// The dev bundle is rewritten in place by `bun build --watch` on every save, so
+// a request can land mid-write and read a truncated — usually empty — file.
+// Streaming that as a 200 with the revalidatable cache headers above is what
+// makes the stylesheet "just not load" after a reload, and keeps it unloaded for
+// the next hour. So dev bundles are read into memory (a full snapshot, never a
+// partial stream), an empty read is answered 503 rather than cached as valid,
+// and nothing here is cached at all — a bad moment costs one reload, not an
+// hour.
+export const serveDevBundle = async (file: Bun.BunFile): Promise<Response> => {
+  const bytes = await file.bytes();
+  const headers = {
+    "Content-Type": file.type,
+    "Cache-Control": "no-store",
+  };
+
+  if (bytes.byteLength === 0) {
+    return new Response("Bundle is mid-rebuild", {
+      status: 503,
+      headers: { ...headers, "Retry-After": "1" },
+    });
+  }
+
+  return new Response(bytes, { headers });
+};
