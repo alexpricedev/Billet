@@ -103,7 +103,21 @@ change its own code after merging.
   `CAPTCHA_ENABLED`. Same reason as those three: a developer who runs the dev server with teams
   on has it in their `.env`, and leaked into a test run it breaks every `expect(404)` on a team
   route.
-- `cleanupTestData` truncates the three new tables. A fork that has its own copy needs the lines.
+- `cleanupTestData` truncates the three new tables, and does the whole thing in one
+  `TRUNCATE … RESTART IDENTITY CASCADE` rather than seven statements plus an `ALTER SEQUENCE`.
+  Every test in the suite calls it and each round trip waits on an fsync under CI; one statement
+  also checks its foreign keys once, at the end, so the table order stops mattering. A fork that
+  has its own copy needs both changes.
+- `.github/workflows/ci.yml` puts the Postgres cluster in `/dev/shm` (`PGDATA`, `--shm-size=1g`)
+  and raises `TEST_FILE_TIMEOUT_MS` to 180s. Test data is disposable, so the fsync every
+  `cleanupTestData` waits on buys nothing but wall clock; the per-file cap is a hang detector,
+  and a runner is slower than a laptop, so the old value was killing files that only needed a few
+  more seconds. The database and `APP_NAME` also lose a workspace-specific name (`san-jose-test`)
+  for a neutral one. `runbooks/CI.md` has the detail.
+- The homepage hero, `README.md`, the `package.json` description and the OpenGraph copy in
+  `src/server/services/seo.ts` are reworded around "put your agents on rails" — the product is
+  the guardrails, not the starter. Copy only, but a fork that has kept the stock hero and
+  metadata will see them all move together, `public/og-image.png` included.
 - **`/auth/callback` and `/auth/verify` answer both `GET` and `POST`.** The `GET` renders a
   confirm step and the `POST` spends the token, so a fork that has replaced either controller
   needs the second handler and the `createRouteHandler` entry. `/auth/callback` mints a guest
@@ -143,6 +157,26 @@ change its own code after merging.
   sends the visitor to `/login?error=…`, and the page rendered a pristine form instead of the
   message. Flash state still wins where both are present, and the query value is capped and
   rendered as text.
+- **The dev bundle could be served mid-rebuild, and stay broken for an hour.** `bun build --watch`
+  rewrites `dist/assets/*` in place, so a reload can read the file while it is half-written —
+  and `serveFile` streamed those zero bytes as a `200` carrying `max-age=3600`, which is what
+  made the stylesheet "just not load" and then stay unloaded. Dev bundles now go through
+  `serveDevBundle` (`src/server/utils/static-files.ts`), which reads the whole file into memory,
+  answers an empty read with `503` + `Retry-After` instead of caching it as valid, and sets
+  `no-store` throughout. A bad moment costs one reload.
+- **A missing bundle answered `404`, which browsers treat as settled.** `handleFallback` now
+  checks the name against `BUNDLE_FILENAMES`, so `/assets/main.css` with no build behind it is a
+  `503` — build state the next `bun run build` fixes — while `/assets/typo.js` stays a `404`.
+  `warnOnMissingDevBundles()` says the same thing at boot, and `bun run dev` builds once before
+  starting the watchers.
+- **`assets.test.ts` deleted the real `dist/assets`.** It built its fixtures in the live directory
+  and `rmSync`'d the whole thing in `afterAll`, so running that one file from an editor's test
+  button left the running dev server with no bundles and every page unstyled until someone ran
+  `bun run build`. Every read of the directory now goes through `assetsDir()`, and
+  `setAssetsDirForTest()` overrides it; pass `null` in an `afterEach` to restore. A fork with its
+  own asset tests must call it before touching that directory. Deliberately not an env var —
+  `--outdir ./dist/assets` is fixed in `package.json`, so pointing a deployment elsewhere would
+  only break boot.
 
 ## 2.1.1
 
