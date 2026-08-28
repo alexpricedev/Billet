@@ -1,6 +1,6 @@
 import { handleAssetRequest } from "../services/assets";
 import { render404 } from "./errors";
-import { serveFile } from "./static-files";
+import { serveDevBundle, serveFile } from "./static-files";
 
 // Catch-all handler for requests not matched by a declared route: trailing-slash
 // canonicalisation, the platform health check, and static file serving (hashed
@@ -33,7 +33,7 @@ export const handleFallback = async (req: Request): Promise<Response> => {
     if (cached) return cached;
 
     const file = Bun.file(`dist${url.pathname}`);
-    if (await file.exists()) return serveFile(req, file);
+    if (await file.exists()) return serveDevBundle(file);
     return new Response("Asset not found", { status: 404 });
   }
 

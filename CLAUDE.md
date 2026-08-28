@@ -185,6 +185,13 @@ exactly, so `http://localhost` vs `http://localhost:3000` rejects every form pos
 `initAssets()` and `getAssetUrl()` no-op unless `NODE_ENV=production`, so asset URLs differ between
 dev and prod. In production the files must already exist in `dist/assets` or startup throws.
 
+The un-hashed dev bundle is served by `serveDevBundle` (`src/server/utils/static-files.ts`), not
+`serveFile`, and that distinction is load-bearing. `bun build --watch` rewrites `dist/assets/*` in
+place, so a reload can read the file mid-write; `serveFile` would stream those zero bytes as a 200
+carrying `max-age=3600`, and the stylesheet would stay missing for an hour. `serveDevBundle` reads
+the whole file into memory, answers an empty read with a 503 + `Retry-After`, and sets `no-store`
+throughout — so a mid-rebuild request costs one reload, never a cached blank.
+
 ### Linting
 
 Biome runs with `recommended` on and `noConsole: error` — use `log` from
