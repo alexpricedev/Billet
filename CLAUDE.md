@@ -198,11 +198,15 @@ no build behind it reads as build state the next `bun run build` fixes, while `/
 stays a 404. `warnOnMissingDevBundles()` says the same thing at boot, and `bun run dev` builds once
 before starting the watchers.
 
-Anything that writes to `dist/assets` in a test must point `ASSETS_DIR` at a scratch directory
-first. `assets.test.ts` used to build its fixtures in the real `dist/assets` and `rmSync` the whole
+Anything that reads or writes `dist/assets` in a test must call `setAssetsDirForTest()` first.
+`assets.test.ts` used to build its fixtures in the real `dist/assets` and `rmSync` the whole
 directory in `afterAll` — running that one file (`bun test src/server/services/assets.test.ts`, an
 editor's test button) deleted the running dev server's bundles, and every page went unstyled until
-someone ran `bun run build`. `assetsDir()` reads the env per call so a test can redirect it.
+someone ran `bun run build`. Every read of the directory goes through `assetsDir()`
+(`initAssets`, `handleAssetRequest`, `warnOnMissingDevBundles`, and `handleFallback`) so the
+override covers all of them; pass `null` in an `afterEach`/`finally` to restore it. It is
+deliberately not an env var — `--outdir ./dist/assets` is fixed in `package.json`, so pointing a
+deployment somewhere else would only break boot.
 
 ### Linting
 

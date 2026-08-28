@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { setAssetsDirForTest } from "../services/assets";
 import { handleFallback } from "./fallback";
 
 const req = (path: string) =>
@@ -41,18 +42,20 @@ describe("handleFallback", () => {
   });
 
   test("returns 503 for one of our own bundles that is not built", async () => {
-    const built = Bun.file("dist/assets/main.css");
-    const restore = (await built.exists()) ? await built.bytes() : null;
-    if (restore) await built.delete();
+    // An empty scratch directory rather than deleting the real dist/assets:
+    // the dev server serves that one off disk, and a failure here would leave
+    // it deleted.
+    setAssetsDirForTest("dist/.fallback-test-unbuilt");
+    try {
+      const res = await req("/assets/main.css");
 
-    const res = await req("/assets/main.css");
-
-    expect(res.status).toBe(503);
-    expect(res.headers.get("Retry-After")).toBe("1");
-    expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(await res.text()).toContain("bun run build");
-
-    if (restore) await Bun.write("dist/assets/main.css", restore);
+      expect(res.status).toBe(503);
+      expect(res.headers.get("Retry-After")).toBe("1");
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(await res.text()).toContain("bun run build");
+    } finally {
+      setAssetsDirForTest(null);
+    }
   });
 
   test("returns a styled HTML 404 page for an unknown path", async () => {

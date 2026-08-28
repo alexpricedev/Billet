@@ -1,4 +1,8 @@
-import { handleAssetRequest, isBundleFilename } from "../services/assets";
+import {
+  assetsDir,
+  handleAssetRequest,
+  isBundleFilename,
+} from "../services/assets";
 import { render404 } from "./errors";
 import { serveDevBundle, serveFile } from "./static-files";
 
@@ -32,7 +36,8 @@ export const handleFallback = async (req: Request): Promise<Response> => {
     const cached = handleAssetRequest(url);
     if (cached) return cached;
 
-    const file = Bun.file(`dist${url.pathname}`);
+    const filename = url.pathname.slice("/assets/".length);
+    const file = Bun.file(`${assetsDir()}/${filename}`);
     if (await file.exists()) return serveDevBundle(file);
 
     // A build artefact that is absent is not the same as a URL that was never
@@ -41,7 +46,6 @@ export const handleFallback = async (req: Request): Promise<Response> => {
     // build` fixes — same class as the mid-rebuild empty read, so same answer:
     // 503 + Retry-After, uncached, never a 404 the browser treats as settled.
     // Anything else under /assets/ really is not there: 404.
-    const filename = url.pathname.split("/").pop() ?? "";
     if (isBundleFilename(filename)) {
       return new Response(
         `Bundle ${filename} is not built — run \`bun run build\``,

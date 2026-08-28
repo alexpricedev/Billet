@@ -13,11 +13,11 @@ import {
   handleAssetRequest,
   initAssets,
   isBundleFilename,
+  setAssetsDirForTest,
   warnOnMissingDevBundles,
 } from "./assets";
 
 const originalNodeEnv = Bun.env.NODE_ENV;
-const originalAssetsDir = Bun.env.ASSETS_DIR;
 
 // Never the real dist/assets: this suite deletes the directory it builds in, and
 // the dev server serves the real one off disk.
@@ -55,13 +55,13 @@ describe("assets (non-production)", () => {
 
 describe("assets (production)", () => {
   beforeAll(() => {
-    Bun.env.ASSETS_DIR = FIXTURE_DIR;
+    setAssetsDirForTest(FIXTURE_DIR);
     writeBundles();
   });
 
   afterAll(() => {
     rmSync(FIXTURE_DIR, { recursive: true, force: true });
-    Bun.env.ASSETS_DIR = originalAssetsDir;
+    setAssetsDirForTest(null);
   });
 
   beforeEach(async () => {
@@ -147,7 +147,7 @@ describe("warnOnMissingDevBundles", () => {
 
   beforeEach(() => {
     Bun.env.NODE_ENV = "test";
-    Bun.env.ASSETS_DIR = FIXTURE_DIR;
+    setAssetsDirForTest(FIXTURE_DIR);
     warnings.length = 0;
     const original = console.warn;
     console.warn = (message: string) => warnings.push(message);
@@ -160,7 +160,7 @@ describe("warnOnMissingDevBundles", () => {
     restoreWarn();
     rmSync(FIXTURE_DIR, { recursive: true, force: true });
     Bun.env.NODE_ENV = originalNodeEnv;
-    Bun.env.ASSETS_DIR = originalAssetsDir;
+    setAssetsDirForTest(null);
   });
 
   test("says nothing when every bundle is built", async () => {

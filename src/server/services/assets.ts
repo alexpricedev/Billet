@@ -6,13 +6,19 @@ const assetHashes = new Map<string, string>();
 // hashed at boot; in development they are served un-hashed straight off disk, so
 // the same list is what tells a missing dev bundle apart from a typo'd URL.
 export const BUNDLE_FILENAMES = ["main.js", "captcha.js", "main.css"];
-// Where the built bundles live. Overridable so tests can point their fixtures at
-// a scratch directory: this module's tests write and then delete the whole
-// directory, and with the path hardcoded that deletion took out the real
-// dist/assets of whichever workspace ran the suite — leaving every page unstyled
-// until the next `bun run build`. Read per call, not once at import, so a test
-// can set it after the module is loaded.
-const assetsDir = (): string => Bun.env.ASSETS_DIR ?? "dist/assets";
+// Where the built bundles live. Deliberately not an env var: `--outdir
+// ./dist/assets` is fixed in package.json, so an operator pointing this
+// somewhere else would only break boot. The override exists for tests, which
+// build fixture bundles and then delete the whole directory — with the path
+// hardcoded that deletion took out the real dist/assets of whichever workspace
+// ran the suite, leaving every page unstyled until the next `bun run build`.
+let assetsDirOverride: string | null = null;
+
+export const setAssetsDirForTest = (dir: string | null): void => {
+  assetsDirOverride = dir;
+};
+
+export const assetsDir = (): string => assetsDirOverride ?? "dist/assets";
 
 export const isBundleFilename = (filename: string): boolean =>
   BUNDLE_FILENAMES.includes(filename);
