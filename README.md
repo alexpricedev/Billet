@@ -95,7 +95,7 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 
 The "deterministic templates, test with confidence" tagline isn't a marketing claim — it's backed by infrastructure.
 
-- **750+ tests across 68 files** covering controllers, services, middleware, utilities, and client scripts
+- **760+ tests across 70 files** covering controllers, services, middleware, utilities, and client scripts
 - **No browser simulation needed** — server-rendered templates are pure functions of props, testable with `renderToString()` and string assertions
 - **Real database testing** for services — tests run against PostgreSQL with table truncation for isolation
 - **Mock-based controller tests** that verify HTTP responses (status codes, headers, HTML content) without touching the database

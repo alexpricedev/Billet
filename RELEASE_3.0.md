@@ -160,11 +160,12 @@ with no pool-close warnings. Notes for whoever touches these next:
 
 ## Before cutting the release
 
-- [ ] Bump `version` in `package.json` to `3.0.0` and rename `## Unreleased` in `CHANGELOG.md`.
-- [ ] Check the first CI run on 1.4 with parallel workers — this has only been exercised on a
-      4-core container, never on hardware we don't control. The `Tests` job should drop from ~70s to
-      ~20s.
-- [ ] Browser check: nothing user-visible changed, but the API Reference and README counts did.
-- [ ] Consider whether the last-owner atomicity fix warrants its own release note prominence — a
-      fork on `TEAMS_ENABLED=true` should take it. Severity is narrow (needs two owners acting
-      within milliseconds, and an org admin can still recover it) but the failure is silent.
+- [x] Bump `version` in `package.json` to `3.0.0` and rename `## Unreleased` in `CHANGELOG.md`.
+- [x] Check the first CI run on 1.4 with parallel workers — green on GitHub's 4-vCPU runner:
+      768 pass / 0 fail, suite 14.57s inside a 45s `Tests` job (was ~70s).
+- [x] Browser check: nothing user-visible changed; README test counts updated (760+/70 files),
+      API Reference already describes `Allow` generically so HEAD needs no edit.
+- [x] The last-owner atomicity fix and TRUST_PROXY both lead the 3.0.0 changelog intro — the two
+      things a fork can silently get wrong.
+
+Remaining before merge: nothing code-side. Delete this file when the release ships.
