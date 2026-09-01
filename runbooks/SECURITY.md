@@ -81,6 +81,10 @@ script-src 'self' 'unsafe-inline' https://unpkg.com https://esm.sh;
 connect-src 'self'; upgrade-insecure-requests
 ```
 
+`upgrade-insecure-requests` ships in production only, like HSTS: WebKit (unlike
+Chrome) applies the upgrade to `http://localhost` subresources too, which strips
+every asset off the page in local dev and under the browser smoke tests.
+
 What it buys today: no other site can frame our pages (`frame-ancestors 'none'`),
 no plugins (`object-src 'none'`), no `<base>` injection (`base-uri 'none'`), any
 stray `http://` subresource is auto-upgraded to HTTPS, and code/styles/images may

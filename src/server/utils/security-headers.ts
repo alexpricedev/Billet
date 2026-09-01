@@ -29,7 +29,11 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline' https://unpkg.com https://esm.sh",
   "connect-src 'self'",
-  "upgrade-insecure-requests",
+  // Production only, like HSTS below: WebKit applies the upgrade to
+  // http://localhost subresources too (Chrome exempts localhost), so in dev it
+  // rewrites every asset URL to an https origin nothing serves and the page
+  // loads bare — found by the browser smoke tests, which run system WebKit.
+  ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 // Deny every powerful feature we do not use; fullscreen stays available to our
