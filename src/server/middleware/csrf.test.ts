@@ -199,6 +199,40 @@ describe("CSRF Middleware", () => {
       expect(response).toBeNull();
     });
 
+    // Pins the ordering invariant every controller relies on: checkCsrf reads
+    // the form token through req.clone(), and Bun 1.4 makes clone() throw once
+    // the body has been read. A controller that calls readFormValues first
+    // therefore 403s every request — this documents that the failure is a
+    // token-not-found rejection, not a crash, and that the order matters.
+    test("a body consumed before checkCsrf fails closed as missing-token", async () => {
+      const sessionId = await createTestSession();
+      const cookieHeader = `session_id=${sessionId}`;
+      const csrfToken = await createCsrfToken(sessionId, "POST", "/test");
+
+      const formData = new FormData();
+      formData.append("_csrf", csrfToken);
+
+      const req = createBunRequest(`${ORIGIN}/test`, {
+        method: "POST",
+        headers: {
+          Origin: ORIGIN,
+          Cookie: cookieHeader,
+        },
+        body: formData,
+      });
+
+      // A controller reading the form before the CSRF check.
+      await req.formData();
+
+      const result = await checkCsrf(req, { method: "POST", path: "/test" });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.reason).toBe("missing-token");
+        expect(result.response.status).toBe(403);
+      }
+    });
+
     test("rejects POST request with invalid CSRF token", async () => {
       const sessionId = await createTestSession();
       const cookieHeader = `session_id=${sessionId}`;

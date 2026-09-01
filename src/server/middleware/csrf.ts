@@ -115,8 +115,17 @@ export const checkCsrf = async (
         const formData = await clonedReq.formData();
         csrfToken = formData.get(CSRF_FIELD_NAME) as string;
       }
-    } catch {
-      // Form data parsing failed - continue with null token
+    } catch (error) {
+      // A malformed body parses to no token and fails below, which is right.
+      // But clone() throwing means the body was *already read* — a controller
+      // called readFormValues before checkCsrf, and every request through it
+      // will 403. That ordering bug must not degrade silently.
+      if (error instanceof TypeError && req.bodyUsed) {
+        log.error(
+          "csrf",
+          `Body consumed before checkCsrf on ${options.path} — call checkCsrf before reading the form`,
+        );
+      }
     }
   }
 
