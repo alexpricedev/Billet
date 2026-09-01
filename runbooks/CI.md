@@ -72,15 +72,31 @@ knowing about but not worth blocking an unrelated PR over, and a check that goes
 red for reasons nobody can act on is a check people learn to ignore. Run plain
 `bun audit` locally to see everything, including what sits below the line.
 
-When it does fail, the fix is usually `bun update <package>` — a compatible bump
-inside the existing range, so the lockfile changes and nothing else does. If the
-advisory is against a transitive dependency of a direct one (say `resend` →
-`svix` → `uuid`), you can't bump it yourself; either the direct dependency ships
-an update or you decide the exposure is acceptable and record why.
+When it does fail, run `bun audit fix` — it resolves every advisory that a
+compatible bump inside the existing ranges can fix, and reports the ones it
+can't. If the advisory survives that, it's against a transitive dependency
+whose direct parent hasn't shipped an update (say `resend` → `svix` → `uuid`);
+either wait for the parent or decide the exposure is acceptable and record why.
 
 Dependabot ([`.github/dependabot.yml`](../.github/dependabot.yml)) opens the
 routine bumps — one grouped PR a week for dependencies, one for pinned Action
 versions — so the audit is the backstop, not the mechanism.
+
+Before merging a Dependabot PR (or any bump you didn't author), `bun pm diff
+<pkg>@<old> <pkg>@<new>` prints what actually changed between the two published
+tarballs — and flags the changes that matter for supply chain: new install
+scripts, and new imports of `child_process`, `fs`, `net` or `vm`. A patch bump
+that suddenly gains a postinstall script is exactly the thing a version diff on
+GitHub won't show you, because npm tarballs don't have to match the repo.
+
+Two more one-liners with no workflow behind them, by design:
+
+- `bun pm licenses --prod --json` lists every production dependency's licence.
+  Run it before a release or when legal asks; with four production dependencies
+  it isn't worth a CI job.
+- `bun dedupe --check` reports when the lockfile holds multiple versions of the
+  same package that could collapse into one. Advisory, not gating — duplicate
+  versions are a size and consistency smell, not a failure.
 
 ## 2. Require the checks before merge
 
