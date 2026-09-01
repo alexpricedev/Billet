@@ -132,3 +132,9 @@ Rate limiting is not optional and not per-endpoint guesswork: use `apiReadLimit`
 `apiWriteLimit` (20/min) from `request-guard.ts`. Reach for `rateLimit` directly only when an
 endpoint is unusually expensive, and say why in a comment — the auth forms use 5/min because every
 request there can send mail or burn an argon2 hash.
+
+`rateLimit` takes a **bucket** as its second argument (`RateLimitBucket` in
+`middleware/rate-limit.ts`), and it is half the map key. Pass the one that describes the budget
+you mean to spend — `api-read`, `api-write`, or `auth` — never someone else's: a limit shared with
+a route that isn't yours isn't a limit, it is whichever of the two is stricter. A new bucket is a
+new entry in that union, not a free-form string.

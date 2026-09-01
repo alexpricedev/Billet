@@ -25,7 +25,7 @@ export const invite = {
   async index(req: BunRequest): Promise<Response> {
     if (!teamsEnabled()) return render404();
 
-    const limited = rateLimit(req, 10, 60_000);
+    const limited = rateLimit(req, "auth", 10, 60_000);
     if (limited) return limited;
 
     const token = new URL(req.url).searchParams.get("token") ?? "";

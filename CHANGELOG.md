@@ -49,6 +49,11 @@ organisation silently loses its last owner. And a fork deployed behind a reverse
 - **`rateLimit` returns that same envelope.** The 429 body changed from `{ error: "Too many
   requests" }` to `{ error: { code: "rate_limited", message } }` and now carries `Retry-After`.
   This affects the auth and team forms as well as the API, since they share the middleware.
+- **`rateLimit` takes a bucket as its second argument** — `rateLimit(req, "auth", 5, 60_000)`.
+  A fork with its own call sites must name one of `RateLimitBucket`'s members (`auth`,
+  `api-read`, `api-write`) or add its own; the budget is spent per bucket per address, not per
+  address. The existing auth and team call sites all pass `auth`, which is the counter they
+  already shared, so nothing about those limits changed.
 - **`getProjects()` is unchanged, but the API no longer calls it.** `getProjectPage(limit, offset)`
   is the paginated read; the `/projects` HTML page still uses `getProjects()`.
 - **`createMockRequest` returns a `BunRequest`** and takes a fourth `headers` argument. A string
@@ -118,7 +123,7 @@ organisation silently loses its last owner. And a fork deployed behind a reverse
   `src/server/test-utils/setup.ts`, which asserts the envelope and returns the parsed body.
 - `createApiRouteHandler` in `src/server/utils/route-handler.ts` — JSON 405 with an `Allow` header.
   `createRouteHandler` now sends `Allow` too.
-- `.bun-version` (1.3.11) and `engines.bun`, with `bun-version-file` on every `setup-bun` step in
+- `.bun-version` (1.4.0) and `engines.bun`, with `bun-version-file` on every `setup-bun` step in
   CI. `oven-sh/setup-bun` was installing the latest release, so the CI toolchain moved on Bun's
   release schedule rather than on a commit — on an app built on `Bun.SQL`, `Bun.password` and
   Bun's CSS bundler.
@@ -192,6 +197,19 @@ organisation silently loses its last owner. And a fork deployed behind a reverse
 
 ### Fixed
 
+- **Every rate limit shared one counter per address.** `requestLog` was keyed on the client
+  address alone, so the new API budgets spent the auth forms' — five requests to any `/api/*`
+  route left the next `/login`, `/signup`, `/forgot-password`, `/account/password` or
+  `/team/invites` POST from that address already over the 5/minute limit, which behind a shared
+  NAT meant five cheap unauthenticated GETs could deny login to everyone on it. Reads spent the
+  write allowance the same way, so the documented 60/20 split never held either. The bucket name
+  is now half the key.
+- **A failing drain no longer skips the rest of the shutdown.** `registerShutdown` awaited
+  `server.stop()` and `db.close()` unguarded, and a rejection from either escaped the signal
+  handler as an unhandled rejection — fatal in Bun — killing the process partway through, with
+  the pool still open and `exit` never reached. That is the outcome the function exists to
+  prevent. Each step is best-effort now: it logs what failed and the sequence continues to
+  `exit(0)`, because a process that was asked to stop and stopped did not crash.
 - **The last-owner invariant was not actually atomic.** `removeMember` and `updateMemberRole` put
   the guard inside the statement — an `EXISTS (… another owner …)` in the `WHERE` — which reads as
   atomic and isn't. Under Postgres's default READ COMMITTED, two concurrent removals of the last two

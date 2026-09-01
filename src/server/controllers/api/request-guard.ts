@@ -19,12 +19,16 @@ import { jsonError } from "../../utils/response";
  * looser than the auth forms' 5/minute — nothing here sends mail or burns an
  * argon2 hash — but they still cap what a single address can do to the
  * database, which is the point.
+ *
+ * Three separate buckets, and that separation is the budget: sharing one would
+ * make reads spend the write allowance, and sharing the auth forms' would let
+ * a handful of `/api/*` calls 429 the next `/login` from the same address.
  */
 export const apiReadLimit = (req: BunRequest): Response | null =>
-  rateLimit(req, 60, 60_000);
+  rateLimit(req, "api-read", 60, 60_000);
 
 export const apiWriteLimit = (req: BunRequest): Response | null =>
-  rateLimit(req, 20, 60_000);
+  rateLimit(req, "api-write", 20, 60_000);
 
 export type JsonBodyResult =
   | { ok: true; body: Record<string, unknown> }

@@ -316,8 +316,8 @@ is the checklist for adding one.
   present only on validation failures.
 - **Request bodies must be `application/json`** (or a `+json` media type). Anything else is a 415;
   a body that isn't valid JSON, or that is JSON but not an object, is a 400.
-- **Rate limits are per IP**: 60 requests/minute for reads, 20 for writes. A 429 carries
-  `Retry-After` in seconds.
+- **Rate limits are per IP**: 60 requests/minute for reads, 20 for writes, counted separately
+  from each other and from the auth forms' own budget. A 429 carries `Retry-After` in seconds.
 
 ### Endpoints
 

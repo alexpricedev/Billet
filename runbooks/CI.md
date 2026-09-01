@@ -45,12 +45,12 @@ The `Tests` job is tuned in two ways a fork should keep:
   between tests, and on a runner's disk each truncate waits on an fsync — a
   runner was ~13× slower than a laptop before this. Test data is disposable, so
   the durability those fsyncs bought was worth nothing.
-- **`TEST_FILE_TIMEOUT_MS: "180000"`** raises the per-file cap in
-  `src/server/test-utils/run-tests.ts` from its 60s default. That cap exists to
-  catch a hung file, not to enforce a speed: a runner is slower than a laptop
-  even with the database in RAM, and a file killed at the wire counts every test
-  in it as lost — which reads as a broken test rather than the timing accident it
-  is.
+- **`TEST_TIMEOUT_MS: "1800000"`** raises the whole-run cap in
+  `src/server/test-utils/run-tests.ts` from its 10-minute default. That cap exists
+  to catch a run that has stopped making progress, not to enforce a speed: a runner
+  is slower than a laptop even with the database in RAM, and a run killed at the
+  wire counts every test in it as lost — which reads as a broken test rather than
+  the timing accident it is. Per-test timeouts are Bun's own `--timeout`.
 
 ## 1b. The dependency audit
 

@@ -85,4 +85,34 @@ describe("registerShutdown", () => {
 
     expect(calls).toEqual(["stopSweep", "server.stop", "db.close", "exit(0)"]);
   });
+
+  // A rejection escaping the signal handler is an unhandled rejection, which
+  // Bun treats as fatal — so an unguarded step would kill the process partway
+  // through the drain, with the pool still open, which is the outcome
+  // registerShutdown exists to prevent.
+  test("a failing drain still closes the pool and exits", async () => {
+    const { calls, deps } = trackedDeps();
+    deps.server.stop = async () => {
+      calls.push("server.stop");
+      throw new Error("connection would not close");
+    };
+    const shutdown = registerShutdown(deps);
+
+    await shutdown("SIGTERM");
+
+    expect(calls).toEqual(["stopSweep", "server.stop", "db.close", "exit(0)"]);
+  });
+
+  test("a failing pool close still exits", async () => {
+    const { calls, deps } = trackedDeps();
+    deps.db.close = async () => {
+      calls.push("db.close");
+      throw new Error("pool already gone");
+    };
+    const shutdown = registerShutdown(deps);
+
+    await shutdown("SIGTERM");
+
+    expect(calls).toEqual(["stopSweep", "server.stop", "db.close", "exit(0)"]);
+  });
 });

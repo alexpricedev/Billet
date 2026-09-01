@@ -58,7 +58,7 @@ export const verify = {
 
     // The only guess-rate limit this route has, now that the token is spent by
     // a POST no captcha or session stands in front of.
-    const limited = rateLimit(req, 10, 60_000);
+    const limited = rateLimit(req, "auth", 10, 60_000);
     if (limited) return limited;
 
     const token = (await req.formData()).get("token");
@@ -77,7 +77,7 @@ export const verify = {
     if (!passwordAuthEnabled()) return render404();
 
     // Each resend sends mail, so it gets the same tight budget as /login.
-    const limited = rateLimit(req, 5, 60_000);
+    const limited = rateLimit(req, "auth", 5, 60_000);
     if (limited) return limited;
 
     const csrf = await checkCsrf(req, {
