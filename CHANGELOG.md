@@ -7,12 +7,19 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
-## Unreleased
+## 3.0.0
 
-Two independent lines of work: the test environment moved into a single preload, and the repo was
-audited against [elsewhencode/project-guidelines](https://github.com/elsewhencode/project-guidelines)
-— its API section (§9) and environment/dependency sections (§3–4) were where this repo had real
-gaps. By the rule above, the API response shape below makes this a major.
+Two independent lines of work: an audit against
+[elsewhencode/project-guidelines](https://github.com/elsewhencode/project-guidelines) — its API
+section (§9) and environment/dependency sections (§3–4) were where this repo had real gaps — and
+the adoption of [Bun 1.4](https://bun.com/blog/bun-v1.4), which the toolchain now requires. The API
+response shape and the Bun floor each make this a major on their own.
+
+Two items deserve more attention than their diff size suggests. A fork running
+`TEAMS_ENABLED=true` should take the **last-owner atomicity fix** (under Fixed): the failure needs
+two owners racing within milliseconds and an org admin can recover it, but when it hits, an
+organisation silently loses its last owner. And a fork deployed behind a reverse proxy must set
+**`TRUST_PROXY=true`** (under Breaking changes) or the rate limiter throttles all visitors as one.
 
 ### Breaking changes
 
@@ -54,6 +61,14 @@ gaps. By the rule above, the API response shape below makes this a major.
   controllers must do the same after merging. `@types/node` is pinned directly now too — the 24.x
   that happy-dom pulled in transitively fails typechecking inside bun-types 1.4 itself.
 
+- **The rate limiter keys on the client's socket address, not `x-forwarded-for`.** The header is
+  client-controlled — a fresh value per request bought a fresh bucket, so the 5/min limit in front
+  of `/login` could be walked past. **A fork deployed behind a reverse proxy must set
+  `TRUST_PROXY=true`** (validated at boot; see `.env.example` and `runbooks/SECURITY.md` §5), or
+  every visitor shares the proxy's address and one busy user rate-limits everyone. With it set,
+  only the *last* header entry — the hop the trusted proxy added — is believed. The `x-real-ip`
+  fallback is gone for the same reason.
+
 ### Added
 
 - **Graceful shutdown.** `registerShutdown` (`src/server/utils/shutdown.ts`) drains on
@@ -61,6 +76,9 @@ gaps. By the rule above, the API response shape below makes this a major.
   (Bun 1.4 resolves it when the last connection closes), then the pool closes via `closeDatabase`
   and the process exits 0. Deploys no longer sever requests mid-response. A second signal during
   the drain is ignored; an operator who can't wait has SIGKILL.
+- The `profiling` skill (`.claude/skills/profiling/`): Bun 1.4's Markdown-format profilers
+  (`--cpu-prof-md`, `--heap-prof-md`, `bun build --metafile-md`) and how to point them at this
+  repo's server and client bundle.
 - **HEAD works on every dispatched route.** `createRouteHandler` and `createApiRouteHandler`
   answered anything but the listed methods with a 405, and nothing lists HEAD — so crawlers and
   uptime monitors probing `/projects` or `/login` read the app as down. HEAD now runs the GET
@@ -136,6 +154,14 @@ gaps. By the rule above, the API response shape below makes this a major.
 - `POST /api/projects` sends a `Location` header, and 204s send a null body rather than `""`.
 - `title` is trimmed and required on create and update. It was passed through unvalidated, so
   `{}` reached `createProject(undefined, null)` and the database.
+- `bun run dev` uses `bun run --parallel --no-orphans` for the three watchers: name-prefixed
+  output, and the watchers die with the terminal instead of orphaning on the port.
+- A CSRF check that finds the request body already consumed logs the ordering violation
+  (`checkCsrf` must run before `readFormValues` — Bun 1.4 makes `req.clone()` throw after a body
+  read) instead of degrading to a silent 403; a test pins the fail-closed behaviour.
+- `runbooks/CI.md` §1b: `bun audit fix` is the first move on an advisory, and `bun pm diff` — which
+  reports new install scripts and new `child_process`/`fs`/`net`/`vm` imports between two published
+  versions — is the pre-merge check for dependency bumps nobody here authored.
 - **The cleanup sweep runs on `Bun.cron` instead of `setInterval`** — hourly on the hour, pinned to
   UTC (1.4 parses in-process cron schedules in local time). Runs can no longer overlap, the job has
   a real `unref()`/`stop()` for the shutdown path, and the cast guarding against happy-dom's

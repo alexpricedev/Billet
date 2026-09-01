@@ -69,27 +69,22 @@ with no pool-close warnings. Notes for whoever touches these next:
 
 ---
 
-## Phase 3 — tooling and docs
+## Phase 3 — tooling and docs — done
 
-- **`bun run --parallel` for the dev script.** Replaces `(bun run dev:client & … & …)` with
-  name-prefixed output. Pair with `--no-orphans` so the watchers die with the terminal — the exact
-  hazard the CLAUDE.md working agreement warns about in prose.
-- **Supply-chain commands.** `bun audit fix` replaces the "usually `bun update <pkg>`" advice in
-  `runbooks/CI.md` §1b. `bun pm licenses --prod --json` closes §11 of the guidelines audit, the one
-  section that was clean but had no mechanism. `bun dedupe --check` as a CI step. `bun pm diff`
-  belongs next to the Dependabot section — it reports new install scripts and new imports of
-  `child_process`, `fs`, `net`, `vm` between two versions, which is what you want before merging a
-  bump.
-- **Markdown profiles.** `--cpu-prof-md`, `--heap-prof-md`, `bun build --metafile-md` emit profiles
-  and bundle analyses as Markdown tables rather than binary an agent can't open. Same idea as the
-  rest of the repo; wants a short skill rather than a CLAUDE.md paragraph.
-- **`env = false` in `bunfig.toml`** so a stray `.env` can't be picked up where variables come from
-  the platform.
-- **Measure before rewriting compression.** `compression.ts` calls `brotliCompressSync` /
-  `gzipSync` on the response path, blocking the loop per response. 1.4's zlib-ng makes that cheaper
-  without changing the shape; the async variants would fix it, and `zstd` is now available at the
-  cost of another negotiation branch. Good first customer for `--cpu-prof-md` — measure, then
-  decide.
+- **Dev script** is `bun run --parallel --no-orphans dev:client dev:server dev:css` — verified:
+  name-prefixed output, server answers, killing the parent leaves no listener on the port.
+- **Supply-chain commands** are in `runbooks/CI.md` §1b: `bun audit fix` first, `bun pm diff`
+  before merging bumps nobody here authored, `bun pm licenses --prod` and `bun dedupe --check` as
+  on-demand one-liners (deliberately not CI steps — see the runbook for why). `dedupe --check`
+  found two duplicate versions on its first run; they're collapsed.
+- **Markdown profiles** got the skill: `.claude/skills/profiling/SKILL.md` covers `--cpu-prof-md`,
+  `--heap-prof-md` and `bun build --metafile-md`, with the drive-then-SIGTERM pattern for
+  profiling the server (the graceful shutdown handler is what makes that exit clean).
+- **CSRF order test** landed with the loud-log fix: clone-throwing-after-read now logs an error
+  naming the ordering violation instead of degrading to a silent 403, and a test pins the reason.
+- **Rate limiter** keys on the socket address (`middleware/client-ip.ts`), with `TRUST_PROXY=true`
+  opting into the last `x-forwarded-for` entry behind a single trusted proxy. Boot-validated;
+  `runbooks/SECURITY.md` §5 says to set it on Railway. The audit item is closed.
 - **CI shards.** `--shard=i/N` with `--timings` is available if CI needs it. Probably not: workers
   default to core count, so GitHub's 4-vCPU runners already parallelise. Watch the first CI run.
 
@@ -116,6 +111,16 @@ with no pool-close warnings. Notes for whoever touches these next:
   `bun:ffi`, React Compiler, `--compile --asset`: no use here today.** WebView is the near-miss — a
   real headless browser with no install, which would make browser smoke tests nearly free — parked
   because automated a11y testing was passed on.
+- **Compression stays synchronous.** Measured (Bun 1.4 zlib-ng, M-series): brotli q5 on a ~22KB
+  HTML page is ~18µs per response, gzip 6 ~11µs; ~23KB of CSS is the worst case at ~95µs. Three
+  orders of magnitude under a database query — the async variants would add a promise hop to every
+  response to save microseconds, and `zstd` a negotiation branch for the same nothing. Re-measure
+  before touching this; the harness is in the `profiling` skill's ground rules.
+- **`env = false` in `bunfig.toml`: rejected.** It would apply everywhere the repo runs, and local
+  dev *depends* on `.env` (`PORT`, `DATABASE_URL`, the workspace provisioning writes them) while
+  the suite depends on `.env.test`. The stray-`.env`-in-production hazard it guards against doesn't
+  exist here: `validateEnv()` exits on anything missing, and Railway supplies variables through the
+  platform.
 - **`bun.lock` stays at `lockfileVersion: 1`.** Bun won't rewrite an unchanged lockfile, and v2's
   extra checks cover off-registry tarballs and git dependencies, neither of which this repo has. It
   migrates on the next dependency change; forcing it means a re-resolve and version drift for no
@@ -143,15 +148,11 @@ with no pool-close warnings. Notes for whoever touches these next:
   container showed them identical — the container had been rehosted onto a different CPU between
   recordings. `bench compare` now warns on a >30min gap and on a hardware mismatch, but the only
   real defence is measuring A and B together.
-- **The rate limiter keys on `x-forwarded-for`**, which is client-controlled, so a fresh header value
-  per request gets a fresh bucket and the 5/min limit in front of `/login` can be walked past. Not
-  yet fixed: it needs a trusted-proxy decision, not just a line change, since behind Railway the
-  real client address only exists in that header. Flagged in the guidelines audit, still open.
-- **`req.clone()` in `middleware/csrf.ts` is order-dependent.** 1.4 throws once a body has been
-  read, naming `Bun.serve` route-handler requests specifically. It works today because all four
-  callers check CSRF before `readFormValues`, and the signed-out auth forms never call `checkCsrf`
-  at all. The `try/catch` swallows the `TypeError`, so a violation degrades to a **silent 403**
-  rather than a crash. Untested invariant — worth one test pinning the order.
+- **The rate limiter keyed on `x-forwarded-for`** — fixed; see Phase 3. The trusted-proxy decision
+  landed as `TRUST_PROXY`, off by default. **A Railway deployment must set `TRUST_PROXY=true`** or
+  every visitor shares the proxy's bucket; that's now a release-note item, not an open question.
+- **`req.clone()` in `middleware/csrf.ts` is order-dependent** — pinned; see Phase 3. The catch
+  now logs the ordering violation and a test documents the fail-closed behaviour.
 - **`bun run wip restore` fails confusingly** if the tree has conflicting local changes: the real
   error is buried above a `git status` dump. Worked as designed, easy to miss when scripting.
 
