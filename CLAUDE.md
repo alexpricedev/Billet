@@ -22,52 +22,24 @@ spec for everything else. This file is for the things you can't learn by reading
 
 ### The stash is shared, the worktrees are not
 
-This repo is usually checked out several times at once — one worktree per agent — over a single
-shared `.git` directory. `refs/stash` lives in that shared directory, so the stash is **one global
-stack**: an agent that pops in its own worktree can pop the changes another agent pushed seconds
-earlier, and neither of them sees anything go wrong until the work is gone.
-
-`refs/worktree/*` is the one ref namespace git keeps per-worktree. `scripts/wip` (run it as
-`bun run wip`) snapshots to `refs/worktree/wip`, which no other worktree can read, list, or drop:
-
-```
-bun run wip save [message]     snapshot tracked changes, working tree left alone
-bun run wip stash [message]    snapshot, then revert tracked changes (git reset --hard)
-bun run wip list               this worktree's snapshots, newest first
-bun run wip show [n]           diffstat for snapshot n (default 0)
-bun run wip restore [n]        apply snapshot n and keep it
-bun run wip drop               forget the newest snapshot
-```
-
-`restore` applies without dropping — losing a snapshot takes an explicit `drop`, which is the
-whole point. Snapshots cover tracked changes only; untracked files are never touched, so they
-survive `wip stash` in place. `save` warns and lists them.
-
-A `PreToolUse` hook (`.claude/hooks/no-shared-stash.ts`, wired in `.claude/settings.json`) denies
-`git stash` outright and prints the table above. `git stash create` and anything naming
-`refs/worktree/` are allowed through — that is how `scripts/wip` does its work.
+This repo is usually several worktrees over one shared `.git`, and `refs/stash` lives in the
+shared part — one global stack, so an agent that pops can silently take another agent's work.
+`bun run wip` (`scripts/wip`) is the replacement: it snapshots to `refs/worktree/wip`, the one ref
+namespace git keeps per-worktree. Run it bare for the subcommand list (`save`, `stash`, `list`,
+`show`, `restore`, `drop`); `restore` applies without dropping, and untracked files are never
+touched. A `PreToolUse` hook denies `git stash` and prints that same table; `git stash create` and
+anything naming `refs/worktree/` pass through — that is how `scripts/wip` works.
 
 ### Each workspace owns its port and its two databases
 
-`scripts/workspace.ts provision` runs from the Conductor setup script and rewrites this
-workspace's env files: `.env` gets `PORT` / `APP_URL` from `CONDUCTOR_PORT`, a `DATABASE_URL`
-named `<base>-<workspace>`, and a workspace-specific `SESSION_COOKIE_NAME` (cookies aren't scoped
-by port, so two workspaces on localhost otherwise overwrite each other's session). `.env.test`
-gets `DATABASE_URL` **only**, because that is the only key it carries at all — every other
-variable the suite needs is pinned by `src/server/test-utils/test-env.ts` (see "One preload sets
-the test environment"). A workspace port must never reach the tests: they hardcode
-`http://localhost:3000` in request URLs and `csrf.test.ts` builds its expected Origin from
-`APP_URL`, so the two disagreeing 403s every form post.
-
-The test database is the reason this exists: `cleanupTestData` truncates every table, so two
-agents sharing one `billet-test` fail each other's suites in ways neither can reproduce.
-
-`provision` is idempotent — it derives the base database name from the **root** checkout's `.env`,
-never from this workspace's, so re-running setup can't compound the suffix. `destroy` runs on
-archive and drops both databases, but only after checking the name carries this workspace's slug:
-a workspace that was never provisioned still points at the shared `billet`, and the guard refuses
-it rather than dropping the database every other agent is using. Both are no-ops in cloud
-workspaces, where `CONDUCTOR_PORT` is unset and there is one checkout anyway.
+`scripts/workspace.ts provision` (run by Conductor setup) rewrites this workspace's `.env` —
+`PORT`/`APP_URL` from `CONDUCTOR_PORT`, a `DATABASE_URL` named `<base>-<workspace>`, a
+workspace-specific `SESSION_COOKIE_NAME` — and gives `.env.test` its own `DATABASE_URL`, because
+`cleanupTestData` truncates every table and two agents sharing one test database fail each other's
+suites in ways neither can reproduce. A workspace port must never reach the tests: they hardcode
+`http://localhost:3000` and build the expected CSRF Origin from `APP_URL`. `provision` is
+idempotent (the base name comes from the root checkout's `.env`); `destroy` refuses to drop a
+database that doesn't carry this workspace's slug. Both no-op in cloud workspaces.
 
 ### One JSX runtime, two execution models
 
@@ -107,52 +79,33 @@ makes the mock take effect. Don't tidy it.
 
 ### The test runner is a script, not `bun test`
 
-`bun run test` runs `src/server/test-utils/run-tests.ts`, and it exists for exactly two things
-`bun test` won't do itself: apply migrations first (otherwise the suite runs against whatever schema
-is already in the database), and set `NODE_ENV=test` (Bun picks which `.env` file to load from it at
-startup, before any preload runs — which is why that one variable can't live in `test-env.ts` with
-the rest).
+`bun run test` runs `src/server/test-utils/run-tests.ts` for the two things `bun test` won't do
+itself: apply migrations first, and set `NODE_ENV=test` (Bun picks its `.env` file from it before
+any preload runs). Isolation is `bun test --isolate`'s job — fresh globals and module registries
+per file, one shared transpile cache — and `--parallel` runs one worker per core, each with its
+own database derived from `BUN_TEST_WORKER_ID` (slot 1 keeps the base name, so single-worker runs
+and `test:file` use the database they always did). `TEST_WORKERS=1` when a failure needs a
+readable, ordered log. Full mechanics: the `verifying-changes` skill.
 
-**Isolation is `bun test --isolate`'s job, not the script's.** It gives each file a fresh
-`globalThis`, clears both module registries, closes handles the file leaked, cancels its timers, and
-re-runs the preloads in the new global — while sharing one transpile cache across all 68 files. It
-replaced a loop that spawned a process per file, and is ~17% faster for it.
-
-`--isolate` does not isolate the database, and `cleanupTestData` truncates every table — so
-`--parallel` needs one database per worker or each worker wipes the others' rows mid-run. The
-preload derives it: `test-env.ts` rewrites `DATABASE_URL` from `BUN_TEST_WORKER_ID` via
-`worker-database.ts`, and slot 1 keeps the base name so a single-worker run and `test:file` use
-exactly the database they always did. `run-tests.ts` creates and migrates the extras up front,
-idempotently. Workers default to the core count; `TEST_WORKERS=1` turns it off, which is what you
-want when a failure needs a readable, ordered log.
-
-Module-level state is the hazard `--isolate` covers, and `rate-limit.ts` is the worked example — its
-`requestLog` Map is shared by every file in a process, so a file exercising a rate-limited route
-must call `clearRateLimitLog()` in `beforeEach` or it passes alone and fails after any file that
-drove the limiter to 429. Don't lean on isolation instead; it makes the file unrunnable in
-parallel.
+Module-level state is the hazard isolation doesn't excuse: `rate-limit.ts`'s `requestLog` Map is
+shared by every file in a process, so a file exercising a rate-limited route must call
+`clearRateLimitLog()` in `beforeEach` or it passes alone and fails after any file that drove the
+limiter to 429.
 
 ### One preload sets the test environment
 
-`bunfig.toml` preloads two modules into *every* test file:
+`bunfig.toml` preloads `src/server/test-utils/test-env.ts`, which pins the whole test environment
+(`SESSION_COOKIE_NAME`, `AUTH_MODE`, `CAPTCHA_ENABLED`, `TEAMS_ENABLED`, `TRUST_PROXY`, `PORT`,
+`APP_URL`, `CRYPTO_PEPPER`, email/app names), and `src/client/test-utils/setup.ts`, which registers
+happy-dom globals and then restores Bun's native `Request`/`Response`/`FormData` — but **not**
+`fetch`: happy-dom's fetch stays installed and enforces the Same-Origin Policy, so a test that
+needs real network must use `Bun.fetch`.
 
-- `src/server/test-utils/test-env.ts` pins the whole environment — `SESSION_COOKIE_NAME`,
-  `AUTH_MODE`, `CAPTCHA_ENABLED`, `TEAMS_ENABLED`, `PORT`, `APP_URL`, `CRYPTO_PEPPER`, and the
-  email/app names. Tests hardcode `session_id` and `http://localhost:3000`, and assume the shipped
-  defaults; running the dev server in password mode, with the captcha on, or with teams enabled
-  puts the opposite in your `.env`, and Bun loads that for every test run.
-- `src/client/test-utils/setup.ts` registers happy-dom globals and then restores Bun's native
-  `Request`/`Response`/`FormData` — server tests depend on that restore.
-
-A preload is the only place the pin works. Imports are hoisted above a file's body, so a test that
-assigns `process.env.SESSION_COOKIE_NAME` at the top has already missed it: `services/sessions.ts`
-read the value as it was imported, and `utils/crypto.ts` did the same with `CRYPTO_PEPPER`. It is
-also why the pin isn't in `run-tests.ts` any more — that only ever covered `bun run test`, leaving
-`test:file`, `test:coverage` and an editor's run-test button exposed.
-
-So `.env.test` carries `DATABASE_URL` and nothing else, and adding anything else to it is
-pointless: the preload overrides it. Files that exercise password mode, the captcha, or teams set
-the variable themselves per case, at runtime, which is long after preload.
+A preload is the only place early enough: imports are hoisted above a file's body, so values
+captured at import time (`SESSION_COOKIE_NAME` in `services/sessions.ts`, `CRYPTO_PEPPER` in
+`utils/crypto.ts`) are already read before a test's first line runs. `.env.test` carries
+`DATABASE_URL` and nothing else — anything else you put there is overridden. Tests that exercise
+password mode, the captcha, or teams set the variable per case, at runtime.
 
 ### Auth is one mode or the other, never both
 

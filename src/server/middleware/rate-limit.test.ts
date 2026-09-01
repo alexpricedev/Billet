@@ -110,5 +110,18 @@ describe("rateLimit", () => {
       expect(rateLimit(request(), 1, 60_000)).toBeNull();
       expect(rateLimit(request(), 1, 60_000)?.status).toBe(429);
     });
+
+    test("a header with an empty last hop falls back to the socket", () => {
+      setIpSource(socketAt("10.0.0.4"));
+      // A trailing comma leaves the proxy-added slot blank — an empty string
+      // must not become its own shared bucket key.
+      expect(
+        rateLimit(request({ "x-forwarded-for": "7.7.7.7, " }), 1, 60_000),
+      ).toBeNull();
+      expect(
+        rateLimit(request({ "x-forwarded-for": "6.6.6.6, " }), 1, 60_000)
+          ?.status,
+      ).toBe(429);
+    });
   });
 });
