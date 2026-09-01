@@ -9,15 +9,62 @@ change its own code after merging.
 
 ## Unreleased
 
-### Fixed
+Two independent lines of work: the test environment moved into a single preload, and the repo was
+audited against [elsewhencode/project-guidelines](https://github.com/elsewhencode/project-guidelines)
+— its API section (§9) and environment/dependency sections (§3–4) were where this repo had real
+gaps. By the rule above, the API response shape below makes this a major.
 
-- **`bun run wip drop` now drops.** It pointed the ref back at `@{1}` with `git update-ref`, which
-  *appends* to a reflog rather than rewriting it — and `wip list` reads the reflog. So the snapshot
-  it claimed to drop stayed listed and stayed restorable, and the list grew by one entry on every
-  drop (four drops took an eight-entry list to nine). It now uses `git reflog delete --updateref
-  --rewrite`, the idiom git-stash's own `drop` uses, and deletes `refs/worktree/wip` once the last
-  entry goes: emptying a reflog leaves the ref behind, and `list` would then print nothing at all
-  rather than "no snapshots in this worktree".
+### Breaking changes
+
+- **`.env.test` now carries `DATABASE_URL` only.** Any other key in yours is inert — the preload
+  overrides it — so a fork that had pinned values there should delete them rather than trust them.
+  `DATABASE_URL` stays outside the pin deliberately: it is the one value that has to vary per
+  machine and per workspace (`scripts/workspace.ts`), since two suites sharing a database truncate
+  each other's tables mid-run.
+- A fork that deliberately ran its suite against a non-default configuration — password mode, say —
+  by putting it in `.env.test` no longer gets it. Set it per test case instead, the way the files
+  covering password mode, the captcha and teams already do.
+- **`GET /api/projects` returns a wrapped, paginated payload.** It was a bare `Project[]`; it is now
+  `{ data: Project[], pagination: { total, limit, offset } }`, defaulting to 25 rows. A fork with a
+  client reading `response.json()` as an array must read `.data`. `GET /api/projects/:id`, `POST`
+  and `PUT` are wrapped in `data` too, and `GET /api/stats` returns `{ data: VisitorStats }`. The
+  wrapper is what makes `total` expressible — and anything added later — without a second breaking
+  change.
+- **API errors return the shared JSON envelope**, not a text body. `{ error: { code, message,
+  fields? } }` replaces `new Response("Project not found", { status: 404 })`. A fork asserting on
+  the response text must assert on `error.code` instead — `not_found`, `invalid_id`, `invalid_json`,
+  `invalid_body`, `invalid_limit`, `invalid_offset`, `method_not_allowed`,
+  `unsupported_media_type`, `rate_limited`.
+- **`rateLimit` returns that same envelope.** The 429 body changed from `{ error: "Too many
+  requests" }` to `{ error: { code: "rate_limited", message } }` and now carries `Retry-After`.
+  This affects the auth and team forms as well as the API, since they share the middleware.
+- **`getProjects()` is unchanged, but the API no longer calls it.** `getProjectPage(limit, offset)`
+  is the paginated read; the `/projects` HTML page still uses `getProjects()`.
+- **`createMockRequest` returns a `BunRequest`** and takes a fourth `headers` argument. A string
+  `body` is now sent verbatim rather than JSON-encoded, so a test can post a malformed body.
+
+### Added
+
+- `src/server/controllers/api/request-guard.ts` — the guards every JSON endpoint runs, the mirror
+  of `auth/form-guard.ts` for machine callers. `readJsonBody` rejects a non-JSON `Content-Type`
+  (415) and an unparseable or non-object body (400); `readIdParam` rejects anything that isn't a
+  positive integer in `serial` range; `readPagination` reads `?limit=`/`?offset=` and rejects
+  out-of-range values rather than clamping them; `apiReadLimit` / `apiWriteLimit` are the per-IP
+  budgets (60 and 20 per minute).
+- `jsonError` and the `JsonErrorBody` type in `src/server/utils/response.ts`; `expectJsonError` in
+  `src/server/test-utils/setup.ts`, which asserts the envelope and returns the parsed body.
+- `createApiRouteHandler` in `src/server/utils/route-handler.ts` — JSON 405 with an `Allow` header.
+  `createRouteHandler` now sends `Allow` too.
+- `.bun-version` (1.3.11) and `engines.bun`, with `bun-version-file` on every `setup-bun` step in
+  CI. `oven-sh/setup-bun` was installing the latest release, so the CI toolchain moved on Bun's
+  release schedule rather than on a commit — on an app built on `Bun.SQL`, `Bun.password` and
+  Bun's CSS bundler.
+- `bun run audit` (`bun audit --audit-level=high`) and `.github/workflows/audit.yml`, on PRs and
+  weekly. `.github/dependabot.yml` opens grouped weekly PRs for dependencies and pinned Action
+  versions. See `runbooks/CI.md` §1b.
+- `.editorconfig` for the files Biome doesn't format — migrations, workflows, shell scripts.
+- An **API Reference** section in `README.md`, and a rewritten
+  `.claude/skills/adding-a-feature/references/api-endpoint.md` teaching the guarded pattern.
 
 ### Changed
 
@@ -33,17 +80,27 @@ change its own code after merging.
   while `test:file`, `test:coverage` and an editor's run-test button ran against whatever was in the
   developer's `.env` — a dev server in password mode, with the captcha on, or with teams enabled was
   enough to fail dozens of tests with no hint as to why.
+- **`happy-dom` 20.8.3 → 20.12.0** (with `@happy-dom/global-registrator`), clearing three
+  high-severity advisories the new audit found on its first run — two in `happy-dom` itself and one
+  in its transitive `ws`. Both are devDependencies. One moderate advisory remains, in `resend` →
+  `svix` → `uuid`, which is below the audit threshold and not fixable from here until `resend`
+  ships an update.
+- **`/api/stats` answers `GET` only.** It was registered as a bare handler, so it served its
+  payload to any method, `DELETE` included. Every API route now goes through
+  `createApiRouteHandler`.
+- `POST /api/projects` sends a `Location` header, and 204s send a null body rather than `""`.
+- `title` is trimmed and required on create and update. It was passed through unvalidated, so
+  `{}` reached `createProject(undefined, null)` and the database.
 
-### Breaking changes
+### Fixed
 
-- **`.env.test` now carries `DATABASE_URL` only.** Any other key in yours is inert — the preload
-  overrides it — so a fork that had pinned values there should delete them rather than trust them.
-  `DATABASE_URL` stays outside the pin deliberately: it is the one value that has to vary per
-  machine and per workspace (`scripts/workspace.ts`), since two suites sharing a database truncate
-  each other's tables mid-run.
-- A fork that deliberately ran its suite against a non-default configuration — password mode, say —
-  by putting it in `.env.test` no longer gets it. Set it per test case instead, the way the files
-  covering password mode, the captcha and teams already do.
+- **`bun run wip drop` now drops.** It pointed the ref back at `@{1}` with `git update-ref`, which
+  *appends* to a reflog rather than rewriting it — and `wip list` reads the reflog. So the snapshot
+  it claimed to drop stayed listed and stayed restorable, and the list grew by one entry on every
+  drop (four drops took an eight-entry list to nine). It now uses `git reflog delete --updateref
+  --rewrite`, the idiom git-stash's own `drop` uses, and deletes `refs/worktree/wip` once the last
+  entry goes: emptying a reflog leaves the ref behind, and `list` would then print nothing at all
+  rather than "no snapshots in this worktree".
 
 ## 2.3.0
 

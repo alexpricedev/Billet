@@ -1,7 +1,9 @@
 # CI & merge protection Runbook
 
 Billet runs lint, type-check, build, and the full test suite on every pull
-request via GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
+request via GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)),
+plus a dependency audit on its own schedule
+([`.github/workflows/audit.yml`](../.github/workflows/audit.yml)).
 But **CI results only gate merges if you make the checks _required_** — that's a
 per-repository GitHub setting that a fork or new clone does **not** inherit.
 Until you set it, a PR is mergeable the moment it opens, and any auto-merge
@@ -23,6 +25,14 @@ Three jobs, chained so a failure short-circuits the rest:
 The job **names** above are exactly the check "contexts" GitHub sees — you'll
 reference them by name in §2.
 
+**Every job pins Bun** via `bun-version-file: .bun-version`. Without it
+`oven-sh/setup-bun` installs the latest release, which means the toolchain under
+CI changes on Bun's release schedule rather than on a commit — and this app is
+built on `Bun.SQL`, `Bun.password`, and Bun's CSS bundler, so a build can go red
+with nothing in the diff to explain it. `.bun-version` and the `engines.bun`
+floor in `package.json` are the same number; bump both together, in a commit
+whose CI run is the evidence the new version works.
+
 > **The `Tests` job env is deliberately generic** — `APP_NAME: CI Test`, with
 > `POSTGRES_DB` / `DATABASE_URL` on `ci-test` — so a fork inherits nothing it has
 > to rename. Tests read `APP_NAME` from the environment rather than asserting a
@@ -41,6 +51,36 @@ The `Tests` job is tuned in two ways a fork should keep:
   even with the database in RAM, and a file killed at the wire counts every test
   in it as lost — which reads as a broken test rather than the timing accident it
   is.
+
+## 1b. The dependency audit
+
+`bun audit` checks the installed tree against the npm advisory database.
+It lives in **its own workflow** rather than as a fourth job in `ci.yml`, because
+`bun install --frozen-lockfile` installs the same tree every run — what changes
+between runs is the advisory database, not this repository. That needs a clock,
+not a commit:
+
+| Trigger | Why |
+|---|---|
+| `pull_request` | A PR that adds or bumps a dependency is checked before it lands |
+| `schedule` (Mondays 07:00 UTC) | A new advisory against an *existing* pin shouldn't wait for someone to open a PR |
+| `workflow_dispatch` | Run it on demand after a security bulletin |
+
+It runs `bun run audit`, i.e. `bun audit --audit-level=high`. **The threshold is
+deliberate**: a low or moderate advisory in a transitive devDependency is worth
+knowing about but not worth blocking an unrelated PR over, and a check that goes
+red for reasons nobody can act on is a check people learn to ignore. Run plain
+`bun audit` locally to see everything, including what sits below the line.
+
+When it does fail, the fix is usually `bun update <package>` — a compatible bump
+inside the existing range, so the lockfile changes and nothing else does. If the
+advisory is against a transitive dependency of a direct one (say `resend` →
+`svix` → `uuid`), you can't bump it yourself; either the direct dependency ships
+an update or you decide the exposure is acceptable and record why.
+
+Dependabot ([`.github/dependabot.yml`](../.github/dependabot.yml)) opens the
+routine bumps — one grouped PR a week for dependencies, one for pinned Action
+versions — so the audit is the backstop, not the mechanism.
 
 ## 2. Require the checks before merge
 
@@ -151,3 +191,8 @@ gh api -X DELETE repos/{owner}/{repo}/branches/main/protection
   required check that never reports keeps every PR blocked forever.
 - **New checks aren't auto-required.** Adding a job to `ci.yml` doesn't make it
   blocking; add its name to `contexts` if it should gate merges.
+- **`Dependency audit` is not in the §2 contexts list.** That's a choice, not an
+  oversight: it runs on a schedule as well as on PRs, and a required check that
+  can start failing because of something outside the PR will block every open
+  branch at once. Add `"Dependency audit"` to `contexts` if you'd rather no PR
+  merge while a high-severity advisory is outstanding.

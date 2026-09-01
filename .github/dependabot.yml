@@ -1,0 +1,27 @@
+version: 2
+
+# Billet is consumed by cloning or forking, so a fork gets these updates on its
+# own copy — there is no published package to update from. Both ecosystems are
+# grouped into a single weekly PR per ecosystem: this repo has three runtime
+# dependencies, and one PR per bump would be more review than signal.
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns: ["*"]
+
+  # Pinned action versions go stale silently — nothing in the build fails when
+  # `actions/checkout@v5` is a major behind, it just stops getting fixes.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]

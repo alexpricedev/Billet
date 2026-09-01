@@ -195,6 +195,22 @@ The CSP script allowlist is `'self' 'unsafe-inline' https://unpkg.com https://es
 third-party script needs the CSP entry, an SRI `integrity` hash, and ideally a `preconnect` in
 `layouts.tsx` — otherwise it is silently blocked in the browser but passes every test.
 
+### An uncaught throw in an API controller becomes an *HTML* 500
+
+`handleGuarded` catches everything and answers with `render500()` — the styled HTML error page —
+whatever the route was. So a bare `await req.json()` on a malformed body sends an error page to a
+JSON client and logs the request as a server fault, for what was the caller's typo.
+
+`src/server/controllers/api/request-guard.ts` is the fix, and every `/api` controller opens with
+it: `readJsonBody` (415 on the wrong `Content-Type`, 400 on unparseable or non-object),
+`readIdParam`, `readPagination`, and `apiReadLimit` / `apiWriteLimit`. Errors go through
+`jsonError` in `utils/response.ts` — one `{ error: { code, message } }` envelope, shared with the
+rate limiter, with a stable `code` and a `message` no test should assert on.
+
+API routes use `createApiRouteHandler`, not `createRouteHandler` — same method dispatch, JSON 405.
+Both send `Allow`. Use it even for a one-method resource: a bare handler in a Bun routes map
+answers *every* method.
+
 ### Env is validated at boot and `APP_URL` is load-bearing
 
 `validateEnv()` exits the process on a missing var, then migrations run before `Bun.serve()` — a
