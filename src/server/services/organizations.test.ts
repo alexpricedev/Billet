@@ -299,18 +299,48 @@ describe("Organizations Service with PostgreSQL", () => {
       expect(await getMembership(outsider.id)).not.toBeNull();
     });
 
-    test("two concurrent removals cannot empty the org of owners", async () => {
-      const { user, org } = await seedOwner();
-      const second = await seedMember(org.id, "second@example.com", "owner");
+    // Repeated, because a single attempt is not a concurrency test — it is one
+    // sample of an interleaving. The guard this covers was broken for the whole
+    // life of the feature and this assertion passed anyway; run against the
+    // unlocked statement it fails ~24 times in 25, so one round is a coin flip
+    // weighted the wrong way. See the `FOR UPDATE` note in organizations.ts.
+    test("concurrent removals cannot empty the org of owners", async () => {
+      for (let round = 0; round < 10; round++) {
+        const { user, org } = await seedOwner(`owner-${round}@example.com`);
+        const second = await seedMember(
+          org.id,
+          `second-${round}@example.com`,
+          "owner",
+        );
 
-      const [a, b] = await Promise.all([
-        removeMember(org.id, user.id),
-        removeMember(org.id, second.id),
-      ]);
+        const [a, b] = await Promise.all([
+          removeMember(org.id, user.id),
+          removeMember(org.id, second.id),
+        ]);
 
-      // Whichever order they land in, exactly one must survive as owner.
-      expect([a.success, b.success].filter(Boolean).length).toBe(1);
-      expect(await countOwners(org.id)).toBe(1);
+        // Whichever order they land in, exactly one must survive as owner.
+        expect([a.success, b.success].filter(Boolean).length).toBe(1);
+        expect(await countOwners(org.id)).toBe(1);
+      }
+    });
+
+    test("concurrent demotions cannot empty the org of owners", async () => {
+      for (let round = 0; round < 10; round++) {
+        const { user, org } = await seedOwner(`demote-${round}@example.com`);
+        const second = await seedMember(
+          org.id,
+          `demote-second-${round}@example.com`,
+          "owner",
+        );
+
+        const [a, b] = await Promise.all([
+          updateMemberRole(org.id, user.id, "member"),
+          updateMemberRole(org.id, second.id, "member"),
+        ]);
+
+        expect([a.success, b.success].filter(Boolean).length).toBe(1);
+        expect(await countOwners(org.id)).toBe(1);
+      }
     });
   });
 

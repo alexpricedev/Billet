@@ -1,5 +1,25 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bun run check)",
+      "Bash(bun run lint)",
+      "Bash(bun run lint:write)",
+      "Bash(bun run typecheck)",
+      "Bash(bun run build)",
+      "Bash(bun run test)",
+      "Bash(bun run test:*)",
+      "Bash(bun run bench:*)",
+      "Bash(bun run bench *)",
+      "Bash(bun run wip:*)",
+      "Bash(bun run wip *)",
+      "Bash(bun audit)",
+      "Bash(bun install)",
+      "Bash(bun dedupe --check)",
+      "Bash(bun pm licenses:*)",
+      "Bash(bun outdated)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

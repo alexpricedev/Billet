@@ -26,7 +26,7 @@ export const teamInvites = {
 
     // Every request here can send an email, so it gets the same budget as
     // /login and the verification resend rather than the default.
-    const limited = rateLimit(req, 5, 60_000);
+    const limited = rateLimit(req, "auth", 5, 60_000);
     if (limited) return limited;
 
     const guard = await requireOrgRole(req, "admin");
@@ -107,9 +107,7 @@ export const teamInvites = {
     return redirect("/team");
   },
 
-  async destroy<T extends `${string}:id${string}`>(
-    req: BunRequest<T>,
-  ): Promise<Response> {
+  async destroy(req: BunRequest): Promise<Response> {
     if (!teamsEnabled()) return render404();
 
     const guard = await requireOrgRole(req, "admin");

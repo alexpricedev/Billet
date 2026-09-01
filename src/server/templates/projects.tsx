@@ -177,7 +177,10 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
                   <span className="method-get">GET</span>
                 </td>
                 <td className="endpoint-path">/api/projects</td>
-                <td className="text-tertiary">List all projects</td>
+                <td className="text-tertiary">
+                  List projects (paginated — <code>?limit=</code>,{" "}
+                  <code>?offset=</code>)
+                </td>
               </tr>
               <tr>
                 <td>

@@ -19,6 +19,8 @@
 // other's tables mid-run). Everything else only ever wants one value under
 // test, and wants it whether or not the developer has an `.env` at all.
 
+import { workerDatabaseUrl } from "./worker-database";
+
 // Assigned, not defaulted. A developer running the dev server in password mode,
 // with the captcha on, or with teams enabled has those in `.env`, and Bun has
 // already loaded it by the time this runs — deferring to it would reintroduce
@@ -33,6 +35,7 @@ const TEST_ENV: Record<string, string> = {
   AUTH_MODE: "magic-link",
   CAPTCHA_ENABLED: "false",
   TEAMS_ENABLED: "false",
+  TRUST_PROXY: "false",
 
   // Tests build request URLs as http://localhost:3000, and `services/csrf.ts`
   // compares the request Origin against APP_URL: the two disagreeing 403s every
@@ -56,4 +59,17 @@ const TEST_ENV: Record<string, string> = {
 
 for (const [key, value] of Object.entries(TEST_ENV)) {
   process.env[key] = value;
+}
+
+// DATABASE_URL is the one variable this file does not pin, only rewrite: under
+// `bun test --parallel` each worker needs its own database, because every file
+// truncates every table. See `worker-database.ts` for why worker 1 keeps the
+// base name, and why this has to happen in a preload rather than in the runner —
+// `services/database.ts` builds its pool from DATABASE_URL as it is imported,
+// which is after preload and before any test body.
+if (process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = workerDatabaseUrl(
+    process.env.DATABASE_URL,
+    process.env.BUN_TEST_WORKER_ID,
+  );
 }

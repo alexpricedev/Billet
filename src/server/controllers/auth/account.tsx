@@ -87,7 +87,7 @@ export const account = {
 
     // Each attempt costs two argon2 verifications plus a hash, so an
     // authenticated flood is still worth throttling.
-    const limited = rateLimit(req, 5, 60_000);
+    const limited = rateLimit(req, "auth", 5, 60_000);
     if (limited) return limited;
 
     const csrf = await checkCsrf(req, {

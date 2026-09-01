@@ -213,10 +213,33 @@ export type RoleChangeResult =
  * of something via a partial unique index, which is the opposite — so it is a
  * guard, and it has to live inside the statement. Two owners each demoting the
  * other in parallel would both pass a check-then-write and leave the org with
- * nobody who can administer it.
+ * no owner. An admin can promote someone back, so it is only unrecoverable when
+ * the two owners were the org's only admin-or-above members.
  *
  * Scoped by organization_id as well as user_id: the caller has been proven an
  * admin of *an* org, not of the org this row belongs to.
+ */
+/*
+ * Both guarded statements below open with the same `FOR UPDATE` CTE, and it is
+ * load-bearing rather than decoration.
+ *
+ * The guard used to be a bare `EXISTS (… another owner …)` inside the statement,
+ * which reads as atomic and is not. Under Postgres's default READ COMMITTED,
+ * two concurrent removals of the last two owners each see the *other* owner —
+ * neither has committed — so both pass the check and both commit, leaving the
+ * organisation with no owner at all. Classic write
+ * skew: row-level locking only serialises writes to the same row, and these
+ * touch different rows.
+ *
+ * Locking the owner rows first closes it. The second transaction blocks on the
+ * lock, and once the first commits its `FOR UPDATE` re-checks and drops the row
+ * that was deleted — so it now sees one owner, fails the guard, and is refused.
+ * `ORDER BY user_id` fixes the lock order so two callers can't deadlock by
+ * taking the same rows in opposite orders.
+ *
+ * The cost is that removing a plain member also briefly locks the org's owner
+ * rows, serialising unrelated changes to one org. On a team page that is
+ * nothing, and the alternative is a guard that is only usually right.
  */
 export const updateMemberRole = async (
   orgId: string,
@@ -224,6 +247,13 @@ export const updateMemberRole = async (
   role: OrgRole,
 ): Promise<RoleChangeResult> => {
   const updated = await db`
+    WITH owners AS (
+      SELECT user_id FROM organization_members
+      WHERE organization_id = ${orgId}
+        AND org_role = 'owner'
+      ORDER BY user_id
+      FOR UPDATE
+    )
     UPDATE organization_members
     SET org_role = ${role}
     WHERE user_id = ${targetUserId}
@@ -231,12 +261,7 @@ export const updateMemberRole = async (
       AND (
         org_role <> 'owner'
         OR ${role} = 'owner'
-        OR EXISTS (
-          SELECT 1 FROM organization_members
-          WHERE organization_id = ${orgId}
-            AND org_role = 'owner'
-            AND user_id <> ${targetUserId}
-        )
+        OR EXISTS (SELECT 1 FROM owners WHERE user_id <> ${targetUserId})
       )
     RETURNING id
   `;
@@ -262,17 +287,19 @@ export const removeMember = async (
   targetUserId: string,
 ): Promise<RemoveMemberResult> => {
   const removed = await db`
+    WITH owners AS (
+      SELECT user_id FROM organization_members
+      WHERE organization_id = ${orgId}
+        AND org_role = 'owner'
+      ORDER BY user_id
+      FOR UPDATE
+    )
     DELETE FROM organization_members
     WHERE user_id = ${targetUserId}
       AND organization_id = ${orgId}
       AND (
         org_role <> 'owner'
-        OR EXISTS (
-          SELECT 1 FROM organization_members
-          WHERE organization_id = ${orgId}
-            AND org_role = 'owner'
-            AND user_id <> ${targetUserId}
-        )
+        OR EXISTS (SELECT 1 FROM owners WHERE user_id <> ${targetUserId})
       )
     RETURNING id
   `;

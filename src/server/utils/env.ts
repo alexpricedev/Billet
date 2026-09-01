@@ -87,6 +87,28 @@ export function validateEnv(): void {
     log.info("env", "Team management enabled (org invites, roles, members)");
   }
 
+  // TRUST_PROXY decides whose word the rate limiter takes for the client
+  // address (see middleware/client-ip.ts). A typo is worth refusing to boot
+  // over for the same reason as TEAMS_ENABLED: "ture" silently means "off",
+  // and off behind a proxy collapses every client into one rate-limit bucket.
+  if (
+    process.env.TRUST_PROXY !== undefined &&
+    !["true", "false"].includes(process.env.TRUST_PROXY)
+  ) {
+    log.error(
+      "env",
+      `TRUST_PROXY must be one of: true, false (got "${process.env.TRUST_PROXY}")`,
+    );
+    process.exit(1);
+  }
+
+  if (process.env.TRUST_PROXY === "true") {
+    log.info(
+      "env",
+      "Trusting x-forwarded-for from the proxy for rate limiting",
+    );
+  }
+
   // CAPTCHA_ENABLED is optional and self-contained: the proof-of-work captcha signs
   // challenges with the already-required CRYPTO_PEPPER, so there is no new secret to
   // conditionally require. Just surface that it's on.

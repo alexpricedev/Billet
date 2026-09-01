@@ -38,7 +38,7 @@ export const appRoutes = {
     POST: projects.create,
   }),
   "/projects/:id/delete": createRouteHandler({
-    POST: projects.destroy<"/projects/:id/delete">,
+    POST: projects.destroy,
   }),
   "/login": createRouteHandler({
     GET: login.index,
@@ -89,13 +89,13 @@ export const appRoutes = {
     POST: teamInvites.create,
   }),
   "/team/invites/:id/revoke": createRouteHandler({
-    POST: teamInvites.destroy<"/team/invites/:id/revoke">,
+    POST: teamInvites.destroy,
   }),
   "/team/members/:id/role": createRouteHandler({
-    POST: teamMembers.updateRole<"/team/members/:id/role">,
+    POST: teamMembers.updateRole,
   }),
   "/team/members/:id/remove": createRouteHandler({
-    POST: teamMembers.destroy<"/team/members/:id/remove">,
+    POST: teamMembers.destroy,
   }),
   // Outside /team on purpose: the visitor spending an invite has no membership
   // yet, so this must not sit under a path whose every other entry is behind

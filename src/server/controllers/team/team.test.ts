@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SQL } from "bun";
+import { clearRateLimitLog } from "../../middleware/rate-limit";
 import { cleanupTestData } from "../../test-utils/helpers";
 
 if (!process.env.DATABASE_URL) {
@@ -31,10 +32,16 @@ import { teamMembers } from "./members";
 
 const ORIGINAL_TEAMS = process.env.TEAMS_ENABLED;
 
-// Pinned off in run-tests.ts, so this file opts itself in per the same
-// convention the password-mode controller tests follow.
+// TEAMS_ENABLED is pinned off by the test preload, so this file opts itself in
+// per the same convention the password-mode controller tests follow.
 beforeEach(async () => {
   process.env.TEAMS_ENABLED = "true";
+  // `rateLimit`'s log is module state, shared by every file in the process, and
+  // every mock request here keys to the same absent IP. The invite POSTs below
+  // are limited to 5 a minute, so without this the file passes alone and fails
+  // after any file that drove the limiter to 429 — which seven of them do
+  // deliberately. Same reason accept.test.ts clears it.
+  clearRateLimitLog();
   await cleanupTestData(db);
 });
 

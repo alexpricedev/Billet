@@ -36,7 +36,7 @@ export type FormGuardResult =
 export const guardAuthForm = async (
   req: BunRequest,
 ): Promise<FormGuardResult> => {
-  const limited = rateLimit(req, 5, 60_000);
+  const limited = rateLimit(req, "auth", 5, 60_000);
   if (limited) {
     return { ok: false, reason: "rate-limited", response: limited };
   }

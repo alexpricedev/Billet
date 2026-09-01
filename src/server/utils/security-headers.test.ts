@@ -21,14 +21,23 @@ describe("withSecurityHeaders", () => {
     expect(res.headers.get("Permissions-Policy")).toContain("camera=()");
   });
 
-  test("sets a Content-Security-Policy with clickjacking and upgrade directives", () => {
+  test("sets a Content-Security-Policy with clickjacking directives", () => {
     const res = withSecurityHeaders(new Response("ok"));
     const csp = res.headers.get("Content-Security-Policy") ?? "";
 
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("base-uri 'none'");
-    expect(csp).toContain("upgrade-insecure-requests");
+  });
+
+  test("omits upgrade-insecure-requests outside production", () => {
+    // Production-only for the same reason as HSTS below — and unlike Chrome,
+    // WebKit upgrades http://localhost subresources too, so shipping it in dev
+    // strips every asset off the page under the browser smoke tests.
+    const res = withSecurityHeaders(new Response("ok"));
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+
+    expect(csp).not.toContain("upgrade-insecure-requests");
   });
 
   test("advertises discovery resources via a Link header", () => {

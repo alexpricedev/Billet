@@ -1,7 +1,9 @@
 # CI & merge protection Runbook
 
 Billet runs lint, type-check, build, and the full test suite on every pull
-request via GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
+request via GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)),
+plus a dependency audit on its own schedule
+([`.github/workflows/audit.yml`](../.github/workflows/audit.yml)).
 But **CI results only gate merges if you make the checks _required_** — that's a
 per-repository GitHub setting that a fork or new clone does **not** inherit.
 Until you set it, a PR is mergeable the moment it opens, and any auto-merge
@@ -23,6 +25,14 @@ Three jobs, chained so a failure short-circuits the rest:
 The job **names** above are exactly the check "contexts" GitHub sees — you'll
 reference them by name in §2.
 
+**Every job pins Bun** via `bun-version-file: .bun-version`. Without it
+`oven-sh/setup-bun` installs the latest release, which means the toolchain under
+CI changes on Bun's release schedule rather than on a commit — and this app is
+built on `Bun.SQL`, `Bun.password`, and Bun's CSS bundler, so a build can go red
+with nothing in the diff to explain it. `.bun-version` and the `engines.bun`
+floor in `package.json` are the same number; bump both together, in a commit
+whose CI run is the evidence the new version works.
+
 > **The `Tests` job env is deliberately generic** — `APP_NAME: CI Test`, with
 > `POSTGRES_DB` / `DATABASE_URL` on `ci-test` — so a fork inherits nothing it has
 > to rename. Tests read `APP_NAME` from the environment rather than asserting a
@@ -35,12 +45,58 @@ The `Tests` job is tuned in two ways a fork should keep:
   between tests, and on a runner's disk each truncate waits on an fsync — a
   runner was ~13× slower than a laptop before this. Test data is disposable, so
   the durability those fsyncs bought was worth nothing.
-- **`TEST_FILE_TIMEOUT_MS: "180000"`** raises the per-file cap in
-  `src/server/test-utils/run-tests.ts` from its 60s default. That cap exists to
-  catch a hung file, not to enforce a speed: a runner is slower than a laptop
-  even with the database in RAM, and a file killed at the wire counts every test
-  in it as lost — which reads as a broken test rather than the timing accident it
-  is.
+- **`TEST_TIMEOUT_MS: "1800000"`** raises the whole-run cap in
+  `src/server/test-utils/run-tests.ts` from its 10-minute default. That cap exists
+  to catch a run that has stopped making progress, not to enforce a speed: a runner
+  is slower than a laptop even with the database in RAM, and a run killed at the
+  wire counts every test in it as lost — which reads as a broken test rather than
+  the timing accident it is. Per-test timeouts are Bun's own `--timeout`.
+
+## 1b. The dependency audit
+
+`bun audit` checks the installed tree against the npm advisory database.
+It lives in **its own workflow** rather than as a fourth job in `ci.yml`, because
+`bun install --frozen-lockfile` installs the same tree every run — what changes
+between runs is the advisory database, not this repository. That needs a clock,
+not a commit:
+
+| Trigger | Why |
+|---|---|
+| `pull_request` | A PR that adds or bumps a dependency is checked before it lands |
+| `schedule` (Mondays 07:00 UTC) | A new advisory against an *existing* pin shouldn't wait for someone to open a PR |
+| `workflow_dispatch` | Run it on demand after a security bulletin |
+
+It runs `bun run audit`, i.e. `bun audit --audit-level=high`. **The threshold is
+deliberate**: a low or moderate advisory in a transitive devDependency is worth
+knowing about but not worth blocking an unrelated PR over, and a check that goes
+red for reasons nobody can act on is a check people learn to ignore. Run plain
+`bun audit` locally to see everything, including what sits below the line.
+
+When it does fail, run `bun audit fix` — it resolves every advisory that a
+compatible bump inside the existing ranges can fix, and reports the ones it
+can't. If the advisory survives that, it's against a transitive dependency
+whose direct parent hasn't shipped an update (say `resend` → `svix` → `uuid`);
+either wait for the parent or decide the exposure is acceptable and record why.
+
+Dependabot ([`.github/dependabot.yml`](../.github/dependabot.yml)) opens the
+routine bumps — one grouped PR a week for dependencies, one for pinned Action
+versions — so the audit is the backstop, not the mechanism.
+
+Before merging a Dependabot PR (or any bump you didn't author), `bun pm diff
+<pkg>@<old> <pkg>@<new>` prints what actually changed between the two published
+tarballs — and flags the changes that matter for supply chain: new install
+scripts, and new imports of `child_process`, `fs`, `net` or `vm`. A patch bump
+that suddenly gains a postinstall script is exactly the thing a version diff on
+GitHub won't show you, because npm tarballs don't have to match the repo.
+
+Two more one-liners with no workflow behind them, by design:
+
+- `bun pm licenses --prod --json` lists every production dependency's licence.
+  Run it before a release or when legal asks; with four production dependencies
+  it isn't worth a CI job.
+- `bun dedupe --check` reports when the lockfile holds multiple versions of the
+  same package that could collapse into one. Advisory, not gating — duplicate
+  versions are a size and consistency smell, not a failure.
 
 ## 2. Require the checks before merge
 
@@ -151,3 +207,8 @@ gh api -X DELETE repos/{owner}/{repo}/branches/main/protection
   required check that never reports keeps every PR blocked forever.
 - **New checks aren't auto-required.** Adding a job to `ci.yml` doesn't make it
   blocking; add its name to `contexts` if it should gate merges.
+- **`Dependency audit` is not in the §2 contexts list.** That's a choice, not an
+  oversight: it runs on a schedule as well as on PRs, and a required check that
+  can start failing because of something outside the PR will block every open
+  branch at once. Add `"Dependency audit"` to `contexts` if you'd rather no PR
+  merge while a high-severity advisory is outstanding.

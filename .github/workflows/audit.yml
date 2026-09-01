@@ -1,0 +1,33 @@
+name: Audit
+
+# Deliberately a separate workflow from ci.yml rather than a fourth job in it.
+# The dependency set is pinned by bun.lock, so `--frozen-lockfile` means CI
+# installs the same tree every run — what changes between runs is the *advisory
+# database*, not this repository. That needs a clock, not a commit, so this
+# workflow carries its own schedule; and a failure here says "a dependency has a
+# known vulnerability", not "this diff is broken", which is worth keeping out of
+# the chained lint → build → test line.
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    # Mondays, 07:00 UTC. A new advisory shouldn't have to wait for someone to
+    # open a PR before anyone hears about it.
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      # `--audit-level=high` on purpose: a low or moderate advisory in a
+      # transitive devDependency is worth knowing about but not worth blocking
+      # an unrelated PR over. Run `bun audit` with no flag locally to see
+      # everything.
+      - run: bun run audit

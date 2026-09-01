@@ -44,9 +44,7 @@ const refusal = (
   error === "last-owner" ? "last-owner" : "member-gone";
 
 export const teamMembers = {
-  async updateRole<T extends `${string}:id${string}`>(
-    req: BunRequest<T>,
-  ): Promise<Response> {
+  async updateRole(req: BunRequest): Promise<Response> {
     if (!teamsEnabled()) return render404();
 
     const guard = await requireOrgRole(req, "admin");
@@ -113,9 +111,7 @@ export const teamMembers = {
     return redirect("/team");
   },
 
-  async destroy<T extends `${string}:id${string}`>(
-    req: BunRequest<T>,
-  ): Promise<Response> {
+  async destroy(req: BunRequest): Promise<Response> {
     if (!teamsEnabled()) return render404();
 
     const guard = await requireOrgRole(req, "admin");

@@ -95,7 +95,7 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 
 The "deterministic templates, test with confidence" tagline isn't a marketing claim — it's backed by infrastructure.
 
-- **700+ tests across 67 files** covering controllers, services, middleware, utilities, and client scripts
+- **760+ tests across 70 files** covering controllers, services, middleware, utilities, and client scripts
 - **No browser simulation needed** — server-rendered templates are pure functions of props, testable with `renderToString()` and string assertions
 - **Real database testing** for services — tests run against PostgreSQL with table truncation for isolation
 - **Mock-based controller tests** that verify HTTP responses (status codes, headers, HTML content) without touching the database
@@ -103,7 +103,8 @@ The "deterministic templates, test with confidence" tagline isn't a marketing cl
 - **A one-line test environment** — `.env.test` carries `DATABASE_URL` and nothing else; every other variable is pinned by a preload (`src/server/test-utils/test-env.ts`), so your dev `.env` can't change what the suite sees no matter which command starts it
 
 
-Run the full suite: `bun run test`
+Run the full suite: `bun run test` — around 15 seconds on four cores, since files run in
+parallel with a database per worker.
 
 ### Code Quality
 
@@ -111,6 +112,8 @@ Run the full suite: `bun run test`
 - **TypeScript** strict mode with `noUnusedLocals` and `noUnusedParameters`
 - **Husky** pre-commit hooks that run lint and typecheck before every commit
 - **GitHub Actions CI** — lint, build, and the full test suite run on every PR (`.github/workflows/ci.yml`); gate merges behind them with required status checks (see [runbooks/CI.md](runbooks/CI.md))
+- **Pinned toolchain** — `.bun-version` and `engines.bun` fix the Bun version, and CI installs from the same file, so the toolchain changes on a commit rather than on Bun's release schedule
+- **Dependency audit** — `bun run audit` fails on high-severity advisories, run on every PR and weekly on a schedule (`.github/workflows/audit.yml`), with Dependabot opening the routine bumps
 - **Structured logging** via `src/server/services/logger.ts` — replaces `console.*` with levelled output (info, warn, error)
 
 ### Frontend
@@ -276,6 +279,7 @@ src/
 
 scripts/
 ├── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
+├── benchmark.ts                # Times the suite, checks and build; saves/compares records
 └── workspace.ts                # Per-workspace port + dev/test databases (provision/destroy)
 
 .claude/
@@ -284,6 +288,73 @@ scripts/
 │   └── no-shared-stash.ts      # Denies `git stash`, points at `bun run wip`
 └── skills/                     # Progressive-disclosure guides for agents
 ```
+
+---
+
+## API Reference
+
+The starter ships one example resource plus a read-only stats endpoint. They exist to be
+copied or deleted — the
+conventions below are what a new endpoint should follow, and
+[`.claude/skills/adding-a-feature/references/api-endpoint.md`](.claude/skills/adding-a-feature/references/api-endpoint.md)
+is the checklist for adding one.
+
+> **These endpoints are unauthenticated**, like the `/projects` page they mirror — the demo lets
+> guests create projects. Anything exposing real data needs `requireAuth` from
+> `src/server/middleware/auth.ts` (or a token check for machine callers) before it ships.
+
+### Conventions
+
+- **Every payload is wrapped in `data`.** A bare array or object leaves nowhere to add metadata
+  later without breaking clients.
+- **Every failure returns the same envelope**, whatever went wrong:
+  ```json
+  { "error": { "code": "invalid_body", "message": "A non-empty title is required.",
+               "fields": { "title": "Required." } } }
+  ```
+  Branch on `code` — it is stable. `message` is for a human reading the response, and `fields` is
+  present only on validation failures.
+- **Request bodies must be `application/json`** (or a `+json` media type). Anything else is a 415;
+  a body that isn't valid JSON, or that is JSON but not an object, is a 400.
+- **Rate limits are per IP**: 60 requests/minute for reads, 20 for writes, counted separately
+  from each other and from the auth forms' own budget. A 429 carries `Retry-After` in seconds.
+
+### Endpoints
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/api/projects` | `{ data: Project[], pagination: { total, limit, offset } }` |
+| `POST` | `/api/projects` | `201` + `{ data: Project }`, with a `Location` header |
+| `GET` | `/api/projects/:id` | `{ data: Project }` |
+| `PUT` | `/api/projects/:id` | `{ data: Project }` |
+| `DELETE` | `/api/projects/:id` | `204`, no body |
+| `GET` | `/api/stats` | `{ data: VisitorStats }` |
+
+`GET /api/projects` accepts `?limit=` (1–100, default 25) and `?offset=` (default 0). Values
+outside those bounds are **rejected with a 400 rather than clamped** — a client silently handed
+100 rows when it asked for 5000 has no way to tell it received a page.
+
+`:id` must be a positive integer within Postgres `serial` range; anything else is a 400
+(`invalid_id`) and never reaches the database.
+
+```bash
+curl -X POST http://localhost:3000/api/projects \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"My project"}'
+# 201 Created
+# Location: /api/projects/7
+# {"data":{"id":7,"title":"My project","created_by":null}}
+```
+
+### Status codes
+
+| Code | `error.code` | When |
+|---|---|---|
+| `400` | `invalid_id` / `invalid_json` / `invalid_body` / `invalid_limit` / `invalid_offset` | Malformed path, query, or body |
+| `404` | `not_found` | No such row |
+| `405` | `method_not_allowed` | Wrong verb — the `Allow` header names the right ones |
+| `415` | `unsupported_media_type` | `Content-Type` wasn't JSON |
+| `429` | `rate_limited` | Per-IP limit exceeded; see `Retry-After` |
 
 ---
 

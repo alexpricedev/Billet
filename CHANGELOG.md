@@ -7,20 +7,158 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
-## Unreleased
+## 3.0.0
 
-### Fixed
+Two independent lines of work: an audit against
+[elsewhencode/project-guidelines](https://github.com/elsewhencode/project-guidelines) — its API
+section (§9) and environment/dependency sections (§3–4) were where this repo had real gaps — and
+the adoption of [Bun 1.4](https://bun.com/blog/bun-v1.4), which the toolchain now requires. The API
+response shape and the Bun floor each make this a major on their own.
 
-- **`bun run wip drop` now drops.** It pointed the ref back at `@{1}` with `git update-ref`, which
-  *appends* to a reflog rather than rewriting it — and `wip list` reads the reflog. So the snapshot
-  it claimed to drop stayed listed and stayed restorable, and the list grew by one entry on every
-  drop (four drops took an eight-entry list to nine). It now uses `git reflog delete --updateref
-  --rewrite`, the idiom git-stash's own `drop` uses, and deletes `refs/worktree/wip` once the last
-  entry goes: emptying a reflog leaves the ref behind, and `list` would then print nothing at all
-  rather than "no snapshots in this worktree".
+Two items deserve more attention than their diff size suggests. A fork running
+`TEAMS_ENABLED=true` should take the **last-owner atomicity fix** (under Fixed): the failure needs
+two owners racing within milliseconds and an org admin can recover it, but when it hits, an
+organisation silently loses its last owner. And a fork deployed behind a reverse proxy must set
+**`TRUST_PROXY=true`** (under Breaking changes) or the rate limiter throttles all visitors as one.
+
+### Breaking changes
+
+- **Requires Bun 1.4.0.** `.bun-version` and `engines.bun` are pinned to it, and CI installs from
+  that file. A fork on 1.3.x must upgrade before merging. Nothing in `src/` changed for it — the
+  suite is 755 pass / 0 fail on 1.4.0 exactly as it was on 1.3.11 — but the floor moved, and a
+  fork's own code may not have been audited against 1.4's behaviour changes the way this one was.
+- **`.env.test` now carries `DATABASE_URL` only.** Any other key in yours is inert — the preload
+  overrides it — so a fork that had pinned values there should delete them rather than trust them.
+  `DATABASE_URL` stays outside the pin deliberately: it is the one value that has to vary per
+  machine and per workspace (`scripts/workspace.ts`), since two suites sharing a database truncate
+  each other's tables mid-run.
+- A fork that deliberately ran its suite against a non-default configuration — password mode, say —
+  by putting it in `.env.test` no longer gets it. Set it per test case instead, the way the files
+  covering password mode, the captcha and teams already do.
+- **`GET /api/projects` returns a wrapped, paginated payload.** It was a bare `Project[]`; it is now
+  `{ data: Project[], pagination: { total, limit, offset } }`, defaulting to 25 rows. A fork with a
+  client reading `response.json()` as an array must read `.data`. `GET /api/projects/:id`, `POST`
+  and `PUT` are wrapped in `data` too, and `GET /api/stats` returns `{ data: VisitorStats }`. The
+  wrapper is what makes `total` expressible — and anything added later — without a second breaking
+  change.
+- **API errors return the shared JSON envelope**, not a text body. `{ error: { code, message,
+  fields? } }` replaces `new Response("Project not found", { status: 404 })`. A fork asserting on
+  the response text must assert on `error.code` instead — `not_found`, `invalid_id`, `invalid_json`,
+  `invalid_body`, `invalid_limit`, `invalid_offset`, `method_not_allowed`,
+  `unsupported_media_type`, `rate_limited`.
+- **`rateLimit` returns that same envelope.** The 429 body changed from `{ error: "Too many
+  requests" }` to `{ error: { code: "rate_limited", message } }` and now carries `Retry-After`.
+  This affects the auth and team forms as well as the API, since they share the middleware.
+- **`rateLimit` takes a bucket as its second argument** — `rateLimit(req, "auth", 5, 60_000)`.
+  A fork with its own call sites must name one of `RateLimitBucket`'s members (`auth`,
+  `api-read`, `api-write`) or add its own; the budget is spent per bucket per address, not per
+  address. The existing auth and team call sites all pass `auth`, which is the counter they
+  already shared, so nothing about those limits changed.
+- **`getProjects()` is unchanged, but the API no longer calls it.** `getProjectPage(limit, offset)`
+  is the paginated read; the `/projects` HTML page still uses `getProjects()`.
+- **`createMockRequest` returns a `BunRequest`** and takes a fourth `headers` argument. A string
+  `body` is now sent verbatim rather than JSON-encoded, so a test can post a malformed body.
+- **`@types/bun` moved to 1.4.0, and the route-literal generics are gone.** bun-types 1.4 rewrote
+  `BunRequest.params` as a mapped type over `keyof`, which never resolves for an unbound type
+  parameter — a controller written as `destroy<T extends \`${string}:id${string}\`>(req:
+  BunRequest<T>)` stops compiling. This repo's four such controllers now take a plain `BunRequest`
+  and read `params.id` through the index signature; a fork that copied the pattern into its own
+  controllers must do the same after merging. `@types/node` is pinned directly now too — the 24.x
+  that happy-dom pulled in transitively fails typechecking inside bun-types 1.4 itself.
+
+- **The rate limiter keys on the client's socket address, not `x-forwarded-for`.** The header is
+  client-controlled — a fresh value per request bought a fresh bucket, so the 5/min limit in front
+  of `/login` could be walked past. **A fork deployed behind a reverse proxy must set
+  `TRUST_PROXY=true`** (validated at boot; see `.env.example` and `runbooks/SECURITY.md` §5), or
+  every visitor shares the proxy's address and one busy user rate-limits everyone. With it set,
+  only the *last* header entry — the hop the trusted proxy added — is believed. The `x-real-ip`
+  fallback is gone for the same reason.
+
+- **`bun run start` no longer reads `.env` files** (`--no-env-file`). Production configuration
+  comes from the platform's environment only, so a stray `.env` baked into a container image can't
+  shadow it. A fork that deliberately configures production through an `.env` file on the server
+  must remove the flag from the `start` script — or better, move those values into the platform's
+  environment. `bun run dev` and the test suite still load `.env` / `.env.test` as before.
+- **`upgrade-insecure-requests` ships in production only**, like HSTS. WebKit — unlike Chrome —
+  applies the upgrade to `http://localhost` subresources, so in dev the directive rewrote every
+  asset URL to an `https://localhost` origin nothing serves and pages loaded with no stylesheet or
+  client bundle. Production responses are unchanged; only non-production CSP lost the directive.
+
+### Added
+
+- **Browser smoke tests** (`bun run test:browser`, `scripts/browser-smoke.test.ts`) on
+  `Bun.WebView` — system WebKit on macOS, an installed Chrome elsewhere, zero new dependencies.
+  Six journeys in about a second: home renders with a stylesheet, the client bundle hydrates its
+  island, a guest submits the form through the CSRF round-trip with trusted input events, the
+  captcha solves its proof of work in the page and the login submit carries it, a magic link
+  scraped from the console email provider's output signs in end to end — including loading the
+  link twice to prove GET doesn't redeem it, the invariant `runbooks/EMAIL.md` exists for — and
+  the page console stays clean (which is where CSP violations surface). Deliberately separate from
+  `bun run test`: the API is experimental and the engine varies by platform, so it never gates the
+  deterministic suite. Its first run caught the `upgrade-insecure-requests` bug above.
+- `bun run test:changed` — Bun 1.4's `--changed` walks the import graph backwards from uncommitted
+  edits and runs only the affected test files. The middle ground between `test:file` and the full
+  suite while iterating; the full suite remains the gate.
+- **Graceful shutdown.** `registerShutdown` (`src/server/utils/shutdown.ts`) drains on
+  `SIGTERM`/`SIGINT`: the cleanup sweep stops, `server.stop()` lets in-flight responses finish
+  (Bun 1.4 resolves it when the last connection closes), then the pool closes via `closeDatabase`
+  and the process exits 0. Deploys no longer sever requests mid-response. A second signal during
+  the drain is ignored; an operator who can't wait has SIGKILL.
+- The `profiling` skill (`.claude/skills/profiling/`): Bun 1.4's Markdown-format profilers
+  (`--cpu-prof-md`, `--heap-prof-md`, `bun build --metafile-md`) and how to point them at this
+  repo's server and client bundle.
+- **HEAD works on every dispatched route.** `createRouteHandler` and `createApiRouteHandler`
+  answered anything but the listed methods with a 405, and nothing lists HEAD — so crawlers and
+  uptime monitors probing `/projects` or `/login` read the app as down. HEAD now runs the GET
+  handler and strips the body in the dispatcher, and `Allow` advertises it next to GET. A resource
+  with no GET still 405s.
+
+- `src/server/controllers/api/request-guard.ts` — the guards every JSON endpoint runs, the mirror
+  of `auth/form-guard.ts` for machine callers. `readJsonBody` rejects a non-JSON `Content-Type`
+  (415) and an unparseable or non-object body (400); `readIdParam` rejects anything that isn't a
+  positive integer in `serial` range; `readPagination` reads `?limit=`/`?offset=` and rejects
+  out-of-range values rather than clamping them; `apiReadLimit` / `apiWriteLimit` are the per-IP
+  budgets (60 and 20 per minute).
+- `jsonError` and the `JsonErrorBody` type in `src/server/utils/response.ts`; `expectJsonError` in
+  `src/server/test-utils/setup.ts`, which asserts the envelope and returns the parsed body.
+- `createApiRouteHandler` in `src/server/utils/route-handler.ts` — JSON 405 with an `Allow` header.
+  `createRouteHandler` now sends `Allow` too.
+- `.bun-version` (1.4.0) and `engines.bun`, with `bun-version-file` on every `setup-bun` step in
+  CI. `oven-sh/setup-bun` was installing the latest release, so the CI toolchain moved on Bun's
+  release schedule rather than on a commit — on an app built on `Bun.SQL`, `Bun.password` and
+  Bun's CSS bundler.
+- `bun run audit` (`bun audit --audit-level=high`) and `.github/workflows/audit.yml`, on PRs and
+  weekly. `.github/dependabot.yml` opens grouped weekly PRs for dependencies and pinned Action
+  versions. See `runbooks/CI.md` §1b.
+- `.editorconfig` for the files Biome doesn't format — migrations, workflows, shell scripts.
+- An **API Reference** section in `README.md`, and a rewritten
+  `.claude/skills/adding-a-feature/references/api-endpoint.md` teaching the guarded pattern.
 
 ### Changed
 
+- **The suite runs in parallel, one worker per core, each with its own database.**
+  `test-env.ts` rewrites `DATABASE_URL` from `BUN_TEST_WORKER_ID` (see
+  `src/server/test-utils/worker-database.ts`); `run-tests.ts` creates and migrates the extra
+  databases up front, idempotently, so only the first run on a machine pays for it. Slot 1 keeps the
+  base name, so a single-worker run and `bun run test:file` use exactly the database they always did.
+  Measured on the same tree and the same four-core host: **44.15s → 14.49s, 67% faster**, at 756
+  pass / 0 fail across 68 files, holding across four consecutive runs. Cumulatively against the
+  process-per-file runner this release replaced, 55.15s → 14.49s.
+  `TEST_WORKERS=1` turns parallelism off, which is what you want when a failure needs a readable,
+  ordered log instead of four interleaved ones.
+- **`bun run test` runs one process with `bun test --isolate`**, not one process per test file.
+  Isolation is the flag's job now: a fresh `globalThis` and cleared module registries per file, plus
+  closing handles a file leaked, cancelling its timers and re-running the preloads — and one
+  transpile cache shared across all 68 files instead of paid 68 times. Measured back to back on one
+  host: **55.15s → 45.96s, 17% faster**, at an unchanged 755 pass / 0 fail across 68 files.
+  `run-tests.ts` is now only migrations, `NODE_ENV`, a whole-run hang timeout and the slow-file
+  report; the glob, the spawn loop and the output scraping are gone.
+- `TEST_FILE_TIMEOUT_MS` is now **`TEST_TIMEOUT_MS`** and caps the whole run rather than each file
+  (default 10 minutes, 30 in CI). Per-test timeouts are Bun's own `--timeout`.
+- Per-file durations come from `--timings` (`.timings.json`, gitignored) rather than being timed by
+  hand. The file is written slowest-first, so it doubles as the slow-test report — and it is what
+  `--shard` and `--parallel` will read to balance by wall time.
+- `bun run test:coverage` passes `--isolate` too, so it matches what `bun run test` does.
 - **The test environment is set in one place: `src/server/test-utils/test-env.ts`**, preloaded into
   every test file by `bunfig.toml`. It pins `SESSION_COOKIE_NAME`, `AUTH_MODE`, `CAPTCHA_ENABLED`,
   `TEAMS_ENABLED`, `PORT`, `APP_URL`, `CRYPTO_PEPPER` and the app/email names. `run-tests.ts` no
@@ -33,17 +171,73 @@ change its own code after merging.
   while `test:file`, `test:coverage` and an editor's run-test button ran against whatever was in the
   developer's `.env` — a dev server in password mode, with the captcha on, or with teams enabled was
   enough to fail dozens of tests with no hint as to why.
+- **`happy-dom` 20.8.3 → 20.12.0** (with `@happy-dom/global-registrator`), clearing three
+  high-severity advisories the new audit found on its first run — two in `happy-dom` itself and one
+  in its transitive `ws`. Both are devDependencies. One moderate advisory remains, in `resend` →
+  `svix` → `uuid`, which is below the audit threshold and not fixable from here until `resend`
+  ships an update.
+- **`/api/stats` answers `GET` only.** It was registered as a bare handler, so it served its
+  payload to any method, `DELETE` included. Every API route now goes through
+  `createApiRouteHandler`.
+- `POST /api/projects` sends a `Location` header, and 204s send a null body rather than `""`.
+- `title` is trimmed and required on create and update. It was passed through unvalidated, so
+  `{}` reached `createProject(undefined, null)` and the database.
+- `bun run dev` uses `bun run --parallel --no-orphans` for the three watchers: name-prefixed
+  output, and the watchers die with the terminal instead of orphaning on the port.
+- A CSRF check that finds the request body already consumed logs the ordering violation
+  (`checkCsrf` must run before `readFormValues` — Bun 1.4 makes `req.clone()` throw after a body
+  read) instead of degrading to a silent 403; a test pins the fail-closed behaviour.
+- `runbooks/CI.md` §1b: `bun audit fix` is the first move on an advisory, and `bun pm diff` — which
+  reports new install scripts and new `child_process`/`fs`/`net`/`vm` imports between two published
+  versions — is the pre-merge check for dependency bumps nobody here authored.
+- **The cleanup sweep runs on `Bun.cron` instead of `setInterval`** — hourly on the hour, pinned to
+  UTC (1.4 parses in-process cron schedules in local time). Runs can no longer overlap, the job has
+  a real `unref()`/`stop()` for the shutdown path, and the cast guarding against happy-dom's
+  browser-style `setInterval` is gone with the `setInterval`.
 
-### Breaking changes
+### Fixed
 
-- **`.env.test` now carries `DATABASE_URL` only.** Any other key in yours is inert — the preload
-  overrides it — so a fork that had pinned values there should delete them rather than trust them.
-  `DATABASE_URL` stays outside the pin deliberately: it is the one value that has to vary per
-  machine and per workspace (`scripts/workspace.ts`), since two suites sharing a database truncate
-  each other's tables mid-run.
-- A fork that deliberately ran its suite against a non-default configuration — password mode, say —
-  by putting it in `.env.test` no longer gets it. Set it per test case instead, the way the files
-  covering password mode, the captcha and teams already do.
+- **Every rate limit shared one counter per address.** `requestLog` was keyed on the client
+  address alone, so the new API budgets spent the auth forms' — five requests to any `/api/*`
+  route left the next `/login`, `/signup`, `/forgot-password`, `/account/password` or
+  `/team/invites` POST from that address already over the 5/minute limit, which behind a shared
+  NAT meant five cheap unauthenticated GETs could deny login to everyone on it. Reads spent the
+  write allowance the same way, so the documented 60/20 split never held either. The bucket name
+  is now half the key.
+- **A failing drain no longer skips the rest of the shutdown.** `registerShutdown` awaited
+  `server.stop()` and `db.close()` unguarded, and a rejection from either escaped the signal
+  handler as an unhandled rejection — fatal in Bun — killing the process partway through, with
+  the pool still open and `exit` never reached. That is the outcome the function exists to
+  prevent. Each step is best-effort now: it logs what failed and the sequence continues to
+  `exit(0)`, because a process that was asked to stop and stopped did not crash.
+- **The last-owner invariant was not actually atomic.** `removeMember` and `updateMemberRole` put
+  the guard inside the statement — an `EXISTS (… another owner …)` in the `WHERE` — which reads as
+  atomic and isn't. Under Postgres's default READ COMMITTED, two concurrent removals of the last two
+  owners each see the *other* owner, because neither has committed, so both pass and both commit.
+  The organisation is left with **no owner**. Recoverable only if an org *admin* remains, since every
+  team route gates on `admin` and an admin can promote someone back to owner — an org whose only
+  admin-or-above members were the two owners is stuck. Write skew: row-level
+  locking only serialises writes to the same row, and these touch different rows.
+- Both statements now open with a `FOR UPDATE` CTE over the org's owner rows, so the second caller
+  waits and, once the first commits, re-checks against what actually survived and is refused.
+  `ORDER BY user_id` fixes the lock order against deadlocks. A fork on `TEAMS_ENABLED=true` should
+  take this: measured against the unlocked statement, **24 of 25 concurrent attempts emptied the
+  org**. `runbooks/TEAMS.md` §5 has the reasoning.
+- The test that was supposed to catch it made a single attempt and passed by luck. It now repeats,
+  and there is a matching one for concurrent demotions via `updateMemberRole`, which had the same
+  bug. Running the suite in parallel is what surfaced it.
+- **`scripts/workspace.ts destroy` now drops the per-worker test databases too.** It dropped exactly
+  two names and required each to carry the workspace slug, so `…-test-w2`, `-w3`, … would have
+  failed the ownership check and been left behind on every archive. It asks Postgres which exist
+  rather than guessing at a core count, and only ever for children of a name that already passed the
+  guard.
+- **`bun run wip drop` now drops.** It pointed the ref back at `@{1}` with `git update-ref`, which
+  *appends* to a reflog rather than rewriting it — and `wip list` reads the reflog. So the snapshot
+  it claimed to drop stayed listed and stayed restorable, and the list grew by one entry on every
+  drop (four drops took an eight-entry list to nine). It now uses `git reflog delete --updateref
+  --rewrite`, the idiom git-stash's own `drop` uses, and deletes `refs/worktree/wip` once the last
+  entry goes: emptying a reflog leaves the ref behind, and `list` would then print nothing at all
+  rather than "no snapshots in this worktree".
 
 ## 2.3.0
 

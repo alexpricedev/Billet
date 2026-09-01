@@ -372,7 +372,7 @@ describe("Callback Controller", () => {
   });
 });
 
-// The flag-off case is covered by every other test in this file: run-tests.ts
-// pins TEAMS_ENABLED=false, and they all assert "/". That matters more than it
+// The flag-off case is covered by every other test in this file: the test
+// preload pins TEAMS_ENABLED=false, and they all assert "/". That matters more than it
 // looks — /team 404s with teams off, so a redirect there would break sign-in
 // for every fork that never turned the feature on.

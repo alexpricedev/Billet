@@ -3,14 +3,12 @@ import { cleanupExpiredInvites } from "./invites";
 import { log } from "./logger";
 import { teamsEnabled } from "./teams-mode";
 
-const MINUTE_MS = 60 * 1000;
-
 // Hourly. Nothing reads an expired row — every query filters on `expires_at` —
-// so the sweep is never on a correctness path and the interval only trades disk
+// so the sweep is never on a correctness path and the schedule only trades disk
 // and retention window against write load. An hour keeps a spent magic-link
 // hash around for at most that long past its expiry, which is well inside what
 // runbooks/PRIVACY.md asks for, without a DELETE storm on a busy table.
-const SWEEP_INTERVAL_MS = 60 * MINUTE_MS;
+const SWEEP_SCHEDULE = "0 * * * *";
 
 /**
  * Delete every expired row the app owns.
@@ -33,7 +31,7 @@ export const runCleanupSweep = async (): Promise<void> => {
   }
 };
 
-// A rejection escaping a setInterval callback is an unhandled rejection, which
+// A rejection escaping a cron callback is an unhandled rejection, which
 // Bun treats as fatal — a transient database blip during a sweep would take the
 // server down. Swallow it and try again next hour; there is nothing to recover,
 // the rows are inert either way.
@@ -64,11 +62,15 @@ const sweep = async (): Promise<void> => {
 export const startCleanupSweep = (): (() => void) => {
   void sweep();
 
-  // The `unref` guard is copied from captcha.ts: the happy-dom test preload can
-  // swap in a browser-style setInterval that returns a plain number with no
-  // unref, and without it the timer keeps the test runner alive.
-  const timer = setInterval(sweep, SWEEP_INTERVAL_MS);
-  (timer as { unref?: () => void }).unref?.();
+  // Bun.cron over setInterval: runs never overlap (the next fire is computed
+  // only after the callback settles), and the job is untouched by the happy-dom
+  // test preload that used to force an `unref` guard here. The schedule parses
+  // in *local* time by default — pin UTC so the sweep doesn't move when a
+  // host's zone does. `unref` so a scheduled sweep never keeps a draining
+  // process alive on its own.
+  const job = Bun.cron(SWEEP_SCHEDULE, sweep, { tz: "UTC" }).unref();
 
-  return () => clearInterval(timer);
+  return () => {
+    job.stop();
+  };
 };

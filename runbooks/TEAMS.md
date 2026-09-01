@@ -172,16 +172,33 @@ express *at most* one of something via a partial unique index, which is the oppo
 needed.
 
 The guard lives **inside** the statement — the `UPDATE` in `updateMemberRole`, the `DELETE` in
-`removeMember`:
+`removeMember` — and it locks the owner rows before it reads them:
 
 ```sql
-AND (org_role <> 'owner' OR EXISTS (
-      SELECT 1 FROM organization_members
-      WHERE organization_id = $1 AND org_role = 'owner' AND user_id <> $2))
+WITH owners AS (
+  SELECT user_id FROM organization_members
+  WHERE organization_id = $1 AND org_role = 'owner'
+  ORDER BY user_id
+  FOR UPDATE
+)
+… AND (org_role <> 'owner' OR EXISTS (SELECT 1 FROM owners WHERE user_id <> $2))
 ```
 
-Zero rows back means it was refused. A check-then-write would let two owners each demote the
-other in parallel and leave the org with nobody who can administer it.
+Zero rows back means it was refused.
+
+**The `FOR UPDATE` is the guard.** Being inside one statement is not enough on its own: a bare
+`EXISTS` subquery is still a check-then-write, because under Postgres's default READ COMMITTED each
+of two concurrent removals sees the *other* owner — neither has committed — so both pass and both
+commit, leaving the org with no owner. An org *admin* can still recover it — every team route gates
+on `admin`, and an admin can promote someone to owner — but an org whose only admin-or-above members
+were those two owners has no way back. That is write skew, and row-level
+locking doesn't prevent it, because the two statements touch different rows. It shipped that way
+until it was caught by running the suite in parallel; against the unlocked statement, 24 of 25
+concurrent attempts empty the org.
+
+Locking the owner rows first is what closes it. The second caller waits, and once the first commits
+its `FOR UPDATE` re-checks and drops the row that went away — so it sees one owner, fails the guard,
+and is refused. `ORDER BY user_id` fixes the lock order so two callers can't deadlock.
 
 The template also hides the control on the last owner's row — but **that is cosmetic**. The
 server decides. If you add a new path to change roles, it must go through these functions.

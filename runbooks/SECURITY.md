@@ -81,6 +81,10 @@ script-src 'self' 'unsafe-inline' https://unpkg.com https://esm.sh;
 connect-src 'self'; upgrade-insecure-requests
 ```
 
+`upgrade-insecure-requests` ships in production only, like HSTS: WebKit (unlike
+Chrome) applies the upgrade to `http://localhost` subresources too, which strips
+every asset off the page in local dev and under the browser smoke tests.
+
 What it buys today: no other site can frame our pages (`frame-ancestors 'none'`),
 no plugins (`object-src 'none'`), no `<base>` injection (`base-uri 'none'`), any
 stray `http://` subresource is auto-upgraded to HTTPS, and code/styles/images may
@@ -145,6 +149,14 @@ entirely.
 - **HSTS preload.** The header already advertises `preload`. To get baked into
   browsers, submit the apex domain at [hstspreload.org](https://hstspreload.org)
   **after** confirming every subdomain is HTTPS-only — preload is hard to undo.
+- **`TRUST_PROXY=true` behind a reverse proxy.** The rate limiter keys requests by
+  client address (`src/server/middleware/client-ip.ts`). Behind Railway (or any
+  single proxy that rewrites/appends `x-forwarded-for` itself) set `TRUST_PROXY=true`
+  so it reads the last header entry — the hop the proxy added; otherwise every
+  visitor shares the proxy's socket address and one busy user 429s everyone.
+  Never set it on a deployment reached directly: the header is client-controlled
+  there, and trusting it lets an attacker walk past the `/login` limit with a
+  fresh value per request.
 
 ## 6. Verify in production
 
