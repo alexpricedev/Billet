@@ -47,50 +47,25 @@ meaningful against each other.
 | `f2a72f9` | `bun test --isolate`, one process |
 | `286ce56` | `--parallel` with per-worker databases, plus the last-owner atomicity fix |
 | `fd9a81d` | Correct the overstated severity of that write skew |
+| `ac653e8` | `@types/bun` 1.4.0 + direct `@types/node` pin; route-literal generics dropped (see gotchas) |
+| `6fa58ad` | HEAD answers with GET's headers on every dispatched route, advertised in `Allow` |
+| `1ada9c2` | Graceful shutdown (`registerShutdown` in `utils/shutdown.ts`) + cleanup sweep on `Bun.cron` |
 
-Suite: **55.15s → 14.49s** (process-per-file → 4 workers), 756 pass / 0 fail across 68 files.
-Isolate alone was 55.15 → 45.96; parallelism took 44.15 → 14.49 on the same tree.
+Suite: **55.15s → 14.49s** (process-per-file → 4 workers), 761 pass / 0 fail across 69 files.
+Isolate alone was 55.15 → 45.96; parallelism took 44.15 → 14.49 on the same tree. (Those numbers
+are from the 4-core linux container; the same suite runs ~4.4s on the M-series dev machine.)
 
----
+Phase 2 is done, verified against a live server: HEAD 200s across `/`, `/projects`, `/login`,
+`/api/projects` with an empty body; DELETE still 405s; SIGTERM logs `draining` and exits cleanly
+with no pool-close warnings. Notes for whoever touches these next:
 
-## Phase 2 — next up
-
-### Graceful shutdown  ·  small, clear win
-
-There is no `SIGTERM` handler anywhere in `src/server`, so every Railway deploy severs in-flight
-requests. Bun 1.4's `server.stop()` now closes idle keep-alives immediately, closes busy ones once
-their response is sent, and resolves when the last connection closes — which is what makes a handler
-worth writing at all.
-
-About fifteen lines in `src/server/main.ts`: on `SIGTERM`/`SIGINT`, stop the cleanup sweep,
-`await server.stop()`, `await db.close()`, exit. Worth a test that the handler is registered and
-ordered; the socket behaviour itself is Bun's.
-
-### `Bun.cron()` for the cleanup sweep  ·  small, clear win
-
-`src/server/services/cleanup.ts` uses `setInterval` plus a cast that exists only because the
-happy-dom preload can swap in a browser-style `setInterval` with no `unref`:
-
-```ts
-(timer as { unref?: () => void }).unref?.();
-```
-
-`Bun.cron()`'s in-process overload replaces it, guarantees runs never overlap, and has a real
-`unref()` and `stop()` the shutdown handler above can call.
-
-**Trap:** 1.4 parses in-process cron schedules in **local time**. Pass `{ tz: "UTC" }` or the sweep
-moves when a host's zone does.
-
-### HEAD returns 405 on every dispatched route  ·  small, confirmed
-
-Measured against a live 1.4 server: `HEAD /` answers 200 (bare handler), while `HEAD /projects`,
-`/forms`, `/login` and `/api/projects` all answer **405** — every route through
-`createRouteHandler` or `createApiRouteHandler`.
-
-HEAD should return what GET would without a body, and `compression.ts` already strips the body for
-it. Bun's own per-method route objects gained this in 1.4; our dispatcher never had it. Crawlers and
-uptime monitors use HEAD, and it's a `specification.website` line item. A few lines in
-`src/server/utils/route-handler.ts` plus a test.
+- The drain order in `utils/shutdown.ts` is load-bearing: sweep → `server.stop()` → pool. A second
+  signal during the drain is ignored, not re-entered.
+- `db.close()` fires `onclose` per pooled connection with a generic error; `closeDatabase` in
+  `services/database.ts` exists to mark the drain deliberate so the unexpected-close warning stays
+  meaningful. Shutdown goes through it, not `db.close()` directly.
+- The sweep schedule is `"0 * * * *"` with `{ tz: "UTC" }` — the local-time trap is real, we hit
+  the types for it. The happy-dom `unref` cast is gone with the `setInterval`.
 
 ---
 
@@ -150,6 +125,13 @@ uptime monitors use HEAD, and it's a `specification.website` line item. A few li
 
 ## Known issues and gotchas found on the way
 
+- **bun-types 1.4 broke the route-literal generics.** `BunRequest.params` is now a mapped type
+  over `keyof ExtractRouteParams<T>`, which never resolves for an unbound type parameter — the
+  `destroy<T extends \`${string}:id${string}\`>` pattern failed on both sides of the handler
+  boundary (passing `req` to helpers typed `BunRequest<string>`, and reading `params.id`).
+  Controllers now take plain `BunRequest`; `params.id` types through the index signature. Also:
+  `@types/bun@1.4.0` needs a current `@types/node` — the 24.x that happy-dom pulled in transitively
+  fails typechecking inside bun-types itself, so it's pinned directly now.
 - **A `bunfig.toml` keeps Bun 1.4 on the dev JSX runtime.** 1.4 documents `"jsx": "react-jsx"` as
   emitting `jsx` from `<pkg>/jsx-runtime`, but the mere presence of a `bunfig.toml` — any content,
   even empty — makes it emit `jsxDEV` from `<pkg>/jsx-dev-runtime`. Bisected to the file's

@@ -46,8 +46,26 @@ gaps. By the rule above, the API response shape below makes this a major.
   is the paginated read; the `/projects` HTML page still uses `getProjects()`.
 - **`createMockRequest` returns a `BunRequest`** and takes a fourth `headers` argument. A string
   `body` is now sent verbatim rather than JSON-encoded, so a test can post a malformed body.
+- **`@types/bun` moved to 1.4.0, and the route-literal generics are gone.** bun-types 1.4 rewrote
+  `BunRequest.params` as a mapped type over `keyof`, which never resolves for an unbound type
+  parameter — a controller written as `destroy<T extends \`${string}:id${string}\`>(req:
+  BunRequest<T>)` stops compiling. This repo's four such controllers now take a plain `BunRequest`
+  and read `params.id` through the index signature; a fork that copied the pattern into its own
+  controllers must do the same after merging. `@types/node` is pinned directly now too — the 24.x
+  that happy-dom pulled in transitively fails typechecking inside bun-types 1.4 itself.
 
 ### Added
+
+- **Graceful shutdown.** `registerShutdown` (`src/server/utils/shutdown.ts`) drains on
+  `SIGTERM`/`SIGINT`: the cleanup sweep stops, `server.stop()` lets in-flight responses finish
+  (Bun 1.4 resolves it when the last connection closes), then the pool closes via `closeDatabase`
+  and the process exits 0. Deploys no longer sever requests mid-response. A second signal during
+  the drain is ignored; an operator who can't wait has SIGKILL.
+- **HEAD works on every dispatched route.** `createRouteHandler` and `createApiRouteHandler`
+  answered anything but the listed methods with a 405, and nothing lists HEAD — so crawlers and
+  uptime monitors probing `/projects` or `/login` read the app as down. HEAD now runs the GET
+  handler and strips the body in the dispatcher, and `Allow` advertises it next to GET. A resource
+  with no GET still 405s.
 
 - `src/server/controllers/api/request-guard.ts` — the guards every JSON endpoint runs, the mirror
   of `auth/form-guard.ts` for machine callers. `readJsonBody` rejects a non-JSON `Content-Type`
@@ -118,6 +136,10 @@ gaps. By the rule above, the API response shape below makes this a major.
 - `POST /api/projects` sends a `Location` header, and 204s send a null body rather than `""`.
 - `title` is trimmed and required on create and update. It was passed through unvalidated, so
   `{}` reached `createProject(undefined, null)` and the database.
+- **The cleanup sweep runs on `Bun.cron` instead of `setInterval`** — hourly on the hour, pinned to
+  UTC (1.4 parses in-process cron schedules in local time). Runs can no longer overlap, the job has
+  a real `unref()`/`stop()` for the shutdown path, and the cast guarding against happy-dom's
+  browser-style `setInterval` is gone with the `setInterval`.
 
 ### Fixed
 
