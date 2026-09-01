@@ -115,9 +115,7 @@ export const projects = {
     return redirect("/projects");
   },
 
-  async destroy<T extends `${string}:id${string}`>(
-    req: BunRequest<T>,
-  ): Promise<Response> {
+  async destroy(req: BunRequest): Promise<Response> {
     const authRedirect = await requireAuth(req);
     if (authRedirect) {
       return authRedirect;

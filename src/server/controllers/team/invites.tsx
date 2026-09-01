@@ -107,9 +107,7 @@ export const teamInvites = {
     return redirect("/team");
   },
 
-  async destroy<T extends `${string}:id${string}`>(
-    req: BunRequest<T>,
-  ): Promise<Response> {
+  async destroy(req: BunRequest): Promise<Response> {
     if (!teamsEnabled()) return render404();
 
     const guard = await requireOrgRole(req, "admin");
