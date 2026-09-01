@@ -12,8 +12,13 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     groups:
+      # Majors are excluded on purpose: a major arriving inside a group PR
+      # titled "4 updates" reads as routine, and the one bump that needs a
+      # migration is the one that gets skimmed. TypeScript 7 landed that way
+      # once and took CI red. Majors still get a PR — just their own.
       dependencies:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # Pinned action versions go stale silently — nothing in the build fails when
   # `actions/checkout@v5` is a major behind, it just stops getting fixes.
