@@ -278,6 +278,7 @@ src/
 
 scripts/
 ├── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
+├── benchmark.ts                # Times the suite, checks and build; saves/compares records
 └── workspace.ts                # Per-workspace port + dev/test databases (provision/destroy)
 
 .claude/

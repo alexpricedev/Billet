@@ -2,6 +2,7 @@
 node_modules
 dist
 coverage
+.benchmarks
 .env
 .env.test
 docs
