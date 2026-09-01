@@ -5,6 +5,7 @@ import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
 import { initAssets, warnOnMissingDevBundles } from "./services/assets";
 import { startCleanupSweep } from "./services/cleanup";
+import { closeDatabase } from "./services/database";
 import { log } from "./services/logger";
 import { validateEnv } from "./utils/env";
 import { render500 } from "./utils/errors";
@@ -14,6 +15,7 @@ import {
   secureRoutes,
   withSecurityHeaders,
 } from "./utils/security-headers";
+import { registerShutdown } from "./utils/shutdown";
 
 validateEnv();
 await runMigrations();
@@ -23,7 +25,7 @@ await warnOnMissingDevBundles();
 
 // Not awaited: the first sweep runs alongside the first requests rather than
 // delaying the listen.
-startCleanupSweep();
+const stopSweep = startCleanupSweep();
 
 const server = Bun.serve({
   port: Number(process.env.PORT),
@@ -48,5 +50,7 @@ const server = Bun.serve({
     }
   },
 });
+
+registerShutdown({ stopSweep, server, db: { close: closeDatabase } });
 
 log.info("server", `Listening on port ${server.port}`);
