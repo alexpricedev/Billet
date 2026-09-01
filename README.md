@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
-> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with auth (magic-link or email+password, your pick), CSRF protection, rate limiting, auto-migrations, and 600+ tests. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
+> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with auth (magic-link or email+password, your pick), CSRF protection, rate limiting, auto-migrations, and 700+ tests. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
 >
 > — *Claude Opus 4.6*
 
@@ -95,11 +95,12 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 
 The "deterministic templates, test with confidence" tagline isn't a marketing claim — it's backed by infrastructure.
 
-- **220+ tests across 28 files** covering controllers, services, middleware, utilities, and client scripts
+- **700+ tests across 67 files** covering controllers, services, middleware, utilities, and client scripts
 - **No browser simulation needed** — server-rendered templates are pure functions of props, testable with `renderToString()` and string assertions
 - **Real database testing** for services — tests run against PostgreSQL with table truncation for isolation
 - **Mock-based controller tests** that verify HTTP responses (status codes, headers, HTML content) without touching the database
 - **Client script tests** using happy-dom for DOM globals, with page lifecycle isolation
+- **A one-line test environment** — `.env.test` carries `DATABASE_URL` and nothing else; every other variable is pinned by a preload (`src/server/test-utils/test-env.ts`), so your dev `.env` can't change what the suite sees no matter which command starts it
 
 
 Run the full suite: `bun run test`

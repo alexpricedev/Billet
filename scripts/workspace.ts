@@ -173,10 +173,12 @@ async function provision(): Promise<void> {
   );
   await Bun.write(DEV_ENV, dev);
 
-  // Only DATABASE_URL varies in the test env. PORT and APP_URL stay at 3000:
-  // tests hardcode `http://localhost:3000` in request URLs and csrf.test.ts
-  // builds its Origin from APP_URL, so a workspace port here would 403 every
-  // form post. run-tests.ts pins both as a second line of defence.
+  // DATABASE_URL is the only key .env.test carries, and the only one a
+  // workspace changes: the rest of the suite's environment is pinned by
+  // src/server/test-utils/test-env.ts. A workspace port must never reach the
+  // tests — they hardcode `http://localhost:3000` in request URLs and
+  // csrf.test.ts builds its Origin from APP_URL — and the pin is what
+  // guarantees that whatever ends up in this file.
   let test = await readEnv(TEST_ENV);
   test = setEnvValue(test, "DATABASE_URL", withDatabase(rootTestUrl, testDb));
   await Bun.write(TEST_ENV, test);

@@ -37,19 +37,22 @@ bun run typecheck                                        # types only
    schema happens to be there.
 2. Spawns one process per test file, so a module mock or a mutated global in one file can't leak
    into the next.
-3. Pins `SESSION_COOKIE_NAME=session_id`. Tests hardcode that cookie name; a custom value in your
-   `.env` otherwise leaks in and fails auth tests for reasons that look unrelated.
-4. Kills any file that exceeds 60s (`TEST_FILE_TIMEOUT_MS`) and reports it as failed rather than
+3. Kills any file that exceeds 60s (`TEST_FILE_TIMEOUT_MS`) and reports it as failed rather than
    hanging the run.
+
+The environment is not the runner's job. `bunfig.toml` preloads `src/server/test-utils/test-env.ts`
+into every test file, which pins `SESSION_COOKIE_NAME`, the three feature flags, `APP_URL`/`PORT`
+and the rest — so your `.env` can't reach a test run whichever command started it.
 
 ## Reading failures
 
-- **`DATABASE_URL is required for tests`** — `.env.test` is missing or unloaded. It needs a
-  separate database from development; see `START_PROMPT.md` §1.
+- **`DATABASE_URL is required for tests`** — `.env.test` is missing or unloaded. It holds one key,
+  `DATABASE_URL`, and it needs a separate database from development; see `START_PROMPT.md` §1.
 - **A file reported as `TIMED OUT`** — usually an unclosed SQL connection. Service tests need
   `await connection.end()` in `afterAll`.
-- **Auth or session assertions failing across many files** — check for `SESSION_COOKIE_NAME` in
-  your `.env`, and that you ran the script rather than `bun test`.
+- **Auth or session assertions failing across many files** — no longer your `.env`; the preload
+  pins those. Check that `test-env.ts` is still first in `bunfig.toml`'s `preload`, and that you
+  ran the script rather than `bun test` against a stale schema.
 - **Type errors in `email-providers/resend.ts`** — that file is excluded in `tsconfig.json`, so
   `bun run check` will not catch regressions there.
 

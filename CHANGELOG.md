@@ -7,6 +7,44 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## Unreleased
+
+### Fixed
+
+- **`bun run wip drop` now drops.** It pointed the ref back at `@{1}` with `git update-ref`, which
+  *appends* to a reflog rather than rewriting it — and `wip list` reads the reflog. So the snapshot
+  it claimed to drop stayed listed and stayed restorable, and the list grew by one entry on every
+  drop (four drops took an eight-entry list to nine). It now uses `git reflog delete --updateref
+  --rewrite`, the idiom git-stash's own `drop` uses, and deletes `refs/worktree/wip` once the last
+  entry goes: emptying a reflog leaves the ref behind, and `list` would then print nothing at all
+  rather than "no snapshots in this worktree".
+
+### Changed
+
+- **The test environment is set in one place: `src/server/test-utils/test-env.ts`**, preloaded into
+  every test file by `bunfig.toml`. It pins `SESSION_COOKIE_NAME`, `AUTH_MODE`, `CAPTCHA_ENABLED`,
+  `TEAMS_ENABLED`, `PORT`, `APP_URL`, `CRYPTO_PEPPER` and the app/email names. `run-tests.ts` no
+  longer sets any of them, and `.github/workflows/ci.yml` no longer declares them either —
+  `DATABASE_URL` is the only variable CI supplies.
+- A preload is the only place the pin actually works. Imports are hoisted above a test file's body,
+  so setting `process.env` there is too late for anything captured at import — `SESSION_COOKIE_NAME`
+  in `services/sessions.ts`, `CRYPTO_PEPPER` in `utils/crypto.ts`. It also covers every entry point
+  rather than one: `run-tests.ts` spawned children with a fixed env, so `bun run test` was safe
+  while `test:file`, `test:coverage` and an editor's run-test button ran against whatever was in the
+  developer's `.env` — a dev server in password mode, with the captcha on, or with teams enabled was
+  enough to fail dozens of tests with no hint as to why.
+
+### Breaking changes
+
+- **`.env.test` now carries `DATABASE_URL` only.** Any other key in yours is inert — the preload
+  overrides it — so a fork that had pinned values there should delete them rather than trust them.
+  `DATABASE_URL` stays outside the pin deliberately: it is the one value that has to vary per
+  machine and per workspace (`scripts/workspace.ts`), since two suites sharing a database truncate
+  each other's tables mid-run.
+- A fork that deliberately ran its suite against a non-default configuration — password mode, say —
+  by putting it in `.env.test` no longer gets it. Set it per test case instead, the way the files
+  covering password mode, the captcha and teams already do.
+
 ## 2.3.0
 
 ### Added
