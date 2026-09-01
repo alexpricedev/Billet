@@ -94,14 +94,26 @@ case "$cmd" in
     ;;
   drop)
     require_repo
-    if git rev-parse --verify --quiet "$REF@{1}" >/dev/null; then
-      git update-ref "$REF" "$(git rev-parse "$REF@{1}")"
+    if ! git rev-parse --verify --quiet "$REF" >/dev/null; then
+      echo "wip: nothing to drop"
+      exit 0
+    fi
+    # git-stash's own idiom, and the only thing that actually shortens the list.
+    # `list` reads the reflog, and update-ref *appends* to a reflog: pointing the
+    # ref back at @{1} looks like a drop, but leaves the snapshot listed and
+    # restorable and grows the log by one entry every time you run it.
+    # --updateref moves the ref to the new @{0}; --rewrite repairs the old-value
+    # field of the entries below so the chain still reads correctly.
+    git reflog delete --updateref --rewrite "$REF@{0}"
+    if [ -n "$(git reflog "$REF" --format='%gd')" ]; then
       echo "wip: dropped newest snapshot"
-    elif git rev-parse --verify --quiet "$REF" >/dev/null; then
+    else
+      # Emptying a reflog does not remove the ref, and `$REF@{0}` still resolves
+      # to the ref's own value once the log is empty — so the count is what has
+      # to be tested, and the ref is what is left to delete. Leave it and `list`
+      # prints nothing at all instead of "no snapshots in this worktree".
       git update-ref -d "$REF"
       echo "wip: dropped the only snapshot"
-    else
-      echo "wip: nothing to drop"
     fi
     ;;
   ""|-h|--help|help)

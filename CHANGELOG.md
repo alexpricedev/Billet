@@ -9,6 +9,16 @@ change its own code after merging.
 
 ## Unreleased
 
+### Fixed
+
+- **`bun run wip drop` now drops.** It pointed the ref back at `@{1}` with `git update-ref`, which
+  *appends* to a reflog rather than rewriting it — and `wip list` reads the reflog. So the snapshot
+  it claimed to drop stayed listed and stayed restorable, and the list grew by one entry on every
+  drop (four drops took an eight-entry list to nine). It now uses `git reflog delete --updateref
+  --rewrite`, the idiom git-stash's own `drop` uses, and deletes `refs/worktree/wip` once the last
+  entry goes: emptying a reflog leaves the ref behind, and `list` would then print nothing at all
+  rather than "no snapshots in this worktree".
+
 ### Changed
 
 - **The test environment is set in one place: `src/server/test-utils/test-env.ts`**, preloaded into
