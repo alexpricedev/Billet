@@ -108,12 +108,18 @@ with no pool-close warnings. Notes for whoever touches these next:
 - **`Bun.markdown`: no.** Its HTML output is explicitly unsanitized — raw HTML, event handlers and
   `javascript:` hrefs pass through. Not worth opening that door in a starter.
 - **`Bun.WebView`: adopted for smoke tests, opt-in only.** The earlier "parked" call was reversed
-  after a spike: `bun run test:browser` (`scripts/browser-smoke.test.ts`) runs four journeys in
+  after a spike: `bun run test:browser` (`scripts/browser-smoke.test.ts`) runs six journeys in
   system WebKit in ~1s — home renders styled, the client bundle hydrates, a guest submits the form
-  through the CSRF round-trip with trusted clicks, and the page console stayed clean. Deliberately
-  outside `bun run test` (experimental API, engine varies by platform) and it must stay that way.
-  The spike immediately paid for itself — see `upgrade-insecure-requests` in the gotchas. This is
-  smoke testing only; the automated-a11y decision is unchanged.
+  through the CSRF round-trip with trusted clicks, the captcha solves its proof of work in the
+  page, a magic link scraped from server stdout signs in end to end (double-GET proving the
+  confirm step doesn't redeem), and the page console stays clean. Deliberately outside
+  `bun run test` (experimental API, engine varies by platform) and it must stay that way. The
+  spike immediately paid for itself — see `upgrade-insecure-requests` in the gotchas. This is
+  smoke testing only; the automated-a11y decision is unchanged. WebKit quirks the file works
+  around, for whoever extends it: an `evaluate`/`click` whose page navigates mid-call rejects with
+  "completion handler no longer reachable" (poll with a catch — see `bodyText`/`clickThrough`),
+  and `reload()` before a click left the click inert where a second `navigate()` did not. A CI job
+  on the Chrome backend is the post-3.0 follow-up.
 - **`Bun.Image`, `Bun.Terminal`, `Bun.Archive`, `Bun.JSON5`/`XML`/`JSONL`, `bun:ffi`, React
   Compiler, `--compile --asset`, isolated linker, `bun test --retry`, `bun:bundle` feature flags:
   no use here today.** Retry papers over flakes this suite doesn't have; feature flags would turn

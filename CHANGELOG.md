@@ -83,9 +83,12 @@ organisation silently loses its last owner. And a fork deployed behind a reverse
 
 - **Browser smoke tests** (`bun run test:browser`, `scripts/browser-smoke.test.ts`) on
   `Bun.WebView` — system WebKit on macOS, an installed Chrome elsewhere, zero new dependencies.
-  Four journeys in about a second: home renders with a stylesheet, the client bundle hydrates its
-  island, a guest submits the form through the CSRF round-trip with trusted input events, and the
-  page console stays clean (which is where CSP violations surface). Deliberately separate from
+  Six journeys in about a second: home renders with a stylesheet, the client bundle hydrates its
+  island, a guest submits the form through the CSRF round-trip with trusted input events, the
+  captcha solves its proof of work in the page and the login submit carries it, a magic link
+  scraped from the console email provider's output signs in end to end — including loading the
+  link twice to prove GET doesn't redeem it, the invariant `runbooks/EMAIL.md` exists for — and
+  the page console stays clean (which is where CSP violations surface). Deliberately separate from
   `bun run test`: the API is experimental and the engine varies by platform, so it never gates the
   deterministic suite. Its first run caught the `upgrade-insecure-requests` bug above.
 - `bun run test:changed` — Bun 1.4's `--changed` walks the import graph backwards from uncommitted
