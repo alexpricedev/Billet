@@ -10,8 +10,9 @@ spec for everything else. This file is for the things you can't learn by reading
   one, and don't add a second. `bun run dev` here will fail on the port or fight the watcher.
   Read `PORT` from `.env` rather than assuming 3000; only the root checkout is on 3000.
 - Run test and lint suites through the `package.json` scripts (`bun run test`, `bun run check`).
-  Invoking `bun test` directly skips migrations and leaks your `.env` into the run — see the
-  `verifying-changes` skill.
+  Invoking `bun test` directly skips migrations, so it runs against whatever schema is already
+  there — see the `verifying-changes` skill. The test environment itself is safe either way; it
+  is pinned by a preload, not by the runner.
 - Write code that reads like the surrounding code: match its comment density, naming, and idiom.
 - When you try several approaches to a problem, delete the ones you abandoned before you finish.
 - Check work in the browser with the `/browse` skill when the change is user-visible.
@@ -52,9 +53,11 @@ A `PreToolUse` hook (`.claude/hooks/no-shared-stash.ts`, wired in `.claude/setti
 workspace's env files: `.env` gets `PORT` / `APP_URL` from `CONDUCTOR_PORT`, a `DATABASE_URL`
 named `<base>-<workspace>`, and a workspace-specific `SESSION_COOKIE_NAME` (cookies aren't scoped
 by port, so two workspaces on localhost otherwise overwrite each other's session). `.env.test`
-gets `DATABASE_URL` **only** — `PORT` and `APP_URL` stay at 3000 there, because tests hardcode
+gets `DATABASE_URL` **only**, because that is the only key it carries at all — every other
+variable the suite needs is pinned by `src/server/test-utils/test-env.ts` (see "One preload sets
+the test environment"). A workspace port must never reach the tests: they hardcode
 `http://localhost:3000` in request URLs and `csrf.test.ts` builds its expected Origin from
-`APP_URL`; a workspace port in that file 403s every form post. `run-tests.ts` pins both as well.
+`APP_URL`, so the two disagreeing 403s every form post.
 
 The test database is the reason this exists: `cleanupTestData` truncates every table, so two
 agents sharing one `billet-test` fail each other's suites in ways neither can reproduce.
@@ -96,18 +99,34 @@ makes the mock take effect. Don't tidy it.
 
 ### The test runner is a script, not `bun test`
 
-`bun run test` runs `src/server/test-utils/run-tests.ts`, which applies migrations first, spawns
-one process per test file (isolation + a per-file timeout), and pins `SESSION_COOKIE_NAME=session_id`,
-`AUTH_MODE=magic-link`, `CAPTCHA_ENABLED=false`, and `TEAMS_ENABLED=false`. Tests hardcode that
-cookie and assume the default auth mode with the captcha off and teams off; any of the four set in
-your `.env` would otherwise leak in — running the dev server in password mode, with the captcha on,
-or with teams enabled is enough to do it, and the last one breaks every `expect(404)` on a team
-route. Files that exercise password mode, the captcha, or teams set the variable themselves
-per-case.
+`bun run test` runs `src/server/test-utils/run-tests.ts`, which applies migrations first and spawns
+one process per test file (isolation + a per-file timeout). Both matter: `bun test` on its own uses
+whatever schema is already in the database, and several files interfere when they share a process —
+`team.test.ts` and `login.test.ts` in one run fail two invite tests that pass individually.
 
-`bunfig.toml` preloads `src/client/test-utils/setup.ts` for *every* test file. It registers
-happy-dom globals and then restores Bun's native `Request`/`Response`/`FormData` — server tests
-depend on that restore.
+It sets no environment of its own beyond `NODE_ENV`. That belongs to the preload below.
+
+### One preload sets the test environment
+
+`bunfig.toml` preloads two modules into *every* test file:
+
+- `src/server/test-utils/test-env.ts` pins the whole environment — `SESSION_COOKIE_NAME`,
+  `AUTH_MODE`, `CAPTCHA_ENABLED`, `TEAMS_ENABLED`, `PORT`, `APP_URL`, `CRYPTO_PEPPER`, and the
+  email/app names. Tests hardcode `session_id` and `http://localhost:3000`, and assume the shipped
+  defaults; running the dev server in password mode, with the captcha on, or with teams enabled
+  puts the opposite in your `.env`, and Bun loads that for every test run.
+- `src/client/test-utils/setup.ts` registers happy-dom globals and then restores Bun's native
+  `Request`/`Response`/`FormData` — server tests depend on that restore.
+
+A preload is the only place the pin works. Imports are hoisted above a file's body, so a test that
+assigns `process.env.SESSION_COOKIE_NAME` at the top has already missed it: `services/sessions.ts`
+read the value as it was imported, and `utils/crypto.ts` did the same with `CRYPTO_PEPPER`. It is
+also why the pin isn't in `run-tests.ts` any more — that only ever covered `bun run test`, leaving
+`test:file`, `test:coverage` and an editor's run-test button exposed.
+
+So `.env.test` carries `DATABASE_URL` and nothing else, and adding anything else to it is
+pointless: the preload overrides it. Files that exercise password mode, the captcha, or teams set
+the variable themselves per case, at runtime, which is long after preload.
 
 ### Auth is one mode or the other, never both
 

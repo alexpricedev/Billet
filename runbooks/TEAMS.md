@@ -61,10 +61,11 @@ on their own team page reads that as a bug rather than as a mode.
 membership row and lands on the "create a team" empty state. That is deliberate: guessing that
 each existing user should get a personal org would be wrong for most forks and awkward to undo.
 
-**The test runner pins `TEAMS_ENABLED=false`** in `src/server/test-utils/run-tests.ts`, alongside
-`SESSION_COOKIE_NAME`, `AUTH_MODE` and `CAPTCHA_ENABLED`. Without the pin, a developer who runs
-the dev server with teams on leaks it into every test run. Files exercising teams set it
-per-case.
+**The test preload pins `TEAMS_ENABLED=false`** in `src/server/test-utils/test-env.ts`, alongside
+`SESSION_COOKIE_NAME`, `AUTH_MODE`, `CAPTCHA_ENABLED` and the rest of the test environment.
+Without the pin, a developer who runs the dev server with teams on leaks it into every test run
+and every `expect(404)` on a team route stops holding. Files exercising teams set it per-case, at
+runtime — preload has long since finished by then.
 
 ### How anyone finds `/team`
 

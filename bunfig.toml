@@ -1,6 +1,16 @@
 [test]
-preload = ["./src/client/test-utils/setup.ts"]
+# test-env.ts pins every environment variable the suite needs and must run
+# first: a preload is the only place early enough to beat the values modules
+# capture at import time. See the file for why `.env.test` holds DATABASE_URL
+# and nothing else.
+preload = [
+  "./src/server/test-utils/test-env.ts",
+  "./src/client/test-utils/setup.ts",
+]
 coverage = true
 coverageReporter = ["text", "lcov"]
 coverageDirectory = "coverage"
-coveragePathIgnorePatterns = ["**/test-utils/setup.ts"]
+coveragePathIgnorePatterns = [
+  "**/test-utils/setup.ts",
+  "**/test-utils/test-env.ts",
+]

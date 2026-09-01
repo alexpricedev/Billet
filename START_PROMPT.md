@@ -37,27 +37,13 @@ Leave the line out entirely when the answer was no — both variables default to
 
 If they don't have a PostgreSQL database yet, tell them they can create one locally with `CREATE DATABASE "<project-slug>";` and their URL will look like `postgresql://user:password@localhost:5432/<project-slug>`. Or they can ask you to set one up for them.
 
-Also create `.env.test` for the test suite. Use a separate test database (append `-test` to the database name) to avoid interfering with development data:
+Also create `.env.test` for the test suite. It holds one key — a separate test database, so a test run can't truncate development data:
 
 ```
 DATABASE_URL=<their postgres url but with -test appended to the database name>
-CRYPTO_PEPPER=test-pepper-do-not-use-in-production
-PORT=3000
-APP_URL=http://localhost:3000
-APP_NAME=<Project Name>
-EMAIL_PROVIDER=console
-FROM_EMAIL=noreply@example.com
-FROM_NAME=<Project Name>
 ```
 
-If you added either optional line to `.env`, pin the opposite value in `.env.test`:
-
-```
-AUTH_MODE=magic-link
-TEAMS_ENABLED=false
-```
-
-`bun run test` pins both itself, so the full suite is safe either way. But `bun run test:file` and `bun run test:coverage` call `bun test` directly, and Bun loads `.env` for those — without the pin, a password-mode or teams-on `.env` fails every test that assumes the shipped defaults.
+> **Note:** One key is the whole file, whatever they chose above. Every other variable the suite needs is pinned by `src/server/test-utils/test-env.ts`, which `bunfig.toml` preloads into every test file — including the two features from the questions above, which tests expect at their defaults. Adding more keys here does nothing; the preload overrides them.
 
 They'll need to create this database too (e.g. `CREATE DATABASE "<project-slug>-test";`).
 

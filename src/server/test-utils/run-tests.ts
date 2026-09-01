@@ -35,35 +35,12 @@ const timings: { file: string; ms: number }[] = [];
 
 for (const file of files) {
   const proc = Bun.spawn(["bun", "test", "--no-coverage", file], {
-    // Pin the session cookie name: tests hardcode `session_id=`, so a custom
-    // SESSION_COOKIE_NAME in a developer's .env must not leak in and break them.
-    //
-    // AUTH_MODE, CAPTCHA_ENABLED and TEAMS_ENABLED are pinned for the same
-    // reason: all three are optional, all three change how the app behaves, and
-    // all three end up in a developer's .env the moment they run the dev server
-    // that way. Leaked in, they fail every test that posts to an auth form —
-    // the captcha rejects an unsolved challenge, the magic-link tests find
-    // themselves in password mode, and every `expect(404)` on a team route
-    // stops holding. Files that exercise any of them set it themselves
-    // per-case.
-    //
-    // PORT and APP_URL are pinned because a Conductor workspace runs its dev
-    // server on its own allocated port. Tests hardcode `http://localhost:3000`
-    // in request URLs and csrf.test.ts builds its expected Origin from
-    // APP_URL — a workspace port leaking in makes the two disagree and 403s
-    // every form post. DATABASE_URL is deliberately *not* pinned: that one is
-    // per-workspace on purpose, so two agents' suites don't truncate the same
-    // tables (see scripts/workspace.ts).
-    env: {
-      ...process.env,
-      NODE_ENV: "test",
-      SESSION_COOKIE_NAME: "session_id",
-      AUTH_MODE: "magic-link",
-      CAPTCHA_ENABLED: "false",
-      TEAMS_ENABLED: "false",
-      PORT: "3000",
-      APP_URL: "http://localhost:3000",
-    },
+    // NODE_ENV is the one variable that has to be set out here: Bun picks which
+    // .env file to load from it at startup, before any preload runs. Everything
+    // else the suite needs is pinned by src/server/test-utils/test-env.ts, which
+    // bunfig.toml preloads into every test file however it was started — this
+    // script has no env of its own to keep in step.
+    env: { ...process.env, NODE_ENV: "test" },
     stdout: "pipe",
     stderr: "pipe",
   });

@@ -100,6 +100,7 @@ The "deterministic templates, test with confidence" tagline isn't a marketing cl
 - **Real database testing** for services — tests run against PostgreSQL with table truncation for isolation
 - **Mock-based controller tests** that verify HTTP responses (status codes, headers, HTML content) without touching the database
 - **Client script tests** using happy-dom for DOM globals, with page lifecycle isolation
+- **A one-line test environment** — `.env.test` carries `DATABASE_URL` and nothing else; every other variable is pinned by a preload (`src/server/test-utils/test-env.ts`), so your dev `.env` can't change what the suite sees no matter which command starts it
 
 
 Run the full suite: `bun run test`
