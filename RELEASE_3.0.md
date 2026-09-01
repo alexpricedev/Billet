@@ -107,20 +107,28 @@ with no pool-close warnings. Notes for whoever touches these next:
   notes say don't ship it.
 - **`Bun.markdown`: no.** Its HTML output is explicitly unsanitized — raw HTML, event handlers and
   `javascript:` hrefs pass through. Not worth opening that door in a starter.
-- **`Bun.WebView`, `Bun.Image`, `Bun.Terminal`, `Bun.Archive`, `Bun.JSON5`/`XML`/`JSONL`,
-  `bun:ffi`, React Compiler, `--compile --asset`: no use here today.** WebView is the near-miss — a
-  real headless browser with no install, which would make browser smoke tests nearly free — parked
-  because automated a11y testing was passed on.
+- **`Bun.WebView`: adopted for smoke tests, opt-in only.** The earlier "parked" call was reversed
+  after a spike: `bun run test:browser` (`scripts/browser-smoke.test.ts`) runs four journeys in
+  system WebKit in ~1s — home renders styled, the client bundle hydrates, a guest submits the form
+  through the CSRF round-trip with trusted clicks, and the page console stayed clean. Deliberately
+  outside `bun run test` (experimental API, engine varies by platform) and it must stay that way.
+  The spike immediately paid for itself — see `upgrade-insecure-requests` in the gotchas. This is
+  smoke testing only; the automated-a11y decision is unchanged.
+- **`Bun.Image`, `Bun.Terminal`, `Bun.Archive`, `Bun.JSON5`/`XML`/`JSONL`, `bun:ffi`, React
+  Compiler, `--compile --asset`, isolated linker, `bun test --retry`, `bun:bundle` feature flags:
+  no use here today.** Retry papers over flakes this suite doesn't have; feature flags would turn
+  the deliberately-runtime `TEAMS_ENABLED` into a build matrix; the isolated linker has nothing to
+  win at 35 packages.
 - **Compression stays synchronous.** Measured (Bun 1.4 zlib-ng, M-series): brotli q5 on a ~22KB
   HTML page is ~18µs per response, gzip 6 ~11µs; ~23KB of CSS is the worst case at ~95µs. Three
   orders of magnitude under a database query — the async variants would add a promise hop to every
   response to save microseconds, and `zstd` a negotiation branch for the same nothing. Re-measure
   before touching this; the harness is in the `profiling` skill's ground rules.
-- **`env = false` in `bunfig.toml`: rejected.** It would apply everywhere the repo runs, and local
-  dev *depends* on `.env` (`PORT`, `DATABASE_URL`, the workspace provisioning writes them) while
-  the suite depends on `.env.test`. The stray-`.env`-in-production hazard it guards against doesn't
-  exist here: `validateEnv()` exits on anything missing, and Railway supplies variables through the
-  platform.
+- **`env = false` in `bunfig.toml`: rejected — but `--no-env-file` on the `start` script does the
+  same job correctly.** The bunfig key would apply everywhere the repo runs, and local dev depends
+  on `.env` while the suite depends on `.env.test`. The CLI flag scopes to one command: `bun run
+  start` now ignores env files entirely, so production reads platform variables only and a stray
+  `.env` in a container image can't shadow them. Dev and tests untouched.
 - **`bun.lock` stays at `lockfileVersion: 1`.** Bun won't rewrite an unchanged lockfile, and v2's
   extra checks cover off-registry tarballs and git dependencies, neither of which this repo has. It
   migrates on the next dependency change; forcing it means a re-resolve and version drift for no
@@ -129,6 +137,18 @@ with no pool-close warnings. Notes for whoever touches these next:
 ---
 
 ## Known issues and gotchas found on the way
+
+- **WebKit applies `upgrade-insecure-requests` to `http://localhost` subresources.** Chrome
+  exempts localhost; WKWebView rewrote every asset URL to `https://localhost:<port>` — which
+  nothing serves — so pages loaded bare: no stylesheet, no client bundle, and the only symptom was
+  a default-looking validation message. Found by the first `test:browser` run, invisible to every
+  unit test and to anyone developing in Chrome. The directive now ships in production only, exactly
+  like HSTS, with a test pinning its absence outside production.
+- **The happy-dom preload leaves its own `fetch` installed** (it restores `Request`/`Response`/
+  `FormData`, not `fetch`), and that fetch enforces the Same-Origin Policy against the fake window.
+  Never mattered before because server tests call handlers directly. Anything in a test that
+  genuinely needs the network — the browser smoke file polling its server subprocess — must use
+  `Bun.fetch`.
 
 - **bun-types 1.4 broke the route-literal generics.** `BunRequest.params` is now a mapped type
   over `keyof ExtractRouteParams<T>`, which never resolves for an unbound type parameter — the

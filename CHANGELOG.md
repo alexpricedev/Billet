@@ -69,8 +69,28 @@ organisation silently loses its last owner. And a fork deployed behind a reverse
   only the *last* header entry — the hop the trusted proxy added — is believed. The `x-real-ip`
   fallback is gone for the same reason.
 
+- **`bun run start` no longer reads `.env` files** (`--no-env-file`). Production configuration
+  comes from the platform's environment only, so a stray `.env` baked into a container image can't
+  shadow it. A fork that deliberately configures production through an `.env` file on the server
+  must remove the flag from the `start` script — or better, move those values into the platform's
+  environment. `bun run dev` and the test suite still load `.env` / `.env.test` as before.
+- **`upgrade-insecure-requests` ships in production only**, like HSTS. WebKit — unlike Chrome —
+  applies the upgrade to `http://localhost` subresources, so in dev the directive rewrote every
+  asset URL to an `https://localhost` origin nothing serves and pages loaded with no stylesheet or
+  client bundle. Production responses are unchanged; only non-production CSP lost the directive.
+
 ### Added
 
+- **Browser smoke tests** (`bun run test:browser`, `scripts/browser-smoke.test.ts`) on
+  `Bun.WebView` — system WebKit on macOS, an installed Chrome elsewhere, zero new dependencies.
+  Four journeys in about a second: home renders with a stylesheet, the client bundle hydrates its
+  island, a guest submits the form through the CSRF round-trip with trusted input events, and the
+  page console stays clean (which is where CSP violations surface). Deliberately separate from
+  `bun run test`: the API is experimental and the engine varies by platform, so it never gates the
+  deterministic suite. Its first run caught the `upgrade-insecure-requests` bug above.
+- `bun run test:changed` — Bun 1.4's `--changed` walks the import graph backwards from uncommitted
+  edits and runs only the affected test files. The middle ground between `test:file` and the full
+  suite while iterating; the full suite remains the gate.
 - **Graceful shutdown.** `registerShutdown` (`src/server/utils/shutdown.ts`) drains on
   `SIGTERM`/`SIGINT`: the cleanup sweep stops, `server.stop()` lets in-flight responses finish
   (Bun 1.4 resolves it when the last connection closes), then the pool closes via `closeDatabase`
