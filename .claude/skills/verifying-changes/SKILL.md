@@ -41,6 +41,9 @@ bun run typecheck                                        # types only
 3. Kills the run if it exceeds 10 minutes (`TEST_TIMEOUT_MS`) rather than hanging the job. Per-test
    timeouts are Bun's own (`--timeout`, 5s by default).
 4. Writes per-file durations to `.timings.json` (`--update-timings`) and prints the ten slowest.
+5. Runs the files across worker processes (`--parallel`, one per core), each with its own database
+   — created and migrated before the run. `TEST_WORKERS=1` runs serially in one process, which is
+   worth doing when a failure needs a readable, ordered log rather than four interleaved ones.
 
 The environment is not the runner's job. `bunfig.toml` preloads `src/server/test-utils/test-env.ts`
 into every test file, which pins `SESSION_COOKIE_NAME`, the three feature flags, `APP_URL`/`PORT`

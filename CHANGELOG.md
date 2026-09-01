@@ -72,6 +72,16 @@ gaps. By the rule above, the API response shape below makes this a major.
 
 ### Changed
 
+- **The suite runs in parallel, one worker per core, each with its own database.**
+  `test-env.ts` rewrites `DATABASE_URL` from `BUN_TEST_WORKER_ID` (see
+  `src/server/test-utils/worker-database.ts`); `run-tests.ts` creates and migrates the extra
+  databases up front, idempotently, so only the first run on a machine pays for it. Slot 1 keeps the
+  base name, so a single-worker run and `bun run test:file` use exactly the database they always did.
+  Measured on the same tree and the same four-core host: **44.15s → 14.49s, 67% faster**, at 756
+  pass / 0 fail across 68 files, holding across four consecutive runs. Cumulatively against the
+  process-per-file runner this release replaced, 55.15s → 14.49s.
+  `TEST_WORKERS=1` turns parallelism off, which is what you want when a failure needs a readable,
+  ordered log instead of four interleaved ones.
 - **`bun run test` runs one process with `bun test --isolate`**, not one process per test file.
   Isolation is the flag's job now: a fresh `globalThis` and cleared module registries per file, plus
   closing handles a file leaked, cancelling its timers and re-running the preloads — and one
@@ -111,6 +121,25 @@ gaps. By the rule above, the API response shape below makes this a major.
 
 ### Fixed
 
+- **The last-owner invariant was not actually atomic.** `removeMember` and `updateMemberRole` put
+  the guard inside the statement — an `EXISTS (… another owner …)` in the `WHERE` — which reads as
+  atomic and isn't. Under Postgres's default READ COMMITTED, two concurrent removals of the last two
+  owners each see the *other* owner, because neither has committed, so both pass and both commit.
+  The organisation is left with **no owner and nobody able to administer it**. Write skew: row-level
+  locking only serialises writes to the same row, and these touch different rows.
+- Both statements now open with a `FOR UPDATE` CTE over the org's owner rows, so the second caller
+  waits and, once the first commits, re-checks against what actually survived and is refused.
+  `ORDER BY user_id` fixes the lock order against deadlocks. A fork on `TEAMS_ENABLED=true` should
+  take this: measured against the unlocked statement, **24 of 25 concurrent attempts emptied the
+  org**. `runbooks/TEAMS.md` §5 has the reasoning.
+- The test that was supposed to catch it made a single attempt and passed by luck. It now repeats,
+  and there is a matching one for concurrent demotions via `updateMemberRole`, which had the same
+  bug. Running the suite in parallel is what surfaced it.
+- **`scripts/workspace.ts destroy` now drops the per-worker test databases too.** It dropped exactly
+  two names and required each to carry the workspace slug, so `…-test-w2`, `-w3`, … would have
+  failed the ownership check and been left behind on every archive. It asks Postgres which exist
+  rather than guessing at a core count, and only ever for children of a name that already passed the
+  guard.
 - **`bun run wip drop` now drops.** It pointed the ref back at `@{1}` with `git update-ref`, which
   *appends* to a reflog rather than rewriting it — and `wip list` reads the reflog. So the snapshot
   it claimed to drop stayed listed and stayed restorable, and the list grew by one entry on every

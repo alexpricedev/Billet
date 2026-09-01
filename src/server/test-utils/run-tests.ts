@@ -18,9 +18,14 @@
 // preloads in the new global. Transpiled source is cached across files, so the
 // suite parses each module once rather than once per file.
 
-// Nothing is imported here — `Bun.spawn` and `Bun.file` are globals — but
-// top-level `await` needs the file to be a module.
-export {};
+import { cpus } from "node:os";
+import { SQL } from "bun";
+import {
+  quoteIdent,
+  withDatabase,
+  workerDatabaseName,
+  workerSlots,
+} from "./worker-database";
 
 const TIMINGS_FILE = process.env.TEST_TIMINGS_FILE ?? ".timings.json";
 
@@ -32,15 +37,79 @@ const TIMEOUT_MS = Number.parseInt(process.env.TEST_TIMEOUT_MS ?? "600000", 10);
 
 const SLOWEST_TO_REPORT = 10;
 
-const migrate = Bun.spawn(["bun", "run", "src/server/database/cli.ts", "up"], {
-  env: { ...process.env, NODE_ENV: "test" },
-  stdout: "inherit",
-  stderr: "inherit",
-});
-if ((await migrate.exited) !== 0) {
-  console.error("Migration failed");
+// One worker per core by default. `TEST_WORKERS=1` runs the suite in a single
+// process — no extra databases, no parallelism — which is the right setting when
+// a failure needs a readable, ordered log.
+const WORKERS = Math.max(
+  1,
+  Number.parseInt(process.env.TEST_WORKERS ?? String(cpus().length), 10) || 1,
+);
+
+const baseUrl = process.env.DATABASE_URL;
+if (!baseUrl) {
+  console.error("DATABASE_URL is required for tests — see START_PROMPT.md §1");
   process.exit(1);
 }
+
+/**
+ * Create the databases slots 2..N will use, then migrate every one of them.
+ *
+ * Slot 1 uses the base database, so a single-worker run creates nothing and this
+ * is exactly the migration step it always was. Creation is idempotent: the
+ * databases are reused across runs, so only the first parallel run on a machine
+ * pays for it.
+ */
+const migrateAll = async (): Promise<void> => {
+  const names = [
+    workerDatabaseName(baseUrl, "1"),
+    ...workerSlots(WORKERS).map((slot) =>
+      workerDatabaseName(baseUrl, String(slot)),
+    ),
+  ];
+
+  if (names.length > 1) {
+    const admin = new SQL(withDatabase(baseUrl, "postgres"), { max: 1 });
+    try {
+      for (const name of names.slice(1)) {
+        const existing =
+          await admin`SELECT 1 FROM pg_database WHERE datname = ${name}`;
+        if (existing.length === 0) {
+          await admin.unsafe(`CREATE DATABASE ${quoteIdent(name)}`);
+          console.log(`[test] created worker database ${name}`);
+        }
+      }
+    } finally {
+      await admin.end();
+    }
+  }
+
+  // In parallel: N migration processes rather than N sequential ones, since
+  // after the first run they all no-op and the cost is process startup.
+  const results = await Promise.all(
+    names.map(async (name) => {
+      const proc = Bun.spawn(
+        ["bun", "run", "src/server/database/cli.ts", "up"],
+        {
+          env: {
+            ...process.env,
+            NODE_ENV: "test",
+            DATABASE_URL: withDatabase(baseUrl, name),
+          },
+          stdout: "pipe",
+          stderr: "inherit",
+        },
+      );
+      return (await proc.exited) === 0;
+    }),
+  );
+
+  if (results.some((ok) => !ok)) {
+    console.error("Migration failed");
+    process.exit(1);
+  }
+};
+
+await migrateAll();
 
 // `--update-timings` records how long each file took, slowest first. That is
 // the report printed below, and it is what `--shard` and `--parallel` read to
@@ -49,7 +118,10 @@ const tests = Bun.spawn(
   [
     "bun",
     "test",
+    // `--parallel` implies `--isolate`; passing it explicitly keeps the
+    // single-worker case isolated too.
     "--isolate",
+    ...(WORKERS > 1 ? [`--parallel=${WORKERS}`] : []),
     "--no-coverage",
     `--timings=${TIMINGS_FILE}`,
     "--update-timings",

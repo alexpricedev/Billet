@@ -118,8 +118,13 @@ the rest).
 re-runs the preloads in the new global — while sharing one transpile cache across all 68 files. It
 replaced a loop that spawned a process per file, and is ~17% faster for it.
 
-What `--isolate` does *not* isolate is the database: every file shares one, and `cleanupTestData`
-truncates. That is fine while files run one at a time and is the thing to solve before `--parallel`.
+`--isolate` does not isolate the database, and `cleanupTestData` truncates every table — so
+`--parallel` needs one database per worker or each worker wipes the others' rows mid-run. The
+preload derives it: `test-env.ts` rewrites `DATABASE_URL` from `BUN_TEST_WORKER_ID` via
+`worker-database.ts`, and slot 1 keeps the base name so a single-worker run and `test:file` use
+exactly the database they always did. `run-tests.ts` creates and migrates the extras up front,
+idempotently. Workers default to the core count; `TEST_WORKERS=1` turns it off, which is what you
+want when a failure needs a readable, ordered log.
 
 Module-level state is the hazard `--isolate` covers, and `rate-limit.ts` is the worked example — its
 `requestLog` Map is shared by every file in a process, so a file exercising a rate-limited route

@@ -241,7 +241,23 @@ async function destroy(): Promise<void> {
   console.log(`workspace: tearing down "${workspace}"`);
   const admin = maintenance(devUrl);
   try {
+    // The parallel test runner gives each worker its own database — the base
+    // name plus `-w2`, `-w3`, … (see src/server/test-utils/worker-database.ts).
+    // How many exist depends on the core count of whatever machine last ran the
+    // suite, so ask Postgres rather than guessing. These are only ever children
+    // of a name that already passed the ownership guard above, so they inherit
+    // it: nothing is dropped here that wasn't already this workspace's to drop.
+    const names: string[] = [];
     for (const { name } of owned) {
+      names.push(name);
+      const workers =
+        await admin`SELECT datname FROM pg_database WHERE datname LIKE ${`${name}-w%`}`;
+      for (const row of workers as { datname: string }[]) {
+        names.push(row.datname);
+      }
+    }
+
+    for (const name of names) {
       await dropDatabase(admin, name);
     }
   } finally {

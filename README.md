@@ -95,7 +95,7 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 
 The "deterministic templates, test with confidence" tagline isn't a marketing claim — it's backed by infrastructure.
 
-- **700+ tests across 67 files** covering controllers, services, middleware, utilities, and client scripts
+- **750+ tests across 68 files** covering controllers, services, middleware, utilities, and client scripts
 - **No browser simulation needed** — server-rendered templates are pure functions of props, testable with `renderToString()` and string assertions
 - **Real database testing** for services — tests run against PostgreSQL with table truncation for isolation
 - **Mock-based controller tests** that verify HTTP responses (status codes, headers, HTML content) without touching the database
@@ -103,7 +103,8 @@ The "deterministic templates, test with confidence" tagline isn't a marketing cl
 - **A one-line test environment** — `.env.test` carries `DATABASE_URL` and nothing else; every other variable is pinned by a preload (`src/server/test-utils/test-env.ts`), so your dev `.env` can't change what the suite sees no matter which command starts it
 
 
-Run the full suite: `bun run test`
+Run the full suite: `bun run test` — around 15 seconds on four cores, since files run in
+parallel with a database per worker.
 
 ### Code Quality
 
