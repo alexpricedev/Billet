@@ -4,16 +4,15 @@
     "module": "ESNext",
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": "src",
     "paths": {
-      "@client/*": ["client/*"],
-      "@server/*": ["server/*"]
+      "@client/*": ["./src/client/*"],
+      "@server/*": ["./src/server/*"]
     }
   },
   "include": ["src/**/*", "scripts/**/*.ts", ".claude/hooks/**/*"],

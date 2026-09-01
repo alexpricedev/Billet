@@ -81,7 +81,7 @@ export const login = {
 
     const email = readEmail(guard.formData);
 
-    if (!email || !email.includes("@")) {
+    if (!email?.includes("@")) {
       setFlash(req, {
         state: "validation-error",
         error: "Invalid email address",

@@ -136,7 +136,7 @@ curl -sL "https://unpkg.com/lottie-web@<NEW>/build/player/lottie_light.min.js" \
 
 Update both the `src` version and the `integrity` value.
 
-**Preact / import map.** Preact is pinned (`@10.28.4`) but loaded via an ES
+**Preact / import map.** Preact is pinned (`@10.29.8`) but loaded via an ES
 module import map, which has no SRI equivalent in current browsers. Pinning the
 exact version is the mitigation. Self-hosting removes the third-party trust
 entirely.
