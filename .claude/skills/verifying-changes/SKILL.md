@@ -35,10 +35,12 @@ bun run typecheck                                        # types only
 
 1. Applies migrations against the test database first — `bun test` alone runs against whatever
    schema happens to be there.
-2. Spawns one process per test file, so a module mock or a mutated global in one file can't leak
-   into the next.
-3. Kills any file that exceeds 60s (`TEST_FILE_TIMEOUT_MS`) and reports it as failed rather than
-   hanging the run.
+2. Runs `bun test --isolate`, so each file gets a fresh global and a clean module registry and a
+   mock or mutated global in one file can't leak into the next. One process, one shared transpile
+   cache — not one process per file.
+3. Kills the run if it exceeds 10 minutes (`TEST_TIMEOUT_MS`) rather than hanging the job. Per-test
+   timeouts are Bun's own (`--timeout`, 5s by default).
+4. Writes per-file durations to `.timings.json` (`--update-timings`) and prints the ten slowest.
 
 The environment is not the runner's job. `bunfig.toml` preloads `src/server/test-utils/test-env.ts`
 into every test file, which pins `SESSION_COOKIE_NAME`, the three feature flags, `APP_URL`/`PORT`
@@ -48,8 +50,12 @@ and the rest — so your `.env` can't reach a test run whichever command started
 
 - **`DATABASE_URL is required for tests`** — `.env.test` is missing or unloaded. It holds one key,
   `DATABASE_URL`, and it needs a separate database from development; see `START_PROMPT.md` §1.
-- **A file reported as `TIMED OUT`** — usually an unclosed SQL connection. Service tests need
-  `await connection.end()` in `afterAll`.
+- **The whole run reported as timed out** — usually an unclosed SQL connection. Service tests need
+  `await connection.end()` in `afterAll`. `--isolate` closes most leaked handles between files, so
+  this is rarer than it was, and now points at something wedged rather than one slow file.
+- **A test that passes alone and fails in the suite** — module-level state, not the database.
+  `rate-limit.ts` holds its request log in a module, so a file hitting a rate-limited route needs
+  `clearRateLimitLog()` in `beforeEach`.
 - **Auth or session assertions failing across many files** — no longer your `.env`; the preload
   pins those. Check that `test-env.ts` is still first in `bunfig.toml`'s `preload`, and that you
   ran the script rather than `bun test` against a stale schema.

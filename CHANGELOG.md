@@ -72,6 +72,19 @@ gaps. By the rule above, the API response shape below makes this a major.
 
 ### Changed
 
+- **`bun run test` runs one process with `bun test --isolate`**, not one process per test file.
+  Isolation is the flag's job now: a fresh `globalThis` and cleared module registries per file, plus
+  closing handles a file leaked, cancelling its timers and re-running the preloads — and one
+  transpile cache shared across all 68 files instead of paid 68 times. Measured back to back on one
+  host: **55.15s → 45.96s, 17% faster**, at an unchanged 755 pass / 0 fail across 68 files.
+  `run-tests.ts` is now only migrations, `NODE_ENV`, a whole-run hang timeout and the slow-file
+  report; the glob, the spawn loop and the output scraping are gone.
+- `TEST_FILE_TIMEOUT_MS` is now **`TEST_TIMEOUT_MS`** and caps the whole run rather than each file
+  (default 10 minutes, 30 in CI). Per-test timeouts are Bun's own `--timeout`.
+- Per-file durations come from `--timings` (`.timings.json`, gitignored) rather than being timed by
+  hand. The file is written slowest-first, so it doubles as the slow-test report — and it is what
+  `--shard` and `--parallel` will read to balance by wall time.
+- `bun run test:coverage` passes `--isolate` too, so it matches what `bun run test` does.
 - **The test environment is set in one place: `src/server/test-utils/test-env.ts`**, preloaded into
   every test file by `bunfig.toml`. It pins `SESSION_COOKIE_NAME`, `AUTH_MODE`, `CAPTCHA_ENABLED`,
   `TEAMS_ENABLED`, `PORT`, `APP_URL`, `CRYPTO_PEPPER` and the app/email names. `run-tests.ts` no

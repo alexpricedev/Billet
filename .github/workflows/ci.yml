@@ -59,10 +59,10 @@ jobs:
       # rest of the suite's environment is pinned by
       # src/server/test-utils/test-env.ts, preloaded into every test file.
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ci-test
-      # The per-file cap in run-tests.ts is a hang detector, not a speed limit.
+      # The whole-run cap in run-tests.ts is a hang detector, not a speed limit.
       # A runner is slower than a laptop even with the database in RAM, and
-      # killing a file that needed another few seconds loses every test in it.
-      TEST_FILE_TIMEOUT_MS: "180000"
+      # killing a run that needed another few seconds loses every test in it.
+      TEST_TIMEOUT_MS: "1800000"
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2

@@ -3,6 +3,7 @@ node_modules
 dist
 coverage
 .benchmarks
+.timings.json
 .env
 .env.test
 docs

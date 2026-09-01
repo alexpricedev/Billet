@@ -15,7 +15,7 @@
     "dev:server": "bun --watch run src/server/main.ts",
     "dev:css": "bun build ./src/client/style.css --outdir ./dist/assets --entry-naming main.css --watch",
     "test": "NODE_ENV=test bun run src/server/test-utils/run-tests.ts",
-    "test:coverage": "NODE_ENV=test bun run src/server/database/cli.ts up && NODE_ENV=test bun test src",
+    "test:coverage": "NODE_ENV=test bun run src/server/database/cli.ts up && NODE_ENV=test bun test --isolate src",
     "test:setup": "NODE_ENV=test bun run src/server/test-utils/bootstrap.ts",
     "test:file": "NODE_ENV=test bun run src/server/database/cli.ts up && NODE_ENV=test bun test",
     "commit": "git add --all && git commit",

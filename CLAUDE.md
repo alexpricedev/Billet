@@ -107,12 +107,25 @@ makes the mock take effect. Don't tidy it.
 
 ### The test runner is a script, not `bun test`
 
-`bun run test` runs `src/server/test-utils/run-tests.ts`, which applies migrations first and spawns
-one process per test file (isolation + a per-file timeout). Both matter: `bun test` on its own uses
-whatever schema is already in the database, and several files interfere when they share a process —
-`team.test.ts` and `login.test.ts` in one run fail two invite tests that pass individually.
+`bun run test` runs `src/server/test-utils/run-tests.ts`, and it exists for exactly two things
+`bun test` won't do itself: apply migrations first (otherwise the suite runs against whatever schema
+is already in the database), and set `NODE_ENV=test` (Bun picks which `.env` file to load from it at
+startup, before any preload runs — which is why that one variable can't live in `test-env.ts` with
+the rest).
 
-It sets no environment of its own beyond `NODE_ENV`. That belongs to the preload below.
+**Isolation is `bun test --isolate`'s job, not the script's.** It gives each file a fresh
+`globalThis`, clears both module registries, closes handles the file leaked, cancels its timers, and
+re-runs the preloads in the new global — while sharing one transpile cache across all 68 files. It
+replaced a loop that spawned a process per file, and is ~17% faster for it.
+
+What `--isolate` does *not* isolate is the database: every file shares one, and `cleanupTestData`
+truncates. That is fine while files run one at a time and is the thing to solve before `--parallel`.
+
+Module-level state is the hazard `--isolate` covers, and `rate-limit.ts` is the worked example — its
+`requestLog` Map is shared by every file in a process, so a file exercising a rate-limited route
+must call `clearRateLimitLog()` in `beforeEach` or it passes alone and fails after any file that
+drove the limiter to 429. Don't lean on isolation instead; it makes the file unrunnable in
+parallel.
 
 ### One preload sets the test environment
 
