@@ -125,7 +125,9 @@ gaps. By the rule above, the API response shape below makes this a major.
   the guard inside the statement — an `EXISTS (… another owner …)` in the `WHERE` — which reads as
   atomic and isn't. Under Postgres's default READ COMMITTED, two concurrent removals of the last two
   owners each see the *other* owner, because neither has committed, so both pass and both commit.
-  The organisation is left with **no owner and nobody able to administer it**. Write skew: row-level
+  The organisation is left with **no owner**. Recoverable only if an org *admin* remains, since every
+  team route gates on `admin` and an admin can promote someone back to owner — an org whose only
+  admin-or-above members were the two owners is stuck. Write skew: row-level
   locking only serialises writes to the same row, and these touch different rows.
 - Both statements now open with a `FOR UPDATE` CTE over the org's owner rows, so the second caller
   waits and, once the first commits, re-checks against what actually survived and is refused.

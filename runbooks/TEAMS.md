@@ -189,7 +189,9 @@ Zero rows back means it was refused.
 **The `FOR UPDATE` is the guard.** Being inside one statement is not enough on its own: a bare
 `EXISTS` subquery is still a check-then-write, because under Postgres's default READ COMMITTED each
 of two concurrent removals sees the *other* owner — neither has committed — so both pass and both
-commit, leaving the org with nobody who can administer it. That is write skew, and row-level
+commit, leaving the org with no owner. An org *admin* can still recover it — every team route gates
+on `admin`, and an admin can promote someone to owner — but an org whose only admin-or-above members
+were those two owners has no way back. That is write skew, and row-level
 locking doesn't prevent it, because the two statements touch different rows. It shipped that way
 until it was caught by running the suite in parallel; against the unlocked statement, 24 of 25
 concurrent attempts empty the org.

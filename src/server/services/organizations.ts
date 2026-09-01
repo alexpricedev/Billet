@@ -213,7 +213,8 @@ export type RoleChangeResult =
  * of something via a partial unique index, which is the opposite — so it is a
  * guard, and it has to live inside the statement. Two owners each demoting the
  * other in parallel would both pass a check-then-write and leave the org with
- * nobody who can administer it.
+ * no owner. An admin can promote someone back, so it is only unrecoverable when
+ * the two owners were the org's only admin-or-above members.
  *
  * Scoped by organization_id as well as user_id: the caller has been proven an
  * admin of *an* org, not of the org this row belongs to.
@@ -226,7 +227,7 @@ export type RoleChangeResult =
  * which reads as atomic and is not. Under Postgres's default READ COMMITTED,
  * two concurrent removals of the last two owners each see the *other* owner —
  * neither has committed — so both pass the check and both commit, leaving the
- * organisation with no owner and nobody able to administer it. Classic write
+ * organisation with no owner at all. Classic write
  * skew: row-level locking only serialises writes to the same row, and these
  * touch different rows.
  *
