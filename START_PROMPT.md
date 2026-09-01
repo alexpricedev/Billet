@@ -1,8 +1,13 @@
 # First-Time Setup
 
-Follow these steps to make this project your own. Ask me for a project name and a PostgreSQL connection URL before you start.
+Follow these steps to make this project your own. Ask me for a project name and a PostgreSQL connection URL before you start, along with the two feature questions in step 1 — one round of questions rather than several.
 
 ## 1. Create `.env` and `.env.test`
+
+Two behaviours are set by environment variable, and the file you're about to write is where they get chosen. Both ship at their defaults — magic-link sign-in, team management off — and both are cheaper to pick now than to switch once there are accounts, so ask before writing it:
+
+1. **"Do you want email-and-password sign-in, or magic links?"** Magic links are the default: a one-time link by email, no password to store and no reset flow to support. Password mode (`AUTH_MODE=password`) is conventional email + password with argon2id hashing, and it turns on `/forgot-password`, `/reset-password`, and the change-password form on `/account` — all of which 404 in magic-link mode. The two are mutually exclusive on purpose; with both, every account has two ways in and the weaker one sets the ceiling. Switching later isn't fatal but it leaves existing accounts with no password, to be set from `/account` or `/forgot-password`.
+2. **"Do you want team management turned on?"** Off by default (`TEAMS_ENABLED=true` turns it on): a `/team` page where an owner or admin invites people by email, sees the member list, changes org roles, and removes people. Off, `/team` and `/invites/accept` 404 and no org row is ever written. Worth saying before they answer: the org role is a separate axis from the platform `users.role` that gates `/admin`, so an org owner is not a platform admin; one user belongs to one org, with no switcher; core does not scope their own tables by org; and with it on, signing in without a membership lands on `/team` instead of `/`. [runbooks/TEAMS.md](runbooks/TEAMS.md) has the authorisation model.
 
 Generate a fresh `CRYPTO_PEPPER` using `crypto.randomBytes(32).toString('hex')` and write a `.env` file. All eight variables below are required — the server validates them on startup via `src/server/utils/env.ts` and will refuse to boot if any are missing:
 
@@ -16,6 +21,15 @@ EMAIL_PROVIDER=console
 FROM_EMAIL=noreply@example.com
 FROM_NAME=<Project Name>
 ```
+
+Then add a line for each feature they said yes to:
+
+```
+AUTH_MODE=password
+TEAMS_ENABLED=true
+```
+
+Leave the line out entirely when the answer was no — both variables default to off, and an unset variable is the documented default rather than a second place to keep in step. `.env.example` documents both in full if they want to read before deciding.
 
 > **Note:** `APP_URL` must include the port (`:3000`). CSRF origin validation compares the request `Origin` header against `APP_URL` and will reject form submissions if they don't match exactly.
 
@@ -35,6 +49,15 @@ EMAIL_PROVIDER=console
 FROM_EMAIL=noreply@example.com
 FROM_NAME=<Project Name>
 ```
+
+If you added either optional line to `.env`, pin the opposite value in `.env.test`:
+
+```
+AUTH_MODE=magic-link
+TEAMS_ENABLED=false
+```
+
+`bun run test` pins both itself, so the full suite is safe either way. But `bun run test:file` and `bun run test:coverage` call `bun test` directly, and Bun loads `.env` for those — without the pin, a password-mode or teams-on `.env` fails every test that assumes the shipped defaults.
 
 They'll need to create this database too (e.g. `CREATE DATABASE "<project-slug>-test";`).
 
