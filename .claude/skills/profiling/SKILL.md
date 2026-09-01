@@ -54,8 +54,9 @@ build to a scratch dir — never to `dist/assets`, which the dev server serves.
 ## Ground rules
 
 - Profiles and benchmark numbers are only comparable when recorded back to back
-  on the same host — see the benchmark section of `RELEASE_3.0.md` (and later,
-  `scripts/benchmark.ts`) for how that once produced a phantom 34% regression.
+  on the same host. `scripts/benchmark.ts` warns on a recording gap or a
+  hardware mismatch for a reason: a container rehosted onto a different CPU
+  between recordings once produced a phantom 34% regression.
 - Microsecond-scale wins next to a millisecond database query are not wins.
   State the denominator when reporting a finding.
 - Don't commit profile output; it belongs in the PR description or a scratch

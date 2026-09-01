@@ -223,7 +223,8 @@ describe("browser smoke", () => {
     // Emailed links render a confirm step on GET and spend the token on POST —
     // mail scanners follow links, they don't submit forms. Loading the link
     // twice must leave the token intact, or a scanner would burn it before
-    // the recipient ever clicked.
+    // the recipient ever clicked. Two navigate()s, not navigate()+reload():
+    // WebKit left the confirm click inert after a reload().
     await view.navigate(`${BASE}${link}`);
     await view.navigate(`${BASE}${link}`);
     const confirm = await view.evaluate<boolean>(
