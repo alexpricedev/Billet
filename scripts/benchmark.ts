@@ -21,6 +21,12 @@
  * `compare` says "within noise" instead of a percentage when the difference is
  * inside the observed variation of either record.
  *
+ * **Record the pair back to back.** The same machine is not the same machine an
+ * hour later — a shared container drifted 45% between two runs of an identical
+ * commit during this script's own development, which is more than enough to
+ * invent a regression. `compare` warns when two records are more than half an
+ * hour apart, but the only real defence is measuring A and B together.
+ *
  * Two things make the numbers trustworthy rather than decorative:
  *
  * 1. **A failed command is never a fast one.** A red suite finishes early, so a
@@ -229,6 +235,9 @@ const NOISY_SPREAD_PCT = 10;
 // every time.
 const NOISY_MIN_MEDIAN_MS = 1000;
 
+// Two records further apart than this get a drift warning from `compare`.
+const STALE_PAIR_MINUTES = 30;
+
 const printResults = (record: Record_): void => {
   console.log("");
   printEnvironment(record.environment);
@@ -315,6 +324,22 @@ const compare = async (beforeLabel: string, afterLabel: string) => {
   printEnvironment(after.environment, `  ${afterLabel}: `);
   if (before.note) console.log(`  ${beforeLabel} note: ${before.note}`);
   if (after.note) console.log(`  ${afterLabel} note: ${after.note}`);
+
+  // The failure mode this catches is the one that actually happens: two records
+  // taken hours apart on the same machine, compared as if only the code changed.
+  // A shared cloud container drifted 45% between two runs of an identical
+  // commit while this script was being written — enough to invent a large
+  // regression out of nothing. Same hardware is not the same machine over time.
+  const apartMs = Math.abs(
+    Date.parse(after.recordedAt) - Date.parse(before.recordedAt),
+  );
+  const apartMinutes = Math.round(apartMs / 60_000);
+  if (apartMinutes > STALE_PAIR_MINUTES) {
+    console.log(
+      `\n  ⚠ recorded ${apartMinutes} minutes apart — re-record both back to back before\n` +
+        "    trusting any difference below; machine drift over that gap can exceed it",
+    );
+  }
 
   // A differing Bun version is the point of this tool. Differing hardware is
   // not a comparison at all, so say so rather than printing a percentage.

@@ -84,6 +84,14 @@ production install without it won't boot. The client bundle marks it `--external
 from the import map in `src/server/components/layouts.tsx`, so the version pinned there must stay in
 step with `package.json`.
 
+The import map carries **both** `preact/jsx-runtime` and `preact/jsx-dev-runtime`, and both are
+`--external` in the client build. Neither is dead weight. Bun 1.4 documents `"jsx": "react-jsx"` as
+emitting `jsx` from `<pkg>/jsx-runtime`, but the mere presence of a `bunfig.toml` — any content, even
+empty — makes it emit `jsxDEV` from `<pkg>/jsx-dev-runtime` instead. This repo has one, so the
+bundle and the server both use the dev runtime. Reproduce it by deleting `bunfig.toml` and
+rebuilding; the import changes. Whichever way Bun settles this, both entries are mapped, so nothing
+breaks — which is the only reason it isn't a live bug here. Don't prune the "unused" one.
+
 **Write SVG attributes in kebab-case** (`stroke-width`, not `strokeWidth`). Preact passes camelCase
 attribute names through verbatim, and the HTML parser doesn't recognise `strokeWidth` — the stroke
 silently renders at the default width. React used to rewrite these; nothing does now.

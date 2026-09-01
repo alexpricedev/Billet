@@ -16,6 +16,10 @@ gaps. By the rule above, the API response shape below makes this a major.
 
 ### Breaking changes
 
+- **Requires Bun 1.4.0.** `.bun-version` and `engines.bun` are pinned to it, and CI installs from
+  that file. A fork on 1.3.x must upgrade before merging. Nothing in `src/` changed for it — the
+  suite is 755 pass / 0 fail on 1.4.0 exactly as it was on 1.3.11 — but the floor moved, and a
+  fork's own code may not have been audited against 1.4's behaviour changes the way this one was.
 - **`.env.test` now carries `DATABASE_URL` only.** Any other key in yours is inert — the preload
   overrides it — so a fork that had pinned values there should delete them rather than trust them.
   `DATABASE_URL` stays outside the pin deliberately: it is the one value that has to vary per
