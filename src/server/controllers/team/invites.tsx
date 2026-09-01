@@ -61,7 +61,7 @@ export const teamInvites = {
       "org_role",
     ]);
 
-    if (!email || !email.includes("@") || email.length > 254) {
+    if (!email?.includes("@") || email.length > 254) {
       setFlash(req, { state: "invalid-email", email });
       return redirect("/team");
     }

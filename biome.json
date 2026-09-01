@@ -1,11 +1,12 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.0.0-beta.5/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
-        "noUnusedVariables": "error"
+        "noUnusedVariables": "error",
+        "useUniqueElementIds": "off"
       },
       "style": {
         "noParameterAssign": "error",
@@ -21,9 +22,6 @@
       },
       "suspicious": {
         "noConsole": "error"
-      },
-      "nursery": {
-        "useUniqueElementIds": "off"
       }
     }
   },
@@ -50,6 +48,16 @@
       }
     },
     {
+      "includes": ["src/client/style.css", "src/client/pages/home.css"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["src/server/components/layouts.tsx"],
       "linter": {
         "rules": {
@@ -60,7 +68,11 @@
       }
     },
     {
-      "includes": ["src/server/database/cli.ts", "src/server/database/seed.ts", "src/server/test-utils/bootstrap.ts"],
+      "includes": [
+        "src/server/database/cli.ts",
+        "src/server/database/seed.ts",
+        "src/server/test-utils/bootstrap.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {

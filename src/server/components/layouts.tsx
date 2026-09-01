@@ -133,12 +133,12 @@ export function Layout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               imports: {
-                preact: "https://esm.sh/preact@10.28.4",
-                "preact/hooks": "https://esm.sh/preact@10.28.4/hooks",
+                preact: "https://esm.sh/preact@10.29.8",
+                "preact/hooks": "https://esm.sh/preact@10.29.8/hooks",
                 "preact/jsx-dev-runtime":
-                  "https://esm.sh/preact@10.28.4/jsx-dev-runtime",
+                  "https://esm.sh/preact@10.29.8/jsx-dev-runtime",
                 "preact/jsx-runtime":
-                  "https://esm.sh/preact@10.28.4/jsx-runtime",
+                  "https://esm.sh/preact@10.29.8/jsx-runtime",
               },
             }),
           }}
