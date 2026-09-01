@@ -22,12 +22,19 @@ error blocks the commit.
 ## Targeted runs
 
 ```bash
+bun run test:changed                                      # only tests affected by uncommitted edits
 bun run test:file src/server/services/project.test.ts   # one file, migrations first
 bun run lint:write                                       # apply Biome's safe fixes
 bun run typecheck                                        # types only
 ```
 
 `bun run test:file` takes a path or a directory. Prefer it over `bun test <file>` while iterating.
+
+`bun run test:changed` walks the import graph backwards from your uncommitted diff and runs only
+the test files that can see a changed module — the right middle ground between one file and the
+full suite while iterating. It is a convenience, not a gate: run the full `bun run test` before
+calling a change done, since graph walking can't see dynamic imports or behaviour coupled through
+the database.
 
 ## Why not `bun test` directly
 
@@ -69,3 +76,11 @@ and the rest — so your `.env` can't reach a test run whichever command started
 
 For user-visible changes, confirm in the browser with the `/browse` skill against
 http://localhost:3000. The dev server is already running in another tab — don't start one.
+
+`bun run test:browser` runs `scripts/browser-smoke.test.ts` in a real browser (`Bun.WebView`:
+system WebKit on macOS, an installed Chrome elsewhere). It builds the assets, boots its own server
+on a scratch port against the test database, and covers what happy-dom can't: the client bundle
+actually executing, CSP not silently blocking an asset, and a full form journey with trusted input
+events. Deliberately not part of `bun run test` — the API is experimental and the engine varies by
+platform, so it must never gate the deterministic suite. Run it after changing
+`security-headers.ts`, `layouts.tsx`, the import map, or anything under `src/client/`.
