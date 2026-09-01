@@ -1,5 +1,6 @@
 import { runMigrations } from "./database/migrate";
 import { seedIfEmpty } from "./database/seed";
+import { setIpSource } from "./middleware/client-ip";
 import { adminRoutes } from "./routes/admin";
 import { apiRoutes } from "./routes/api";
 import { appRoutes } from "./routes/app";
@@ -50,6 +51,10 @@ const server = Bun.serve({
     }
   },
 });
+
+// The rate limiter can't key on the socket address until it can reach
+// requestIP, which only exists on the server instance.
+setIpSource(server);
 
 registerShutdown({ stopSweep, server, db: { close: closeDatabase } });
 

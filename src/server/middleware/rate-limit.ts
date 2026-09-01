@@ -1,5 +1,6 @@
 import type { BunRequest } from "bun";
 import { jsonError } from "../utils/response";
+import { clientKey } from "./client-ip";
 
 const requestLog = new Map<string, number[]>();
 
@@ -8,10 +9,7 @@ export function rateLimit(
   maxRequests = 10,
   windowMs = 5000,
 ): Response | null {
-  const ip =
-    req.headers.get("x-forwarded-for") ||
-    req.headers.get("x-real-ip") ||
-    "unknown";
+  const ip = clientKey(req);
   const now = Date.now();
 
   const timestamps = requestLog.get(ip) || [];

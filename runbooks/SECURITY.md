@@ -145,6 +145,14 @@ entirely.
 - **HSTS preload.** The header already advertises `preload`. To get baked into
   browsers, submit the apex domain at [hstspreload.org](https://hstspreload.org)
   **after** confirming every subdomain is HTTPS-only — preload is hard to undo.
+- **`TRUST_PROXY=true` behind a reverse proxy.** The rate limiter keys requests by
+  client address (`src/server/middleware/client-ip.ts`). Behind Railway (or any
+  single proxy that rewrites/appends `x-forwarded-for` itself) set `TRUST_PROXY=true`
+  so it reads the last header entry — the hop the proxy added; otherwise every
+  visitor shares the proxy's socket address and one busy user 429s everyone.
+  Never set it on a deployment reached directly: the header is client-controlled
+  there, and trusting it lets an attacker walk past the `/login` limit with a
+  fresh value per request.
 
 ## 6. Verify in production
 

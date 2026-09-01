@@ -35,6 +35,7 @@ const TEST_ENV: Record<string, string> = {
   AUTH_MODE: "magic-link",
   CAPTCHA_ENABLED: "false",
   TEAMS_ENABLED: "false",
+  TRUST_PROXY: "false",
 
   // Tests build request URLs as http://localhost:3000, and `services/csrf.ts`
   // compares the request Origin against APP_URL: the two disagreeing 403s every
