@@ -88,5 +88,5 @@ See the `writing-tests` skill.
 
 The same list in reverse — template, controller, barrel export, route, nav link
 (`src/server/components/nav.tsx`), client script, `registerPage` call in `main.ts`, the CSS file,
-its `@import` in `style.css`, and the tests. `START_PROMPT.md` §5 lists exactly this for the stack
-page and is a good checklist to mirror.
+its `@import` in `style.css`, and the tests. Miss one and the page half-exists: a route with no
+script, or a `registerPage` call for a module that no longer imports.

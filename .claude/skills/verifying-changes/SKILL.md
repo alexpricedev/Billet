@@ -59,7 +59,8 @@ and the rest — so your `.env` can't reach a test run whichever command started
 ## Reading failures
 
 - **`DATABASE_URL is required for tests`** — `.env.test` is missing or unloaded. It holds one key,
-  `DATABASE_URL`, and it needs a separate database from development; see `START_PROMPT.md` §1.
+  `DATABASE_URL`, and it needs a separate database from development; `.env.example` documents
+  the split.
 - **The whole run reported as timed out** — usually an unclosed SQL connection. Service tests need
   `await connection.end()` in `afterAll`. `--isolate` closes most leaked handles between files, so
   this is rarer than it was, and now points at something wedged rather than one slow file.
