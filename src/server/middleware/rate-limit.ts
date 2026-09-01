@@ -1,4 +1,5 @@
 import type { BunRequest } from "bun";
+import { jsonError } from "../utils/response";
 
 const requestLog = new Map<string, number[]>();
 
@@ -17,7 +18,19 @@ export function rateLimit(
   const recentRequests = timestamps.filter((t) => now - t < windowMs);
 
   if (recentRequests.length >= maxRequests) {
-    return Response.json({ error: "Too many requests" }, { status: 429 });
+    // Seconds until the oldest request in the window ages out — the earliest
+    // moment a retry can succeed. Clients that honour Retry-After back off
+    // exactly that far instead of hammering, and crawlers stop counting the
+    // 429 against the site.
+    const oldest = recentRequests[0] ?? now;
+    const retryAfter = Math.max(1, Math.ceil((oldest + windowMs - now) / 1000));
+
+    return jsonError(
+      429,
+      "rate_limited",
+      "Too many requests. Please slow down and try again shortly.",
+      { headers: { "Retry-After": String(retryAfter) } },
+    );
   }
 
   recentRequests.push(now);

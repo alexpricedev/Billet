@@ -16,6 +16,37 @@ export const getProjects = async (): Promise<Project[]> => {
   return results as Project[];
 };
 
+export type ProjectPage = {
+  projects: Project[];
+  total: number;
+};
+
+// One page of projects plus the total row count, for the JSON API. The count is
+// what makes a page interpretable: without it a client that receives exactly
+// `limit` rows cannot tell whether it reached the end or the middle.
+//
+// Two queries rather than a window function on purpose — `COUNT(*) OVER ()`
+// would return no count at all on the empty page past the end, which is where a
+// client most needs to be told how far it overshot.
+export const getProjectPage = async (
+  limit: number,
+  offset: number,
+): Promise<ProjectPage> => {
+  const [rows, counted] = await Promise.all([
+    db`
+      SELECT id, title, created_by FROM project
+      ORDER BY id
+      LIMIT ${limit} OFFSET ${offset}
+    `,
+    db`SELECT COUNT(*)::int AS total FROM project`,
+  ]);
+
+  return {
+    projects: rows as Project[],
+    total: (counted[0] as { total: number }).total,
+  };
+};
+
 export const getProjectById = async (id: number): Promise<Project | null> => {
   const results =
     await db`SELECT id, title, created_by FROM project WHERE id = ${id}`;
