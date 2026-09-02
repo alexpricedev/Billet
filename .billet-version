@@ -1,0 +1,18 @@
+# The upstream Billet release this tree was taken from.
+#
+# This is NOT your app's version — that is `version` in package.json, and it is
+# yours to bump. This file answers a different question: "which Billet is this
+# fork built on?" Without it, deciding whether an upstream fix is already here
+# means diffing source against a repo you may not even have as a remote.
+#
+# Do not rename or delete it when you rename the project. Upstream rewrites it
+# in the release commit; a fork should only touch it when merging upstream.
+#
+# To see what has changed since — no remote and no tooling needed:
+#
+#   curl -s https://api.github.com/repos/alexpricedev/Billet/tags | grep '"name"'
+#   curl -s https://raw.githubusercontent.com/alexpricedev/Billet/main/CHANGELOG.md
+#
+# Every release documents what a fork must change in its own code under
+# **Breaking changes**. Read those for each version above the one below.
+3.1.0

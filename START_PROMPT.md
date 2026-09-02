@@ -64,6 +64,12 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 | `src/server/components/layouts.tsx` | Logo text in `<span>Billet</span>` |
 | `src/server/services/seo.ts` | `SITE_NAME` and `SITE_DESCRIPTION` → project name and description |
 
+> **Keep `.billet-version`.** It records which Billet release this tree came from, and it is
+> deliberately not on the list above — it isn't project identity, it's provenance. `version` in
+> `package.json` is yours to bump; that file stays pointed at upstream, so you can later tell
+> whether a fix you need is already here. Renaming or deleting it makes every future upgrade a
+> source diff.
+
 > **Note:** `src/server/services/seo.ts` also defines `SITE_URL` (currently `https://billet.alexprice.dev`), the canonical origin used for `<link rel="canonical">`, Open Graph tags, the XML sitemap, and JSON-LD across every page. `public/robots.txt` has a matching hardcoded `Sitemap:` URL. Point both at your own production domain before deploying — see [runbooks/SEO.md](runbooks/SEO.md) §1.
 
 > **Note:** `SITE_NAME` also feeds the web app manifest (`/site.webmanifest` — the installed-app name/short name, built by `buildWebManifest()` in `seo.ts`) and the `X-Redirect-By` response header stamped on every redirect. Both are generated from that one constant, so renaming `SITE_NAME` renames them automatically — "Billet" never gets stuck in the installed-app name or redirect attribution. The manifest still references the icon files in `public/` (`android-chrome-192x192.png`, `android-chrome-512x512.png`, favicons, `apple-touch-icon.png`); swap those for your own artwork, and for a crisp Android adaptive icon provide a safe-zone-padded maskable variant (the 512px icon is reused as the maskable one by default).
@@ -75,6 +81,9 @@ These are links specific to the original Billet repository. Remove or update the
 - `src/server/templates/home.tsx` — The "Get Started" button linking to `github.com/new?template_name=Billet`. Change the href to `/` or their own repo URL.
 - `src/server/components/layouts.tsx` — The footer GitHub link (`github.com/alexpricedev/Billet`). Update to their repo URL or remove.
 - `src/server/components/layouts.tsx` — The "Built by alexprice.dev" attribution. Remove or replace.
+
+`.billet-version` names the upstream repo too, and is the exception: leave it exactly as it is. It
+is how you find out what upstream fixed after you forked — see the note in step 2.
 
 ## 4. Rewrite the home page
 

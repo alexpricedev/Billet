@@ -7,6 +7,82 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 3.1.0
+
+Mostly a fork-tracking convention and a dependency window. The dependency window is the part that
+needs reading: it moved the TypeScript and Biome floors, and rewrote `tsconfig.json`'s path
+resolution. None of it changed `src/` behaviour, and the suite is unchanged — but a fork's own code
+and config sit on those floors.
+
+The version number is deliberately a minor despite the **Breaking changes** below. The toolchain
+floors moved without any Billet API changing, so a fork that typechecks and lints clean after
+merging has nothing else to do; the section documents what to check, not what to rewrite.
+
+### Breaking changes
+
+- **Requires TypeScript 7** (`^7.0.2`, up from `^5.9.3`). `bun run check` runs
+  `bun --bun tsc --noEmit` against whatever is installed, so this is the floor now. Nothing in
+  `src/` changed for it, but a fork whose own code or `tsconfig.json` leans on 5.x behaviour, or on
+  a flag 7 dropped, fails `bun run check` after merging. Typecheck your tree before you take this.
+- **`tsconfig.json` resolves paths from the repository root, not from `src/`.** `baseUrl: "src"` is
+  gone and the `@client/*` / `@server/*` aliases are now `./src/client/*` and `./src/server/*`;
+  `moduleResolution` moved from `Node` to `bundler`, which is what Bun actually does. A fork that
+  added aliases of its own under the old `baseUrl` wrote them relative to `src/` — those entries
+  resolve to the wrong place after merging, and the failure reads as a missing module rather than a
+  config change. Rewrite them root-relative.
+- **Requires Biome 2.5.11** (up from 2.0.5), and `lint` runs the pinned dependency rather than
+  shelling out to `@biomejs/biome@beta`. The config shape changed with it: `recommended: true`
+  became `preset: "recommended"`, and `useUniqueElementIds` moved out of `nursery` into
+  `correctness` (still off here). A fork carrying its own `biome.json` edits in the 2.0 shape has to
+  port them, and rules that landed in `recommended` between those versions can report code that
+  used to pass `bun run lint`.
+
+### Added
+
+- **`.billet-version`** records which upstream Billet release a tree came from — one bare version
+  line, everything else comment. It exists because `package.json`'s `version` cannot answer that
+  question: `START_PROMPT.md` hands the project name and that field to the fork at setup, so it
+  becomes the fork's own app version and upstream provenance is lost at the moment of forking. The
+  practical cost of not having it is that a fork reporting a bug already fixed upstream can only be
+  answered by diffing source against a repository the fork may not even have as a remote.
+- The file is deliberately absent from the rename list in `START_PROMPT.md` §2, and called out as
+  the exception in §3 where the other references to the original repository get removed — those are
+  the two steps that would otherwise rewrite or delete it. It is provenance, not project identity.
+- There is deliberately **no tooling** around it. The file's own comment carries the two `curl`
+  commands that list upstream's tags and read its CHANGELOG, which is everything a comparison
+  needs; from there `git log <tag>..HEAD -- <path>` settles whether a given fix is present. A script
+  would have been a few hundred lines every fork inherits to re-implement two commands.
+- Upstream bumps the line in the release commit, alongside the `package.json` bump and this entry.
+  `CLAUDE.md` says so, so that an agent working in a fork reads the version before judging whether
+  a reported bug is real.
+
+**Forks created before 3.1.0 have no such file** and should write one by hand. If upstream is still
+a remote, the merge base names the release:
+
+```bash
+git remote add upstream https://github.com/alexpricedev/Billet.git
+git fetch upstream --tags
+git describe --tags --abbrev=0 $(git merge-base HEAD upstream/main)
+```
+
+Otherwise pick the closest release from this file by comparing what your tree has, and put that
+version on the first line — an approximate answer is worth far more than none.
+
+### Changed
+
+- Preact `10.28.4` → `10.29.8`, and the `esm.sh` import map in
+  `src/server/components/layouts.tsx` moved with it. Those two have to stay in step: the client
+  bundle marks `preact` external and resolves it from that map, so a fork that bumps only
+  `package.json` ships a server and a browser running different Preact versions.
+- Resend `^6.9.4` → `^6.25.0`. `src/server/services/email-providers/resend.ts` is excluded from
+  typechecking, so `bun run check` does not cover this one.
+- `actions/checkout` 5 → 7 in CI, and `.github/dependabot.yml` now groups dependency and action
+  updates so a window like this arrives as one pull request instead of six.
+- `src/client/style.css` picked up the new Biome formatter's multi-line handling of long CSS value
+  lists. No rules changed.
+- The docs no longer point readers at `src/server/templates/forms.tsx` as an example after
+  `START_PROMPT.md` tells them to delete it.
+
 ## 3.0.0
 
 Two independent lines of work: an audit against

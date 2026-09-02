@@ -227,6 +227,20 @@ override covers all of them; pass `null` in an `afterEach`/`finally` to restore 
 deliberately not an env var — `--outdir ./dist/assets` is fixed in `package.json`, so pointing a
 deployment somewhere else would only break boot.
 
+### The upstream release is in `.billet-version`, not `package.json`
+
+`package.json`'s `version` belongs to whoever forked this — `START_PROMPT.md` hands the project
+name and that field over at setup. `.billet-version` is the separate, rename-proof record of which
+Billet release the tree came from: one version line, everything else comment.
+
+Read it before deciding whether a reported bug is real. A fork reporting something already fixed
+upstream is the common case, and without that line the only way to tell is diffing source against a
+repo the fork may not have as a remote. With it, `git log <tag>..HEAD -- <path>` settles it. There
+is deliberately no script — the file's comment carries the `curl` commands for upstream's tags and
+CHANGELOG, and every release documents what a fork must change under **Breaking changes**.
+
+Bump it in the release commit, next to the `package.json` bump and the CHANGELOG entry.
+
 ### Linting
 
 Biome runs with `recommended` on and `noConsole: error` — use `log` from
