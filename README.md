@@ -375,6 +375,13 @@ Billet is used by cloning or forking, so there's no package manager to warn you 
 change. Releases are tagged, and [CHANGELOG.md](CHANGELOG.md) records what a fork has to change in
 its own code before merging a new major version. Read it before pulling upstream.
 
+Which release you're on is recorded in [`.billet-version`](.billet-version), separately from the
+`version` in `package.json` — that field is your app's, to bump as you like. Keep the file when you
+rename the project; it's the only thing that answers "is this fix already in my tree?" without
+diffing source against a repo you may not have as a remote. Update it when you merge an upstream
+release. The file itself carries the two `curl` commands for listing upstream's tags and reading
+its CHANGELOG, so comparing needs no remote and no tooling.
+
 ---
 
 ## Contributing
