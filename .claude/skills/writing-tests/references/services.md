@@ -7,13 +7,10 @@ query mocking.
 
 ```ts
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import { SQL } from "bun";
+import { testDatabase } from "../test-utils/database";
 import { cleanupTestData, seedTestData } from "../test-utils/helpers";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required for tests");
-}
-const connection = new SQL(process.env.DATABASE_URL);
+const connection = testDatabase();
 
 mock.module("./database", () => ({
   get db() { return connection; },
@@ -34,7 +31,11 @@ describe("Project service", () => {
 });
 ```
 
-Three things this shape is load-bearing on:
+Four things this shape is load-bearing on:
+
+- **The connection comes from `testDatabase()`.** Never `new SQL(...)` — the default pool is 10
+  per file and `--parallel` runs one file per core, which exhausts `max_connections`. A guard test
+  fails the suite if a test file constructs its own. See CLAUDE.md.
 
 - **The mock precedes the imports.** `mock.module` has to run before the service module is
   evaluated, so the service imports sit below executable code. That is intentional; leave it.

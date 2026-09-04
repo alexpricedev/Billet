@@ -7,6 +7,67 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 3.2.0
+
+One bug, and it is the kind that costs days rather than minutes: the parallel test suite could
+exhaust PostgreSQL's connection limit, and when it did the failure landed in a file that had
+nothing to do with it. Downstream it produced 100 failures in one run and 0 in the next on an
+unchanged tree, and was misdiagnosed three times — twice as concurrent-agent contention, once as a
+flaky auth controller.
+
+Nothing in `src/server/` outside `test-utils/` changed, and no fork has to change its own code.
+A fork that has added test files of its own does have one mechanical edit, described below.
+
+### Fixed
+
+- **Test files no longer open a 10-connection pool each.** Every service and controller test
+  `mock.module`s the database module with its own `SQL` instance, and `new SQL(url)` with no
+  options takes Bun's default pool max of 10. `bun test --parallel` runs one file per core, so a
+  ten-core machine reached for up to 100 connections against a server whose `max_connections` is
+  typically 100 — with a dev server on the same PostgreSQL already holding 10. Past the line
+  PostgreSQL answers `sorry, too many clients already` (SQLSTATE 53300) to whichever file happened
+  to be connecting at that moment, not the one at fault, which is why the error names an innocent
+  file and the next run comes back green.
+- The cap now lives in one place: `testDatabase()` in `src/server/test-utils/database.ts` does the
+  `DATABASE_URL` check and returns `new SQL(url, { max: 3, idleTimeout: 5 })`. All 27 test files
+  that built their own connection use it. Measured on a ten-core machine, peak connections went
+  from over the limit to 27–30 of 100, and the suite got *faster* — the pools were competing.
+- **Three, not one.** A test that holds a reserved connection — a session-level advisory lock, a
+  row lock, a `begin()` that also reads outside the transaction — needs two at once. A pool of one
+  deadlocks instead, and that deadlock presents as a hang with no error attached.
+- The obvious fix — capping workers in `run-tests.ts` — was tried and reverted. It treats the
+  symptom, costs parallelism, and leaves the next test file free to add another ten connections.
+
+### Added
+
+- `src/server/test-utils/database.test.ts` fails the suite if any test file calls `new SQL(`
+  directly. It strips comments before matching, so a comment explaining the rule doesn't trip it,
+  and asserts the file list is non-empty so a broken walk can't pass silently. A comment alone
+  would not have stopped the next file.
+- `CLAUDE.md` gained three `Bun.SQL` behaviours that fail without an error, each of which cost real
+  debugging time: `expect(query).rejects` **hangs** rather than fails, because a tagged template is
+  a lazy thenable and not a promise, so the file times out with no failing assertion to point at
+  (wrap it in an async IIFE); `= ANY(${array})` serialises a JS array to a comma-joined string and
+  `sql.array()` embeds literal quotes in each element, so use `IN ${sql(array)}` and hand-build the
+  literal for a `text[]` column; and Bun JSON-encodes a value bound to a `jsonb` column itself, so
+  `${JSON.stringify(obj)}` stores a jsonb *string* that reads back as text and matches no query.
+
+### Changed
+
+- `run-tests.ts` names its sweep paths in a `TEST_PATHS` constant instead of passing `"src"` inline.
+  The behaviour is identical; the comment there is the point. Only `src/` is swept, so a test under
+  `scripts/` never runs in CI unless it is named — deliberate for `scripts/browser-smoke.test.ts`,
+  which needs a built bundle and a listening server and runs through `bun run test:browser`, but
+  silent for anything else. Opt files in by name; widening the glob would drag the smoke test in.
+- The `writing-tests` skill's service and controller reference shapes show `testDatabase()`. They
+  previously showed the `new SQL(process.env.DATABASE_URL)` preamble as canonical, which is how a
+  28th pool would have arrived.
+
+**A fork with its own test files should run the same replacement.** They will not fail
+`bun run test` until the guard test is merged, at which point it names them; the edit is dropping
+the `DATABASE_URL` guard and `new SQL(...)` line for `const connection = testDatabase();` and
+removing the now-unused `import { SQL } from "bun"`.
+
 ## 3.1.0
 
 Mostly a fork-tracking convention and a dependency window. The dependency window is the part that
