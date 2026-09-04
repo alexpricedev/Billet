@@ -41,6 +41,37 @@ suites in ways neither can reproduce. A workspace port must never reach the test
 idempotent (the base name comes from the root checkout's `.env`); `destroy` refuses to drop a
 database that doesn't carry this workspace's slug. Both no-op in cloud workspaces.
 
+### The dev database is shared with whoever has the browser open
+
+One workspace, one `DATABASE_URL` — the rows an agent writes are the rows a person is signed in
+against. So the obvious way to check an admin screen (mint a session for `admin@example.com`, drive
+the page, then `DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE email =
+'admin@example.com')`) logs the developer out mid-session, with nothing on screen to explain it. It
+reads as session expiry or a pool fault; it is neither, and it repeats every verification pass.
+
+`scripts/qa-session.ts` is the replacement, and the rule is to use it rather than remember the
+hazard. It mints a session for a QA account of its own and prints the `Cookie` header:
+
+```
+bun run scripts/qa-session.ts                    # platform user
+bun run scripts/qa-session.ts --role=admin       # platform admin, for /admin
+bun run scripts/qa-session.ts --org-role=owner   # org owner, for /team
+bun run scripts/qa-session.ts --clean            # delete every QA session
+```
+
+The two flags are the two role axes and stay separate, so "org owner who is not a platform admin"
+— the case worth verifying — is expressible. Each combination is its own account named after
+itself (`qa-agent-admin-member@example.com`), so minting one never mutates a role out from under a
+session another still holds; org roles share one `QA` organisation, which is what makes an owner
+and a member comparable on the same page. It refuses to run under `NODE_ENV=production` —
+creating a platform admin on demand at an address the operator doesn't control is the hole
+`seedIfEmpty` avoids by only touching an empty database. None of these accounts are in the seed,
+so a developer who never runs an agent never sees the rows.
+
+`DELETE FROM sessions` without a `user_id` predicate is never right here. Neither is reading the
+human's cookie out of their browser instead of minting one: it works, and it makes the agent's
+requests indistinguishable from the developer's in the logs.
+
 ### One JSX runtime, two execution models
 
 Everything compiles with Preact (`jsxImportSource: preact` in `tsconfig.json`) — there is no React
