@@ -1,11 +1,8 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import { SQL } from "bun";
+import { testDatabase } from "../test-utils/database";
 import { cleanupTestData } from "../test-utils/helpers";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required for tests");
-}
-const connection = new SQL(process.env.DATABASE_URL);
+const connection = testDatabase();
 
 mock.module("./database", () => ({
   get db() {

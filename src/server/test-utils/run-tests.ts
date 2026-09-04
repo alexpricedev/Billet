@@ -37,6 +37,14 @@ const TIMEOUT_MS = Number.parseInt(process.env.TEST_TIMEOUT_MS ?? "600000", 10);
 
 const SLOWEST_TO_REPORT = 10;
 
+// The paths `bun test` sweeps, named rather than globbed. `scripts/` is not in
+// the list: `scripts/browser-smoke.test.ts` needs a built bundle and a
+// listening server, so it runs on its own through `bun run test:browser`. Any
+// other test outside `src/` has to be added here by name or it never runs in
+// CI, and nothing will tell you — a widened glob would drag the smoke test in
+// with it.
+const TEST_PATHS = ["src"];
+
 // One worker per core by default. `TEST_WORKERS=1` runs the suite in a single
 // process — no extra databases, no parallelism — which is the right setting when
 // a failure needs a readable, ordered log.
@@ -127,7 +135,7 @@ const tests = Bun.spawn(
     "--no-coverage",
     `--timings=${TIMINGS_FILE}`,
     "--update-timings",
-    "src",
+    ...TEST_PATHS,
   ],
   {
     env: { ...process.env, NODE_ENV: "test" },

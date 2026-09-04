@@ -8,7 +8,6 @@ import {
   setSystemTime,
   test,
 } from "bun:test";
-import { SQL } from "bun";
 import { findOrCreateUser } from "../../services/auth";
 import { createCsrfToken, TIME_WINDOW_MINUTES } from "../../services/csrf";
 import {
@@ -17,13 +16,11 @@ import {
 } from "../../services/sessions";
 import type { FormsState } from "../../templates/forms";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
+import { testDatabase } from "../../test-utils/database";
 import { cleanupTestData, randomEmail } from "../../test-utils/helpers";
 import { stateHelpers } from "../../utils/state";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required for tests");
-}
-const connection = new SQL(process.env.DATABASE_URL);
+const connection = testDatabase();
 
 mock.module("../../services/database", () => ({
   get db() {

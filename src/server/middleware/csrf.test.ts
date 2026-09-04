@@ -8,21 +8,17 @@ import {
   setSystemTime,
   test,
 } from "bun:test";
-import { SQL } from "bun";
 import { findOrCreateUser } from "../services/auth";
 import { createCsrfToken, TIME_WINDOW_MINUTES } from "../services/csrf";
 import { db } from "../services/database";
 import { createAuthenticatedSession } from "../services/sessions";
 import { createBunRequest } from "../test-utils/bun-request";
+import { testDatabase } from "../test-utils/database";
 import { cleanupTestData } from "../test-utils/helpers";
 import { checkCsrf, csrfProtection, isRecoverableCsrfFailure } from "./csrf";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required for tests");
-}
-
 const ORIGIN = new URL(process.env.APP_URL as string).origin;
-const connection = new SQL(process.env.DATABASE_URL);
+const connection = testDatabase();
 
 mock.module("../services/database", () => ({
   get db() {

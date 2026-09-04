@@ -92,6 +92,43 @@ shared by every file in a process, so a file exercising a rate-limited route mus
 `clearRateLimitLog()` in `beforeEach` or it passes alone and fails after any file that drove the
 limiter to 429.
 
+`run-tests.ts` sweeps only the paths in its `TEST_PATHS`, which is `["src"]`. A test under
+`scripts/` never runs in CI unless it is named there — `scripts/browser-smoke.test.ts` is
+deliberately out, because it needs a built bundle and a listening server, and runs through
+`bun run test:browser`. Add opted-in files by name; a widened glob would drag the smoke test in.
+
+### Every test file's database connection comes from `testDatabase()`
+
+Service and controller tests `mock.module` the database module with their own `SQL` instance, so
+every test file owns a pool. `new SQL(url)` with no options takes Bun's default max of **10**, and
+`--parallel` runs one file per core — ten cores is up to 100 connections against a server whose
+`max_connections` is typically 100, with the dev server already holding 10. Past the line Postgres
+answers `sorry, too many clients already` (SQLSTATE 53300) to whichever file happened to be
+connecting, so the failure names an innocent file and the next run is green. It has been
+misdiagnosed as agent contention and as a flaky auth controller.
+
+`testDatabase()` (`src/server/test-utils/database.ts`) is the only way to build one: it caps the
+pool at 3 and does the `DATABASE_URL` check. Three, not one — a test holding a reserved connection
+(advisory lock, row lock, a `begin()` that also reads outside the transaction) needs two at once,
+and a pool of one deadlocks into a hang with no error. `database.test.ts` fails the suite if any
+test file calls `new SQL(` directly. Don't fix a connection-exhaustion failure by lowering
+`TEST_WORKERS`: that costs parallelism, hides the cause, and the next test file re-adds ten
+connections.
+
+### Three Bun.SQL behaviours that fail silently
+
+- **`expect(query).rejects` hangs instead of failing.** A `Bun.SQL` tagged template is a lazy
+  thenable, not a promise, so `.rejects` never resolves and the file times out with no failing
+  assertion to point at. Wrap it in an async IIFE:
+  `await expect((async () => { await sql`…` })()).rejects.toThrow(…)`.
+- **`= ANY(${array})` is wrong, not an error.** A JS array bound into `ANY()` serialises to a
+  comma-joined string (`malformed array literal: "a,b"`), and `sql.array()` double-quotes each
+  element so `['A']` arrives as `"A"` with the quotes inside the value. Use `IN ${sql(array)}`. For
+  a `text[]` *column*, build the Postgres array literal by hand.
+- **Bun JSON-encodes a value bound to a `jsonb` column itself.** `${JSON.stringify(obj)}` therefore
+  stores a jsonb *string* — one long scalar that reads back as text and matches no query, with no
+  error at any layer. Bind the object directly.
+
 ### One preload sets the test environment
 
 `bunfig.toml` preloads `src/server/test-utils/test-env.ts`, which pins the whole test environment

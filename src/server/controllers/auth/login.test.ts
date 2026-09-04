@@ -1,6 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { SQL } from "bun";
 import { redirectIfAuthenticated } from "../../middleware/auth";
 import { clearRateLimitLog } from "../../middleware/rate-limit";
 import {
@@ -10,6 +9,7 @@ import {
 } from "../../services/captcha";
 import type { LoginState } from "../../templates/login";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
+import { testDatabase } from "../../test-utils/database";
 import { cleanupTestData } from "../../test-utils/helpers";
 import { stateHelpers } from "../../utils/state";
 
@@ -43,10 +43,7 @@ const solveChallenge = (
   ).toString("base64");
 };
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required for tests");
-}
-const connection = new SQL(process.env.DATABASE_URL);
+const connection = testDatabase();
 
 mock.module("../../services/database", () => ({
   get db() {

@@ -6,12 +6,13 @@ Mock the services the controller imports; assert on the real `Response` it retur
 
 ```ts
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import { SQL } from "bun";
 import type { Project } from "../../services/project";
 import { createBunRequest } from "../../test-utils/bun-request";
+import { testDatabase } from "../../test-utils/database";
 import { cleanupTestData } from "../../test-utils/helpers";
 
-const connection = new SQL(process.env.DATABASE_URL as string);
+// testDatabase(), never `new SQL(...)` — see CLAUDE.md. A guard test enforces it.
+const connection = testDatabase();
 
 // Mocks must run before the module under test is imported.
 mock.module("../../services/database", () => ({ get db() { return connection; } }));
