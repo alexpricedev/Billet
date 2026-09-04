@@ -5,7 +5,7 @@ import {
   type DatabaseMutationResult,
   hasAffectedRows,
 } from "../utils/database";
-import type { User } from "./auth";
+import type { PlatformRole, User } from "./auth";
 import { db } from "./database";
 
 export type SessionType = "guest" | "authenticated";
@@ -105,7 +105,7 @@ export const getSessionContextFromDB = async (
       created_at: string;
       user_id_result: string | null;
       email: string | null;
-      role: "user" | "admin" | null;
+      role: PlatformRole | null;
       user_created_at: string | null;
       email_verified_at: string | null;
     };
@@ -116,7 +116,7 @@ export const getSessionContextFromDB = async (
       ? {
           id: data.user_id_result as string,
           email: data.email as string,
-          role: (data.role as "user" | "admin") ?? "user",
+          role: (data.role as PlatformRole) ?? "user",
           created_at: new Date(data.user_created_at as string),
           email_verified_at: data.email_verified_at
             ? new Date(data.email_verified_at)

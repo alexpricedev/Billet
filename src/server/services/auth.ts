@@ -3,10 +3,20 @@ import { computeHMAC, generateSecureToken } from "../utils/crypto";
 import { db } from "./database";
 import { createAuthenticatedSession, deleteSession } from "./sessions";
 
+// The platform operator flag. A separate axis from organization_members.org_role
+// — see OrgRole in organizations.ts, and the note there on why they never merge.
+export type PlatformRole = "user" | "admin";
+
+export const PLATFORM_ROLES: readonly PlatformRole[] = ["user", "admin"];
+
+export const isPlatformRole = (
+  value: string | undefined,
+): value is PlatformRole => PLATFORM_ROLES.includes(value as PlatformRole);
+
 export interface User {
   id: string;
   email: string;
-  role: "user" | "admin";
+  role: PlatformRole;
   created_at: Date;
   // Null until the address is proven: set when a magic link is clicked, or when
   // a password user follows their verification email. Nothing is gated on it —
@@ -65,7 +75,7 @@ export type AuthResult =
 export const toUser = (row: {
   id: string;
   email: string;
-  role: "user" | "admin";
+  role: PlatformRole;
   created_at: string | Date;
   email_verified_at: string | Date | null;
 }): User => ({

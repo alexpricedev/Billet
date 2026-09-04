@@ -7,6 +7,49 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 3.3.0
+
+A dev-only script and the gotcha behind it. In a downstream fork this cost an afternoon of
+debugging "I keep getting logged out, is it the database?" — it was not the database.
+
+Nothing existing changes behaviour; a fork merges this and gains a file.
+
+### Added
+
+- **`scripts/qa-session.ts`** — mints a session for a QA account of its own and prints the
+  `Cookie` header. A workspace has one `DATABASE_URL`, so the dev database an agent writes to is
+  the one the developer's browser is signed in against. An agent verifying an admin screen would
+  mint a session for `admin@example.com` and tidy up afterwards with
+  `DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE email = 'admin@example.com')`
+  — logging the human out mid-session, with nothing on screen to explain it. It presents as
+  session expiry or a connection-pool fault. The script gives the agent its own accounts so no
+  person's session is ever touched.
+- Both role axes are reachable: `--role=user|admin` for the platform flag, `--org-role=owner|admin|member`
+  for standing in an organisation, and they compose — "org owner who is not a platform admin" is
+  the case worth verifying and would be inexpressible with one flag. Each combination is its own
+  account named after itself (`qa-agent-admin-member@example.com`), so minting one never mutates a
+  role out from under a session another still holds. Org roles share a single `QA` organisation,
+  which is what makes an owner and a member comparable on the same page; `--org-role` warns when
+  `TEAMS_ENABLED` is not `true`, because `/team` answers 404 then and that 404 reads as a bug.
+- `--clean` deletes every QA account's sessions in one predicate. Clearing only the account named
+  by the flags would leave the others signed in, which is the state the script exists to avoid
+  having to reason about.
+- The script refuses to run under `NODE_ENV=production`: `--role=admin` creates a platform admin
+  on demand, at an address the operator does not control. Unset `NODE_ENV` reads as not-production,
+  the same way `validateEnv` and `initAssets` treat it. No QA account is in the seed — they exist
+  only if an agent runs the script.
+- A `CLAUDE.md` gotcha, "The dev database is shared with whoever has the browser open", carrying
+  the symptom as well as the rule, and the corollary: `DELETE FROM sessions` without a `user_id`
+  predicate is never right in a dev database.
+
+### Changed
+
+- `PlatformRole`, `PLATFORM_ROLES` and `isPlatformRole` are exported from
+  `src/server/services/auth.ts`, mirroring `OrgRole` in `organizations.ts`. `User["role"]`, `toUser`
+  and the session row type now name the type instead of repeating `"user" | "admin"`, and the QA
+  script validates its `--role` flag against the same guard the org axis has always had. No
+  behaviour changes and the literals are identical, so a fork needs no edit.
+
 ## 3.2.0
 
 One bug, and it is the kind that costs days rather than minutes: the parallel test suite could
