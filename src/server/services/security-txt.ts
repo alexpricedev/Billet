@@ -1,9 +1,7 @@
-import { SITE_URL } from "./seo";
+import { siteUrl } from "./seo";
 
 // Builds the /.well-known/security.txt body per RFC 9116. Required fields are
 // Contact and Expires; the rest are optional hardening.
-
-const host = new URL(SITE_URL).host;
 
 // RFC 9116 requires Expires to be a single ISO 8601 timestamp roughly a year
 // out. Computed once at process start so it stays stable for a deploy's
@@ -21,7 +19,9 @@ export const SECURITY_TXT_EXPIRES = new Date(
 const resolveContact = (): string => {
   const configured = process.env.SECURITY_CONTACT?.trim();
   if (!configured) {
-    return `mailto:security@${host}`;
+    // Resolved here rather than at module scope: siteUrl() reads the environment
+    // on every call, and a const captured at import would freeze the origin.
+    return `mailto:security@${new URL(siteUrl()).host}`;
   }
   return /^(mailto:|https:|tel:)/i.test(configured)
     ? configured
@@ -32,7 +32,7 @@ export const buildSecurityTxt = (): string =>
   [
     `Contact: ${resolveContact()}`,
     `Expires: ${SECURITY_TXT_EXPIRES}`,
-    `Canonical: ${SITE_URL}/.well-known/security.txt`,
+    `Canonical: ${siteUrl()}/.well-known/security.txt`,
     "Preferred-Languages: en",
     "",
   ].join("\n");

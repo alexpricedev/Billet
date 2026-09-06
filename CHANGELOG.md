@@ -7,6 +7,64 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 3.4.0
+
+The canonical site origin was a hardcoded constant in `src/server/services/seo.ts`, kept in step
+with `APP_URL` by a sentence in a runbook and nothing else. It now derives from `APP_URL`, with an
+optional `SITE_URL` env var as the override.
+
+Drifting the two was never cosmetic: a canonical, `og:url`, or sitemap `<loc>` on a different
+domain from the one emailed links and CSRF origin validation use reads to Google as cloaking. And
+editing the constant was the one edit-a-source-file step in the deploy path, so it was the step a
+fork skipped — shipping a live site whose canonicals pointed at Billet's placeholder domain.
+
+### Breaking changes
+
+- **A fork that edited `SITE_URL` in `src/server/services/seo.ts` loses that edit on upgrade.** The
+  constant is gone; the origin now follows `APP_URL`. For most forks that is the correct value and
+  no action is needed. A fork whose canonical domain differs from its app domain — marketing site
+  on the apex, app on a subdomain — must set `SITE_URL` in its **environment** instead
+  (`SITE_URL=https://example.com`). Check a deployed page's `<link rel="canonical">` after merging.
+- **`APP_URL` and `SITE_URL` are now validated at boot and fatal when malformed.** Both must parse
+  as absolute `http(s)` URLs, and under `NODE_ENV=production` both must be `https`. A deployment
+  that has been running on an `http://` `APP_URL`, or on a value missing its scheme, will refuse to
+  start until it is fixed. Previously a bad `APP_URL` meant one broken emailed link; now the
+  canonical origin derives from it, so it would be a throw on every page render.
+
+### Changed
+
+- `SITE_URL` in `services/seo.ts` is replaced by `siteUrl()`, which returns `SITE_URL`'s origin
+  when set and `APP_URL`'s otherwise. It reads `process.env` on every call rather than at import,
+  for the reason `authMode()` does: imports are hoisted, so a module-level constant freezes
+  whatever the environment happened to hold at load time.
+- Both branches reduce to `.origin`, so a trailing slash or a stray path in the configured value
+  can't double up in a generated URL.
+- `absolute()` is exported from `services/seo.ts` and `services/llms-txt.ts` imports it, replacing
+  a verbatim copy of the same line.
+- `services/security-txt.ts` computed `const host = new URL(SITE_URL).host` at module load — the
+  same import-time-capture trap. Resolved inside `resolveContact()` now.
+- `SITE_NAME`, `SITE_DESCRIPTION` and `SITEMAP_PATHS` stay constants. They are product identity,
+  which belongs in source; the origin is deployment config that was already in the environment.
+
+### Added
+
+- `SITE_URL` as an optional, documented env var — in `.env.example`, the README environment table,
+  and `runbooks/SEO.md` §1, with the apex/`www` and `app.`-subdomain cases as the only reasons to
+  set it.
+- `src/server/services/seo.test.ts` pins the derivation against literal domains. The existing SEO
+  suites build their expectations from the same value they assert against, so they are
+  self-consistent and would pass against a wrong origin. The new file covers deriving from
+  `APP_URL`, keeping the port, the `SITE_URL` override, trailing-slash reduction, and — the case
+  that catches a regression to a module-level constant — `APP_URL` changed after the module loaded.
+
+### Fixed
+
+- `runbooks/SEO.md` §5 described `robots.txt` as a static file in `public/` needing a manual
+  `Sitemap:` edit, and §4 linked to it. There is no `public/robots.txt`: `buildRobotsTxt()`
+  generates the body and the disallow list is wider than the three paths documented. Both sections
+  now describe what the code does. The same stale claim is corrected in `README.md` and
+  `START_PROMPT.md`.
+
 ## 3.3.0
 
 A dev-only script and the gotcha behind it. In a downstream fork this cost an afternoon of

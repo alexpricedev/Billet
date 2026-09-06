@@ -1,4 +1,4 @@
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "./seo";
+import { absolute, SITE_DESCRIPTION, SITE_NAME } from "./seo";
 
 // Builds the /llms.txt body — the emerging convention that gives LLMs and AI
 // agents a short, curated markdown index of the site. Unlike the sitemap (an
@@ -53,8 +53,6 @@ const RESOURCES: LlmsPage[] = [
     description: "How to report a security vulnerability (RFC 9116).",
   },
 ];
-
-const absolute = (path: string): string => new URL(path, SITE_URL).href;
 
 const linkLine = ({ path, title, description }: LlmsPage): string =>
   `- [${title}](${absolute(path)}): ${description}`;

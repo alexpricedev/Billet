@@ -1,8 +1,29 @@
 // Single source of truth for the site's public identity and SEO artefacts
 // (sitemap, structured data). Templates and controllers import from here so the
 // canonical host, name, and description can't drift across the codebase.
+//
+// The name and description are product identity, so they live here as constants.
+// The canonical origin is deployment config and was already in the environment as
+// APP_URL, so it derives from that instead — see siteUrl() below.
 
-export const SITE_URL = "https://billet.alexprice.dev";
+// The origin every absolute URL is built from: canonicals, Open Graph tags, the
+// sitemap, robots.txt's Sitemap: line, and JSON-LD. Defaults to APP_URL's origin,
+// which is what keeps the canonical domain from drifting away from the domain
+// emailed links and CSRF origin validation use — a mismatch reads as cloaking to
+// Google. SITE_URL overrides it for the one case where the two legitimately
+// differ (marketing site on the apex, app on a subdomain).
+//
+// Read from process.env on every call (not captured at import) for the reason
+// authMode() gives in auth-mode.ts: imports are hoisted, so a module-level const
+// would freeze whatever the test preload happened to hold. Reduced to .origin so
+// a trailing slash or stray path can't double up in a generated URL.
+export const siteUrl = (): string => {
+  const configured = process.env.SITE_URL?.trim();
+  return configured
+    ? new URL(configured).origin
+    : new URL(process.env.APP_URL as string).origin;
+};
+
 export const SITE_NAME = "Billet";
 export const SITE_DESCRIPTION =
   "Guardrails for your AI coding agents — a full-stack TypeScript starter on Bun";
@@ -11,7 +32,9 @@ export const SITE_DESCRIPTION =
 // (/login, /admin), API endpoints, and auth callbacks are intentionally omitted.
 export const SITEMAP_PATHS = ["/", "/stack", "/forms", "/projects"] as const;
 
-const absolute = (path: string): string => new URL(path, SITE_URL).href;
+// Absolute URL for a site-relative path. Exported so llms-txt.ts resolves against
+// the same origin rather than keeping its own copy of this line.
+export const absolute = (path: string): string => new URL(path, siteUrl()).href;
 
 export const buildSitemapXml = (): string => {
   const urls = SITEMAP_PATHS.map(
@@ -122,24 +145,27 @@ export const buildWebManifest = (): string =>
 // Site-level JSON-LD (WebSite + Organization) injected into every public page's
 // <head>. Gives search engines and AI agents a machine-readable description of
 // the site using the schema.org vocabulary.
-export const siteStructuredData = (): string =>
-  JSON.stringify({
+export const siteStructuredData = (): string => {
+  const site = siteUrl();
+
+  return JSON.stringify({
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "WebSite",
-        "@id": `${SITE_URL}/#website`,
-        url: `${SITE_URL}/`,
+        "@id": `${site}/#website`,
+        url: `${site}/`,
         name: SITE_NAME,
         description: SITE_DESCRIPTION,
-        publisher: { "@id": `${SITE_URL}/#organization` },
+        publisher: { "@id": `${site}/#organization` },
       },
       {
         "@type": "Organization",
-        "@id": `${SITE_URL}/#organization`,
+        "@id": `${site}/#organization`,
         name: SITE_NAME,
-        url: `${SITE_URL}/`,
+        url: `${site}/`,
         logo: absolute("/og-image.png"),
       },
     ],
   });
+};

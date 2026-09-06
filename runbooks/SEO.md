@@ -9,19 +9,36 @@ and how to verify it in production.
 Everything here is server-side — crawlers and AI agents get the full picture in
 the initial HTML response, no client JS required.
 
-## 1. Set the canonical site URL (required)
+## 1. The canonical site URL (nothing to edit)
 
-All absolute URLs — canonicals, Open Graph tags, the sitemap, and JSON-LD — are
-built from a single constant. Set it to your production origin **before you
-deploy**, or search engines will index and link the placeholder domain.
+All absolute URLs — canonicals, Open Graph tags, the sitemap, `robots.txt`'s
+`Sitemap:` line, and JSON-LD — are built from `siteUrl()` in
+[`src/server/services/seo.ts`](../src/server/services/seo.ts), which returns
+**`APP_URL`'s origin**. `APP_URL` is already required, already validated at boot,
+and already the domain your emailed links and CSRF origin check use. So setting
+it to your production URL is the whole configuration step; there is no constant
+to remember to edit before deploying.
 
-- Edit `SITE_URL` in [`src/server/services/seo.ts`](../src/server/services/seo.ts).
-- Use the scheme + host with **no trailing slash**: `https://example.com`.
-- Keep it aligned with `APP_URL` (the env var magic-link emails use). A mismatch
-  between the link domain and the canonical domain looks like cloaking to Google.
+That coupling is the point. A canonical, `og:url`, or sitemap `<loc>` on a
+different domain from the one your links use reads to Google as cloaking, and a
+drift rule enforced only by a sentence in a runbook is a drift rule that breaks.
 
-`SITE_NAME` and `SITE_DESCRIPTION` live in the same file and feed the JSON-LD and
-the default `<meta name="description">`. Update them to match your product.
+**`SITE_URL` (optional, env var)** overrides the origin for the one case where
+the two legitimately differ: a marketing site on the apex with the app on a
+subdomain (`SITE_URL=https://example.com` while
+`APP_URL=https://app.example.com`), or a canonical on `www` when the app isn't.
+
+- Set it in the environment, not in source.
+- Scheme + host; a trailing slash or a path is reduced away (`.origin`), so
+  `https://example.com/` and `https://example.com` behave identically.
+- It must be an absolute `http(s)` URL, and `https` in production. So must
+  `APP_URL`. A bad value is fatal at boot rather than a broken canonical on
+  every page (`validateEnv()` in [`src/server/utils/env.ts`](../src/server/utils/env.ts)).
+
+`SITE_NAME` and `SITE_DESCRIPTION` *do* stay as constants in `seo.ts` — those are
+product identity, not deployment config. They feed the JSON-LD, the web app
+manifest, and the default `<meta name="description">`. Update them to match your
+product.
 
 ## 2. Per-page metadata
 
@@ -33,7 +50,7 @@ page passes its own metadata as props:
 |---|---|---|
 | `title` | `<title>` + `og:title` + `twitter:title` | Unique per page; keep under ~60 chars |
 | `description` | `<meta name="description">` + OG/Twitter | Unique per page; ~150 chars. Falls back to `SITE_DESCRIPTION` |
-| `canonicalPath` | `<link rel="canonical">` + `og:url` | Path only (e.g. `/stack`); resolved against `SITE_URL` |
+| `canonicalPath` | `<link rel="canonical">` + `og:url` | Path only (e.g. `/stack`); resolved against the canonical origin (§1) |
 | `noindex` | `<meta name="robots" content="noindex, nofollow">` | See §4 |
 
 Rule: **every page sets `title`, `description`, and `canonicalPath`.** The shared
@@ -67,23 +84,32 @@ Currently applied to `/admin` (private) and `/login` (thin/private). When
 `noindex` is set, the page also **omits the site JSON-LD** — you don't want
 structured data on pages you're telling crawlers to ignore.
 
-Also add the path to `Disallow:` in [`public/robots.txt`](../public/robots.txt)
-if you want to save crawl budget — but note `Disallow` only blocks crawling, it
+Also add the path to `ROBOTS_DISALLOW` in
+[`src/server/services/seo.ts`](../src/server/services/seo.ts) (§5) if you want to
+save crawl budget — but note `Disallow` only blocks crawling, it
 does **not** guarantee de-indexing. `noindex` is what removes a page from the
 index; a page must be crawlable for the `noindex` to be seen. Don't `Disallow` a
 path you also `noindex` unless it's already de-indexed.
 
 ## 5. robots.txt
 
-[`public/robots.txt`](../public/robots.txt) is a static file served from the
-public dir. It:
+`/robots.txt` is **generated**, not a static file: `buildRobotsTxt()` in
+[`src/server/services/seo.ts`](../src/server/services/seo.ts) builds the body and
+[`controllers/app/robots-txt.ts`](../src/server/controllers/app/robots-txt.ts)
+serves it. It:
 
 - allows all user-agents by default,
-- disallows `/admin`, `/api/`, and `/auth/`,
+- disallows the private surfaces listed in `ROBOTS_DISALLOW` — `/admin`,
+  `/account`, `/api/`, `/auth/`, `/team`, `/invites/`,
+- repeats the same rules for each crawler in `AI_CRAWLERS` (GPTBot, ClaudeBot,
+  PerplexityBot and friends), because in robots.txt a named user-agent group
+  fully replaces the wildcard group for that agent,
+- declares `Content-Signal: search=yes, ai-input=yes, ai-train=yes`,
 - points crawlers at the sitemap.
 
-The `Sitemap:` line must be an **absolute URL** — update it to your production
-domain to match `SITE_URL` (this file is static, so it isn't templated).
+The `Sitemap:` line is an absolute URL built from the canonical origin (§1), so
+it follows your production domain automatically — nothing to edit. To disallow a
+new path, add it to `ROBOTS_DISALLOW`.
 
 ## 6. Structured data (JSON-LD)
 
