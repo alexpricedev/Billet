@@ -396,15 +396,27 @@ Billet is a single Bun process — no containers, no serverless adapters, no pla
 
 ### Railway
 
-A `railway.json` is included with build and start commands pre-configured. Deployments typically go live in under 60 seconds.
+Six settings in the service UI, then deploy. Deployments typically go live in under 60 seconds.
 
 1. Push to GitHub
 2. Create a new [Railway](https://railway.com?referralCode=XB1wns) project and connect your repo
 3. Add a **PostgreSQL** plugin and link it to your service — this auto-sets `DATABASE_URL`
 4. Set the remaining environment variables (see below)
-5. Deploy — Railway will build, run migrations, and start the server
+5. In the service's **Settings** tab, set the six build and deploy values below
+6. Deploy — Railway will build, run migrations, and start the server
 
-> **Tip:** If you're using Claude Code with the [Railway MCP server](https://docs.railway.com/guides/mcp), you can ask Claude to set up the project, add PostgreSQL, and configure environment variables for you.
+| Setting | Value |
+|---|---|
+| Builder | **Railpack** |
+| Build command | `bun install && bun run build` |
+| Start command | `bun run start` |
+| Healthcheck path | `/health` |
+| Healthcheck timeout | `30` |
+| Restart policy | **On failure**, max `3` retries |
+
+> **Tip:** If you're using Claude Code with the [Railway MCP server](https://docs.railway.com/guides/mcp), you can ask Claude to set up the project, add PostgreSQL, and configure both the environment variables and the settings above for you.
+
+These live in the dashboard rather than in a file on purpose. Railway has [deprecated Config as Code](https://docs.railway.com/config-as-code) — a new service can no longer opt into `railway.json` at all, and existing ones stop reading it on **2026-12-01** — so a committed `railway.json` is a file that looks authoritative while being ignored. Its replacement, [Infrastructure as Code](https://docs.railway.com/infrastructure-as-code), is scoped to a whole Railway project rather than to one service, which is the wrong shape for a starter: plenty of people run several unrelated apps and one shared PostgreSQL in a single project, and there `omit means delete` reaches other people's services. If you do want these six values versioned, `railway config pull` writes a `.railway/railway.ts` from what the project already has — no retyping, and no `railway.json` needed to migrate from. In a shared project add `export const partial = "<your-service>"` to it so deletion is scoped to what that file owns, and run `railway config plan` and read the diff before `apply`. Nothing applies on `git push` — only an explicit `railway config apply`.
 
 ### Environment Variables
 

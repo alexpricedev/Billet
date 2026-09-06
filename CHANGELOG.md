@@ -7,6 +7,55 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 3.5.0
+
+`railway.json` is deleted. Railway [deprecated Config as Code](https://docs.railway.com/config-as-code):
+a new service can no longer opt into it, and existing services stop reading the file on
+**2026-12-01**. So for anyone forking Billet today the file was already inert — six settings sitting
+in the repository looking authoritative, silently ignored by the platform, with the first sign
+being a deploy that builds without `bun run build` and serves an unstyled site.
+
+The replacement, [Infrastructure as Code](https://docs.railway.com/infrastructure-as-code), is
+scoped to a Railway **project and environment**, not to one service. That is the wrong shape to ship
+in a starter: a single project holding several unrelated apps against one shared PostgreSQL is a
+common way to run Railway, and there `omit means delete` reaches services the file was never meant
+to describe. A `.railway/railway.ts` committed by a template is a footgun aimed at the neighbours.
+
+The six values move to the service's Settings tab, documented in the README next to the environment
+variables that had to be set there anyway.
+
+### Breaking changes
+
+- **A fork that relied on `railway.json` must set six values in the Railway dashboard.** Under the
+  service's **Settings** tab: builder **Railpack**, build command `bun install && bun run build`,
+  start command `bun run start`, healthcheck path `/health`, healthcheck timeout `30`, restart
+  policy **On failure** with max `3` retries. An already-deployed service that has been reading
+  `railway.json` keeps running on its last-known configuration, but the next deploy after merging
+  this uses whatever the dashboard holds — which for a service that never had these typed in is
+  Railway's autodetected defaults. Set them **before** merging, not after: the failure mode is a
+  build that skips `bun run build`, so the server boots and every page renders without CSS or
+  client JavaScript, and `initAssets()` throws under `NODE_ENV=production` if `dist/assets` is
+  empty. Nothing in the app changes; there is no code edit to make.
+- **Do not re-add `railway.json`.** New services cannot opt into it, so re-adding it produces a
+  file that is read by nothing. If you want the six values versioned, `railway config pull` writes
+  a `.railway/railway.ts` from the project's current state; in a project shared with other apps add
+  `export const partial = "<your-service>"` so `omit means delete` is scoped to what that file
+  owns, and read `railway config plan`'s diff before `railway config apply`. IaC is never applied
+  by `git push` — only by an explicit `apply` — so the file is inert until someone runs it.
+
+### Removed
+
+- `railway.json`. It carried `builder`, `buildCommand`, `startCommand`, `healthcheckPath`,
+  `healthcheckTimeout`, `restartPolicyType` and `restartPolicyMaxRetries` — nothing that isn't a
+  field in the service UI, and nothing the app reads.
+
+### Changed
+
+- The README's **Deploy → Railway** section gains the settings table and a sixth step, and explains
+  why the values are in the dashboard rather than in a file — so the next agent to notice the
+  missing config doesn't helpfully commit it back. Deploying Billet anywhere that runs
+  `bun run start` is unaffected.
+
 ## 3.4.0
 
 The canonical site origin was a hardcoded constant in `src/server/services/seo.ts`, kept in step
