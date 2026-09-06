@@ -2,6 +2,7 @@ import type { ComponentChildren } from "preact";
 
 import { getAssetUrl } from "../services/assets";
 import {
+  absolute,
   SITE_DESCRIPTION,
   SITE_NAME,
   siteStructuredData,
@@ -17,7 +18,7 @@ import { VerifyBanner } from "./verify-banner";
 const THEME_COLOR = "#0a0a0b";
 
 const canonicalUrl = (path?: string): string =>
-  path ? new URL(path, siteUrl()).href : siteUrl();
+  path ? absolute(path) : siteUrl();
 
 interface HeadMetaProps {
   title: string;
@@ -115,13 +116,13 @@ export function Layout({
         <link rel="dns-prefetch" href="https://unpkg.com" />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
-        <meta property="og:image" content={`${siteUrl()}/og-image.png`} />
+        <meta property="og:image" content={absolute("/og-image.png")} />
         <meta property="og:url" content={canonicalUrl(canonicalPath)} />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={`${siteUrl()}/og-image.png`} />
+        <meta name="twitter:image" content={absolute("/og-image.png")} />
         {!noindex && (
           <script
             type="application/ld+json"

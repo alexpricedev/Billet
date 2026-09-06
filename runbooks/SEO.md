@@ -34,6 +34,8 @@ subdomain (`SITE_URL=https://example.com` while
 - It must be an absolute `http(s)` URL, and `https` in production. So must
   `APP_URL`. A bad value is fatal at boot rather than a broken canonical on
   every page (`validateEnv()` in [`src/server/utils/env.ts`](../src/server/utils/env.ts)).
+  Blank counts as unset, so an empty `SITE_URL=` falls back to `APP_URL` instead
+  of stopping the boot.
 
 `SITE_NAME` and `SITE_DESCRIPTION` *do* stay as constants in `seo.ts` — those are
 product identity, not deployment config. They feed the JSON-LD, the web app

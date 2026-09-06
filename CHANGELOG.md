@@ -29,7 +29,8 @@ fork skipped — shipping a live site whose canonicals pointed at Billet's place
   as absolute `http(s)` URLs, and under `NODE_ENV=production` both must be `https`. A deployment
   that has been running on an `http://` `APP_URL`, or on a value missing its scheme, will refuse to
   start until it is fixed. Previously a bad `APP_URL` meant one broken emailed link; now the
-  canonical origin derives from it, so it would be a throw on every page render.
+  canonical origin derives from it, so it would be a throw on every page render. A `SITE_URL` that
+  is unset or blank is not malformed — it means the origin follows `APP_URL`.
 
 ### Changed
 
@@ -39,8 +40,12 @@ fork skipped — shipping a live site whose canonicals pointed at Billet's place
   whatever the environment happened to hold at load time.
 - Both branches reduce to `.origin`, so a trailing slash or a stray path in the configured value
   can't double up in a generated URL.
-- `absolute()` is exported from `services/seo.ts` and `services/llms-txt.ts` imports it, replacing
-  a verbatim copy of the same line.
+- `absolute()` is exported from `services/seo.ts`; `services/llms-txt.ts` imports it instead of
+  keeping a verbatim copy of the same line, and `components/layouts.tsx` builds the OG and Twitter
+  image URLs with it rather than concatenating onto the origin by hand.
+- `appOrigin()` in `utils/app-url.ts` is the one place `APP_URL` is reduced to an origin. `appUrl()`
+  is built on it and `siteUrl()` falls back to it, so the emailed-link domain and the canonical
+  domain can't diverge through two copies of the same parse.
 - `services/security-txt.ts` computed `const host = new URL(SITE_URL).host` at module load — the
   same import-time-capture trap. Resolved inside `resolveContact()` now.
 - `SITE_NAME`, `SITE_DESCRIPTION` and `SITEMAP_PATHS` stay constants. They are product identity,
@@ -56,6 +61,9 @@ fork skipped — shipping a live site whose canonicals pointed at Billet's place
   self-consistent and would pass against a wrong origin. The new file covers deriving from
   `APP_URL`, keeping the port, the `SITE_URL` override, trailing-slash reduction, and — the case
   that catches a regression to a module-level constant — `APP_URL` changed after the module loaded.
+- `src/server/utils/env.test.ts` covers the new URL rule: a missing scheme, a `mailto:` that parses
+  but has a `"null"` origin, and `http` under `NODE_ENV=production`. `urlProblem()` is exported for
+  it, because `validateEnv()` answers a bad value with `process.exit(1)`.
 
 ### Fixed
 

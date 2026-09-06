@@ -1,3 +1,5 @@
+import { appOrigin } from "../utils/app-url";
+
 // Single source of truth for the site's public identity and SEO artefacts
 // (sitemap, structured data). Templates and controllers import from here so the
 // canonical host, name, and description can't drift across the codebase.
@@ -19,9 +21,7 @@
 // a trailing slash or stray path can't double up in a generated URL.
 export const siteUrl = (): string => {
   const configured = process.env.SITE_URL?.trim();
-  return configured
-    ? new URL(configured).origin
-    : new URL(process.env.APP_URL as string).origin;
+  return configured ? new URL(configured).origin : appOrigin();
 };
 
 export const SITE_NAME = "Billet";

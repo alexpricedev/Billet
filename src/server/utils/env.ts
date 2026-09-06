@@ -20,7 +20,10 @@ const REQUIRED = [
 // "null/stack". In production `http:` is rejected too — a plaintext canonical is
 // a duplicate-content and mixed-content signal, and the emailed links built from
 // the same origin would go out unencrypted. Dev and test stay on http://localhost.
-const urlProblem = (key: string, value: string): string | null => {
+//
+// Exported so the rule can be tested directly: validateEnv() answers a bad value
+// with process.exit(1), which a test can't call without taking the runner down.
+export const urlProblem = (key: string, value: string): string | null => {
   let parsed: URL;
   try {
     parsed = new URL(value);
@@ -88,9 +91,13 @@ export function validateEnv(): void {
 
   // SITE_URL is optional: absent means the canonical origin follows APP_URL,
   // which is right unless the marketing domain and the app domain differ. Set,
-  // it is held to the same rule.
-  if (process.env.SITE_URL !== undefined) {
-    const siteUrlProblem = urlProblem("SITE_URL", process.env.SITE_URL);
+  // it is held to the same rule. Blank counts as absent, matching siteUrl() —
+  // an empty value is what a copied-out `SITE_URL=` line or a variable cleared
+  // on a host that keeps the key leaves behind, and refusing to boot over it
+  // would contradict the fallback the rest of the code already applies.
+  const configuredSiteUrl = process.env.SITE_URL?.trim();
+  if (configuredSiteUrl) {
+    const siteUrlProblem = urlProblem("SITE_URL", configuredSiteUrl);
     if (siteUrlProblem) {
       log.error("env", siteUrlProblem);
       process.exit(1);

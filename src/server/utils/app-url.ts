@@ -8,5 +8,15 @@
  * (`utils/env.ts`) and is the same origin CSRF checks against
  * (`services/csrf.ts`), so the link and the origin check can't disagree.
  */
-export const appUrl = (path: string): string =>
-  `${new URL(process.env.APP_URL as string).origin}${path}`;
+
+/**
+ * The app's own origin, scheme through port, with any path dropped. Read from
+ * `process.env` on every call rather than captured at import, so a value set
+ * after this module loads still counts. `siteUrl()` in `services/seo.ts` falls
+ * back to this, which is what keeps the canonical domain and the emailed-link
+ * domain the same by default.
+ */
+export const appOrigin = (): string =>
+  new URL(process.env.APP_URL as string).origin;
+
+export const appUrl = (path: string): string => `${appOrigin()}${path}`;
