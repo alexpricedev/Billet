@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SITE_URL } from "../../services/seo";
+import { siteUrl } from "../../services/seo";
 import { robotsTxt } from "./robots-txt";
 
 describe("robots.txt Controller", () => {
@@ -40,9 +40,9 @@ describe("robots.txt Controller", () => {
     );
   });
 
-  test("points at the absolute sitemap URL under SITE_URL", async () => {
+  test("points at the absolute sitemap URL under the site origin", async () => {
     const body = await robotsTxt.index().text();
 
-    expect(body).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
+    expect(body).toContain(`Sitemap: ${siteUrl()}/sitemap.xml`);
   });
 });

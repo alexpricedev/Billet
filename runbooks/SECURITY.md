@@ -62,13 +62,14 @@ route in [`routes/app.tsx`](../src/server/routes/app.tsx)).
   SECURITY_CONTACT=https://yourdomain.com/security  # → Contact: https://yourdomain.com/security
   ```
 
-  With no env set it falls back to `mailto:security@<host-of-SITE_URL>` — a
-  placeholder. Set a **monitored** address before you launch.
+  With no env set it falls back to `mailto:security@<the canonical site host>` —
+  a placeholder. Set a **monitored** address before you launch.
 - **`Expires:`** is computed as one year from process start, so it never lapses;
   it refreshes on every deploy. No action needed.
-- **`Canonical:`** is derived from `SITE_URL` in
-  [`services/seo.ts`](../src/server/services/seo.ts) — the same constant the SEO
-  runbook has you set. If SITE_URL is correct, this is correct.
+- **`Canonical:`** is derived from `siteUrl()` in
+  [`services/seo.ts`](../src/server/services/seo.ts), which follows `APP_URL`'s
+  origin (see [SEO.md](SEO.md) §1). If `APP_URL` is correct, this is correct —
+  there is nothing separate to set.
 
 ## 3. Content Security Policy
 

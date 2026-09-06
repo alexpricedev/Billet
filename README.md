@@ -413,6 +413,7 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 | `DATABASE_URL` | Yes | PostgreSQL connection string — auto-set when you link Railway's PostgreSQL plugin to your service |
 | `CRYPTO_PEPPER` | Yes | Secret key for session tokens — run `bun run generate:pepper` to get one (see below) |
 | `APP_URL` | Yes | Your app's public URL — you'll get this from Railway after your first deploy (e.g. `https://my-app.up.railway.app`) |
+| `SITE_URL` | No | Canonical origin for canonicals, Open Graph tags, the sitemap, and JSON-LD. Defaults to `APP_URL`'s origin — set it only when the canonical domain differs from the app domain |
 | `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
 | `AUTH_MODE` | No | `magic-link` (default) or `password`. Mutually exclusive; any other value stops the server at boot |
 | `CAPTCHA_ENABLED` | No | Set to `true` to add a proof-of-work captcha to the login form. Off by default; `/login` is unchanged when unset |
@@ -423,7 +424,7 @@ A `railway.json` is included with build and start commands pre-configured. Deplo
 
 > **Email deliverability:** When sending real mail via Resend, follow [runbooks/EMAIL.md](runbooks/EMAIL.md) to set up SPF, DKIM, and DMARC — without it, magic links and password-reset mail land in spam.
 
-> **SEO:** Before your first deploy, set `SITE_URL` (and the `Sitemap:` line in `public/robots.txt`) to your production domain — see [runbooks/SEO.md](runbooks/SEO.md) for the canonical-URL config, sitemap, indexing policy, and verification steps.
+> **SEO:** Nothing to configure — canonicals, Open Graph tags, the sitemap, `robots.txt`, and JSON-LD all follow `APP_URL`'s origin, so pointing that at your production domain points them too. Set `SITE_URL` only if your canonical domain differs from your app domain (marketing site on the apex, app on a subdomain) — see [runbooks/SEO.md](runbooks/SEO.md) for that plus the sitemap, indexing policy, and verification steps.
 
 > **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
 

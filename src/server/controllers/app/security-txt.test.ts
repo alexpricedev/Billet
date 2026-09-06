@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SITE_URL } from "../../services/seo";
+import { siteUrl } from "../../services/seo";
 import { securityTxt } from "./security-txt";
 
 describe("Security.txt Controller", () => {
@@ -23,9 +23,9 @@ describe("Security.txt Controller", () => {
     expect(expires.getTime()).toBeGreaterThan(Date.now());
   });
 
-  test("points Canonical at the well-known path under SITE_URL", async () => {
+  test("points Canonical at the well-known path under the site origin", async () => {
     const body = await securityTxt.index().text();
 
-    expect(body).toContain(`Canonical: ${SITE_URL}/.well-known/security.txt`);
+    expect(body).toContain(`Canonical: ${siteUrl()}/.well-known/security.txt`);
   });
 });

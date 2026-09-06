@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { buildSecurityTxt } from "./security-txt";
-import { SITE_URL } from "./seo";
+import { siteUrl } from "./seo";
 
-const host = new URL(SITE_URL).host;
+const host = (): string => new URL(siteUrl()).host;
 
 describe("buildSecurityTxt", () => {
   afterEach(() => {
@@ -11,7 +11,7 @@ describe("buildSecurityTxt", () => {
 
   test("falls back to a host-derived mailto when SECURITY_CONTACT is unset", () => {
     delete process.env.SECURITY_CONTACT;
-    expect(buildSecurityTxt()).toContain(`Contact: mailto:security@${host}`);
+    expect(buildSecurityTxt()).toContain(`Contact: mailto:security@${host()}`);
   });
 
   test("wraps a bare email from SECURITY_CONTACT in mailto:", () => {
@@ -34,6 +34,6 @@ describe("buildSecurityTxt", () => {
   test("always includes the required Expires and Canonical fields", () => {
     const body = buildSecurityTxt();
     expect(body).toMatch(/^Expires: .+$/m);
-    expect(body).toContain(`Canonical: ${SITE_URL}/.well-known/security.txt`);
+    expect(body).toContain(`Canonical: ${siteUrl()}/.well-known/security.txt`);
   });
 });

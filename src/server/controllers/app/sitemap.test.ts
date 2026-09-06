@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SITE_URL, SITEMAP_PATHS } from "../../services/seo";
+import { SITEMAP_PATHS, siteUrl } from "../../services/seo";
 import { sitemap } from "./sitemap";
 
 describe("Sitemap Controller", () => {
@@ -17,11 +17,11 @@ describe("Sitemap Controller", () => {
     );
   });
 
-  test("lists every public path as an absolute URL under SITE_URL", async () => {
+  test("lists every public path as an absolute URL under the site origin", async () => {
     const body = await sitemap.index().text();
 
     for (const path of SITEMAP_PATHS) {
-      const loc = new URL(path, SITE_URL).href;
+      const loc = new URL(path, siteUrl()).href;
       expect(body).toContain(`<loc>${loc}</loc>`);
     }
   });
