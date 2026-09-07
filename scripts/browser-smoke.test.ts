@@ -7,7 +7,7 @@ import type { Subprocess } from "bun";
 // Chrome elsewhere), so these journeys must never gate the deterministic
 // suite. What they cover is exactly what happy-dom can't:
 //
-// - the client bundle executing in a real page (hydration, not just parsing)
+// - the client bundle executing in a real page (running, not just parsing)
 // - CSP: a blocked script passes every unit test and fails only here
 // - a full form journey with trusted input events, a real session cookie,
 //   and the CSRF token round-trip
@@ -135,7 +135,7 @@ describe("browser smoke", () => {
     expect(styleSheets).toBeGreaterThan(0);
   });
 
-  test("the client bundle hydrates the forms island", async () => {
+  test("the client bundle runs the forms page script", async () => {
     await view.navigate(`${BASE}/forms`);
 
     // set only by src/client/pages/forms.ts at init — proves main.js was
@@ -172,6 +172,68 @@ describe("browser smoke", () => {
       `${SCREENSHOT_DIR}/forms-success.png`,
       await view.screenshot(),
     );
+  });
+
+  test("the project search binds to the server-rendered table", async () => {
+    // Create a row first so the journey doesn't depend on seed data — a guest
+    // can add a project, and the redirect lands back on the list.
+    const title = `Smoke ${Date.now()}`;
+    await view.navigate(`${BASE}/projects`);
+    await view.click("#project-title");
+    await view.type(title);
+    await clickThrough(".project-form button[type='submit']");
+    await until(bodyText, (text) => text.includes(title));
+
+    // The search box ships hidden and is revealed by data-mounted, which only
+    // the bundle sets — so its appearance proves main.js ran and mount() found
+    // the component under the CSP.
+    const mounted = await until(
+      () =>
+        view.evaluate<boolean>(
+          `document.querySelector('[data-component="project-search"]')?.hasAttribute("data-mounted") ?? false`,
+        ),
+      (ok) => ok === true,
+    );
+    expect(mounted).toBe(true);
+
+    const total = await view.evaluate<number>(
+      `document.querySelectorAll("#projects-list tbody tr:not(.empty-row)").length`,
+    );
+    expect(total).toBeGreaterThan(0);
+
+    // Trusted key events into the bound input drive the signal; the summary,
+    // the row visibility and the "no matches" row all follow from it.
+    await view.click("#project-search-input");
+    await view.type("no-such-project-zzz");
+    const noMatches = await until(
+      () =>
+        view.evaluate<string>(
+          `document.querySelector(".search-count")?.textContent ?? ""`,
+        ),
+      (text) => text.startsWith("Showing 0 of"),
+    );
+    expect(noMatches).toBe(`Showing 0 of ${total}`);
+    const emptyRowShown = await view.evaluate<boolean>(
+      `!document.querySelector(".empty-row")?.hidden`,
+    );
+    expect(emptyRowShown).toBe(true);
+
+    await view.evaluate(
+      `(() => { const i = document.querySelector("#project-search-input"); i.value = ""; i.dispatchEvent(new Event("input", { bubbles: true })); })()`,
+    );
+    await view.type(title);
+    const oneMatch = await until(
+      () =>
+        view.evaluate<string>(
+          `document.querySelector(".search-count")?.textContent ?? ""`,
+        ),
+      (text) => text.startsWith("Showing 1 of"),
+    );
+    expect(oneMatch).toBe(`Showing 1 of ${total}`);
+    const visibleTitles = await view.evaluate<string[]>(
+      `Array.from(document.querySelectorAll("#projects-list tbody tr:not(.empty-row):not([hidden]) td:first-child")).map((td) => td.textContent)`,
+    );
+    expect(visibleTitles).toEqual([title]);
   });
 
   test("the captcha solves its proof of work in the page", async () => {

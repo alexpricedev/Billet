@@ -2,7 +2,7 @@
 
 Worked example: a `/dashboard` page. Read `src/server/controllers/app/projects.tsx` and
 `src/server/templates/projects.tsx` alongside this — they're the fullest example in the repo
-(list, create, delete, auth, flash messages, a Preact island).
+(list, create, delete, auth, flash messages, a reactive component).
 
 ## 1. Service — `src/server/services/dashboard.ts`
 
@@ -20,10 +20,9 @@ Takes fully resolved data as props, wrapped in the layout:
 `name` sets `data-page` on `<body>`, which is what dispatches the client script in step 6. Any
 form that POSTs needs `<CsrfField token={csrfToken} />`.
 
-This renders once on the server and never hydrates, so don't reach for `useState` here — it's the
-same Preact runtime the islands use, but the output is a string. Write SVG attributes in kebab-case
-(`stroke-width`, not `strokeWidth`); Preact passes camelCase through verbatim and the browser
-ignores it.
+This renders once on the server and never hydrates, so don't reach for `useState` here — the
+output is a string. Write SVG attributes in kebab-case (`stroke-width`, not `strokeWidth`); Preact
+passes camelCase through verbatim and the browser ignores it.
 
 ## 3. Controller — `src/server/controllers/app/dashboard.tsx`
 
@@ -75,6 +74,37 @@ Skipping the `registerPage` call is the quiet failure: the script builds, ships,
 The registered name must equal the `name` prop from step 2.
 
 Export `cleanup()` too if the script adds listeners outside its own subtree.
+
+A page script is for one-off wiring. For state that drives the DOM — a filter, a toggle, a
+counter — write a component instead, in `src/client/components/<name>.ts`:
+
+```ts
+export const dashboardFilter = defineComponent("dashboard-filter", (root) => {
+  const query = signal("");
+  return { query, count: computed(() => /* … */) };
+});
+export type DashboardFilter = typeof dashboardFilter;
+```
+
+Register it in `main.ts` with `registerComponent(dashboardFilter)` — the same quiet failure as an
+unregistered page if you forget — and bind it from the template with typed attributes:
+
+```tsx
+import type { DashboardFilter } from "@client/components/dashboard-filter";
+import { component } from "@client/reactive/attributes";
+
+const filter = component<DashboardFilter>("dashboard-filter");
+// …
+<div {...filter.root}>
+  <input {...filter.value("query")} />
+  <p {...filter.text("count")} />
+</div>
+```
+
+The `import type` is erased, so the server never loads the component; a name that the component
+doesn't return is a type error. `mount()` runs once in `main.ts` for every registered component on
+the page, so there is nothing to add to the page script. `src/client/components/project-search.ts`
+and its use in `projects.tsx` are the worked example.
 
 ## 7. Page CSS — `src/client/pages/dashboard.css`
 

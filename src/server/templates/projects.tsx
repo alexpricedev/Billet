@@ -1,3 +1,5 @@
+import type { ProjectSearch } from "@client/components/project-search";
+import { component } from "@client/reactive/attributes";
 import type { JSX } from "preact";
 import { CsrfField } from "../components/csrf-field";
 import { DataTable } from "../components/data-table";
@@ -25,6 +27,10 @@ export type ProjectsProps = {
   user: User | null;
   csrfToken?: string;
 };
+
+// Binding names below are checked against the client component's type, so a
+// rename on either side fails `bun run typecheck` rather than going quiet.
+const search = component<ProjectSearch>("project-search");
 
 export const Projects = (props: ProjectsProps): JSX.Element => {
   // Only re-fill the create form when that submit failed.
@@ -95,72 +101,97 @@ export const Projects = (props: ProjectsProps): JSX.Element => {
         </form>
       </section>
 
-      <div className="projects-header">
-        <h2>Projects</h2>
-        <div
-          id="projects-search"
-          data-projects={JSON.stringify(
-            props.projects.map((p) => ({ id: p.id, title: p.title })),
+      <div {...search.root}>
+        <div className="projects-header">
+          <h2>Projects</h2>
+          {props.projects.length > 0 && (
+            <div className="search-container">
+              <p
+                className="search-count text-tertiary"
+                {...search.text("summary")}
+              >
+                Showing {props.projects.length} of {props.projects.length}
+              </p>
+              <label htmlFor="project-search-input" className="sr-only">
+                Search projects
+              </label>
+              <input
+                id="project-search-input"
+                type="text"
+                placeholder="Search projects..."
+                {...search.value("query")}
+              />
+            </div>
           )}
-        />
-      </div>
-      {!props.isAuthenticated && (
-        <p className="text-tertiary">
-          <a href="/login">Log in</a> to delete projects — the delete column
-          only renders for authenticated users, showing how auth gates both
-          controller logic and template output.
-        </p>
-      )}
-      {props.projects.length === 0 ? (
-        <p className="text-tertiary">No projects yet.</p>
-      ) : (
-        <div id="projects-list">
-          <DataTable className="project-list" caption="Projects">
-            <thead>
-              <tr>
-                <th scope="col">Title</th>
-                <th scope="col">Created by</th>
-                {props.isAuthenticated && (
-                  <th scope="col">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {props.projects.map((project) => (
-                <tr key={project.id}>
-                  <td>{project.title}</td>
-                  <td>
-                    {project.created_by
-                      ? project.created_by === props.user?.email
-                        ? "You"
-                        : "User"
-                      : "Guest"}
-                  </td>
-                  {props.isAuthenticated &&
-                    props.deleteCsrfTokens[project.id] && (
-                      <td className="delete-cell">
-                        <form
-                          method="POST"
-                          action={`/projects/${project.id}/delete`}
-                          className="delete-form"
-                        >
-                          <CsrfField
-                            token={props.deleteCsrfTokens[project.id]}
-                          />
-                          <button type="submit" className="delete-btn">
-                            Delete
-                          </button>
-                        </form>
-                      </td>
-                    )}
-                </tr>
-              ))}
-            </tbody>
-          </DataTable>
         </div>
-      )}
+        {!props.isAuthenticated && (
+          <p className="text-tertiary">
+            <a href="/login">Log in</a> to delete projects — the delete column
+            only renders for authenticated users, showing how auth gates both
+            controller logic and template output.
+          </p>
+        )}
+        {props.projects.length === 0 ? (
+          <p className="text-tertiary">No projects yet.</p>
+        ) : (
+          <div id="projects-list">
+            <DataTable className="project-list" caption="Projects">
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col">Created by</th>
+                  {props.isAuthenticated && (
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {props.projects.map((project) => (
+                  <tr key={project.id}>
+                    <td>{project.title}</td>
+                    <td>
+                      {project.created_by
+                        ? project.created_by === props.user?.email
+                          ? "You"
+                          : "User"
+                        : "Guest"}
+                    </td>
+                    {props.isAuthenticated &&
+                      props.deleteCsrfTokens[project.id] && (
+                        <td className="delete-cell">
+                          <form
+                            method="POST"
+                            action={`/projects/${project.id}/delete`}
+                            className="delete-form"
+                          >
+                            <CsrfField
+                              token={props.deleteCsrfTokens[project.id]}
+                            />
+                            <button type="submit" className="delete-btn">
+                              Delete
+                            </button>
+                          </form>
+                        </td>
+                      )}
+                  </tr>
+                ))}
+                {/* Shown by the search component when nothing matches. */}
+                <tr className="empty-row" hidden {...search.show("noMatches")}>
+                  <td
+                    colSpan={props.isAuthenticated ? 3 : 2}
+                    className="text-tertiary"
+                    style={{ textAlign: "center" }}
+                  >
+                    No matching projects found.
+                  </td>
+                </tr>
+              </tbody>
+            </DataTable>
+          </div>
+        )}
+      </div>
 
       <section className="api-section">
         <h2>API Endpoints</h2>

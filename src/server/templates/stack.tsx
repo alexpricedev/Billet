@@ -20,8 +20,8 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
     <p className="lead">
       Billet is a server-rendered TypeScript starter built on Bun. Templates are
       JSX compiled at the edge — no client framework, no virtual DOM, no
-      hydration step. Pages arrive as plain HTML with optional islands of
-      interactivity.
+      hydration step. Pages arrive as plain HTML, and a few hundred lines of
+      signals bind interactivity to that markup where a page needs it.
     </p>
 
     <section>
@@ -134,9 +134,10 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
             <td>Native @import resolution, CSS nesting, and minification</td>
           </tr>
           <tr>
-            <td>Preact</td>
+            <td>Signals</td>
             <td>
-              Lightweight islands for interactive components — no full SPA
+              An in-repo reactive layer that binds to server markup by name — no
+              virtual DOM, no eval, no full SPA
             </td>
           </tr>
         </tbody>

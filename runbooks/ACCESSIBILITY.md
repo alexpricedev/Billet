@@ -68,8 +68,7 @@ Keep the baseline intact by following these when you add pages:
 - **Forms** — never rely on a placeholder as a label (it vanishes on input and
   is invisible to voice control). Wrap fields in `FormField` for a visible
   label, or add a `.sr-only` `<label htmlFor>` for compact/inline inputs (see
-  the create form in `projects.tsx` and the search island in
-  `project-search.tsx`).
+  the create form and the search box in `projects.tsx`).
 - **Tables** — use the `DataTable` component, pass a `caption`, and give every
   header cell `scope="col"` (or `scope="row"`). Pass `captionVisible` if you
   want the caption shown rather than screen-reader-only.

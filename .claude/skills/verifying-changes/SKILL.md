@@ -84,4 +84,4 @@ on a scratch port against the test database, and covers what happy-dom can't: th
 actually executing, CSP not silently blocking an asset, and a full form journey with trusted input
 events. Deliberately not part of `bun run test` — the API is experimental and the engine varies by
 platform, so it must never gate the deterministic suite. Run it after changing
-`security-headers.ts`, `layouts.tsx`, the import map, or anything under `src/client/`.
+`security-headers.ts`, `layouts.tsx`, or anything under `src/client/`.
