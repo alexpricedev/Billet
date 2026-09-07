@@ -25,7 +25,7 @@ const PAGES: LlmsPage[] = [
     path: "/stack",
     title: "The Stack",
     description:
-      "The technologies and architecture Billet is built on — Bun, server-rendered JSX, PostgreSQL, and Preact islands.",
+      "The technologies and architecture Billet is built on — Bun, server-rendered JSX, PostgreSQL, and a small reactive layer.",
   },
   {
     path: "/forms",

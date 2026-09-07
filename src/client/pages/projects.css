@@ -54,6 +54,12 @@
     }
   }
 
+  /* The search box does nothing until the component binds it, so the page
+     without JavaScript never shows a control that does nothing. */
+  [data-component="project-search"]:not([data-mounted]) .search-container {
+    display: none;
+  }
+
   .search-count {
     font-size: 13px;
     margin: 0;

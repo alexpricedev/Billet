@@ -35,24 +35,38 @@ tests in the same file, so `init()` would run against stale module state.
 The fixture has to match what the server actually renders — the same ids, classes, and
 `data-` attributes the script queries. If you change the template, change the fixture.
 
-## Preact islands
+## Components
 
-Render into a container and assert on the output:
+A component binds to markup the server rendered, so the fixture is the template itself. Render it
+with `renderToString`, take `<main>` out of an inert `<template>` (anywhere live, happy-dom would
+try to fetch the layout's stylesheet and bundle), register the component, and `mount()`:
 
 ```tsx
-import { render } from "preact";
+import { renderToString } from "preact-render-to-string";
+import { mount, registerComponent } from "@client/reactive/component";
+import { Projects } from "@server/templates/projects";
+import { projectSearch } from "./project-search";
 
-const container = document.createElement("div");
-document.body.appendChild(container);
-render(<ProjectSearch projects={[{ id: 1, title: "Test" }]} />, container);
-expect(container.textContent).toContain("Test");
+const template = document.createElement("template");
+template.innerHTML = renderToString(<Projects projects={[…]} … />);
+document.body.innerHTML = template.content.querySelector("main")?.innerHTML ?? "";
+
+registerComponent(projectSearch);
+const unmount = mount();
+
+input.value = "beta";
+input.dispatchEvent(new Event("input", { bubbles: true }));
+expect(row.hidden).toBe(true); // effects run synchronously — nothing to await
 ```
 
-Preact is the project-wide JSX runtime, so no pragma is needed. The file must be `.tsx` for the
-JSX to compile.
+Because the fixture is the real template, a renamed id or a moved element fails here rather than in
+the browser, and there is no hand-copied HTML to keep in step. Call the disposer `mount()` returns
+in `afterEach` so the next test's `mount()` starts clean. `src/client/components/project-search.test.tsx`
+is the full example.
 
-Islands here reach outside their own tree (`ProjectSearch` toggles rows in the server-rendered
-table by id), so the fixture usually needs that surrounding markup in `document.body` too.
+For the reactive layer itself — a new binding attribute, say — write an inline fixture with a
+throwaway component, as `src/client/reactive/component.test.ts` does. The registry is module
+state, so give each throwaway component a unique name.
 
 ## Page registration
 

@@ -72,35 +72,49 @@ so a developer who never runs an agent never sees the rows.
 human's cookie out of their browser instead of minting one: it works, and it makes the agent's
 requests indistinguishable from the developer's in the logs.
 
-### One JSX runtime, two execution models
+### JSX is a server-side template engine, nothing more
 
 Everything compiles with Preact (`jsxImportSource: preact` in `tsconfig.json`) — there is no React
-in this project. What differs is *when* the JSX runs, and the `src/server/` vs `src/client/` split
-is the signal:
-
-- **`src/server/`** renders once through `renderToString()` from `preact-render-to-string` and ships
-  as HTML. It never hydrates, so `useState` in a server template does nothing.
-- **`src/client/`** mounts into the live DOM with `render()` from `preact` and is fully interactive.
-
-`preact` is a runtime **dependency**, not a devDependency — the server imports its JSX runtime, so a
-production install without it won't boot. The client bundle marks it `--external` and resolves it
-from the import map in `src/server/components/layouts.tsx`, so the version pinned there must stay in
-step with `package.json`.
-
-The import map carries **both** `preact/jsx-runtime` and `preact/jsx-dev-runtime`, and both are
-`--external` in the client build. Neither is dead weight. Bun 1.4 documents `"jsx": "react-jsx"` as
-emitting `jsx` from `<pkg>/jsx-runtime`, but the mere presence of a `bunfig.toml` — any content, even
-empty — makes it emit `jsxDEV` from `<pkg>/jsx-dev-runtime` instead. This repo has one, so the
-bundle and the server both use the dev runtime. Reproduce it by deleting `bunfig.toml` and
-rebuilding; the import changes. Whichever way Bun settles this, both entries are mapped, so nothing
-breaks — which is the only reason it isn't a live bug here. Don't prune the "unused" one.
+in this project, and no Preact reaches the browser either. `src/server/` renders once through
+`renderToString()` from `preact-render-to-string` and ships HTML. It never hydrates, so `useState`
+in a template does nothing, and nothing in `src/client/` imports `preact`. `preact` is still a
+runtime **dependency**, not a devDependency: the server imports its JSX runtime, so a production
+install without it won't boot.
 
 **Write SVG attributes in kebab-case** (`stroke-width`, not `strokeWidth`). Preact passes camelCase
 attribute names through verbatim, and the HTML parser doesn't recognise `strokeWidth` — the stroke
 silently renders at the default width. React used to rewrite these; nothing does now.
 
+### Client interactivity binds to the markup the server rendered
+
+`src/client/reactive/` is the whole client framework: `signal.ts` (signal, computed, effect, batch),
+`component.ts` (`defineComponent`, `registerComponent`, `mount`), and `attributes.ts` (the `data-*`
+vocabulary). A component is a factory that receives its root element and returns *named* signals,
+computeds and actions; the template puts those names in `data-text`, `data-show`, `data-value`,
+`data-class`, `data-attr`, `data-prop` and `data-on` attributes under a `data-component` root, and
+`mount()` in `main.ts` wires them. The template owns the markup and the component owns the state —
+no virtual DOM, nothing rendered twice, and the page without JavaScript is the same HTML.
+
+The attributes carry **names, never expressions**. That is what keeps `'unsafe-eval'` out of the
+CSP, and it is what makes the names checkable: a template builds them through
+`component<T>("name")` from `attributes.ts`, where `T` is the component's exported type
+(`import type` — erased, so the server never loads client code). A misspelt binding or component
+name fails `bun run typecheck`. `attributes.ts` is the one file under `src/client/` that server
+code imports at runtime; keep it free of DOM references.
+
+Reads are `.value` on both signals and computeds; only a signal has `.set()`. A method rather than
+a setter because TypeScript ignores `readonly` when checking assignability, so a computed would
+otherwise pass wherever a writable signal is required — the `data-value` check depends on it.
+
+Effects run synchronously when a signal is set, so a client test writes a signal or dispatches an
+`input` event and asserts on the DOM on the next line. A component that is defined but never passed
+to `registerComponent` in `main.ts` never mounts — the same quiet failure as an unregistered page.
+`data-component` is also a plain CSS hook on `<body>` and the nav; a root whose name has no
+registered component is skipped, and bindings inside a nested `data-component` belong to that
+inner root.
+
 No Web Components. Shadow DOM and custom-element lifecycles need browser infrastructure to test;
-pure functions and Preact islands are both testable under `bun:test`.
+pure functions and these components are both testable under `bun:test`.
 
 ### Service tests mock the DB module before importing the service
 
@@ -238,7 +252,7 @@ Password hashing lives in `src/server/utils/crypto.ts` and is deliberately *not*
 Every response gets its headers from `secureRoutes` / `handleGuarded` in
 `src/server/utils/security-headers.ts`. Controllers set only content-specific headers.
 
-The CSP script allowlist is `'self' 'unsafe-inline' https://unpkg.com https://esm.sh`. Any new
+The CSP script allowlist is `'self' 'unsafe-inline' https://unpkg.com`. Any new
 third-party script needs the CSP entry, an SRI `integrity` hash, and ideally a `preconnect` in
 `layouts.tsx` — otherwise it is silently blocked in the browser but passes every test.
 

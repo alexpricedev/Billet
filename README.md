@@ -118,9 +118,9 @@ parallel with a database per worker.
 
 ### Frontend
 
-- **Preact JSX as a template engine** — server-rendered to a string, no hydration, no client-side framework runtime on the page by default. One JSX runtime across server and client, so there's no second React toolchain to reason about
+- **Preact JSX as a template engine** — server-rendered to a string, no hydration, and no framework runtime on the page. Preact is a build-time detail of the server; nothing in the browser imports it
 - **Bun CSS bundler** with `@import` resolution, CSS nesting, and minification — no external CSS tooling needed
-- **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example loaded via CDN import map)
+- **Reactive components that bind to the server's markup** — `src/client/reactive/` is a few hundred lines: signals, computeds and effects, plus `data-*` bindings (`data-text`, `data-show`, `data-value`, `data-on`…) that name a component's state by name, never by expression. No virtual DOM, nothing rendered twice, no `'unsafe-eval'` in the CSP, and the binding names in a template are typechecked against the component. Ships with a live table filter as the example
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
 - **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
 - **Accessibility baseline** — semantic landmarks, labelled form controls, a keyboard focus ring, reduced-motion support, announced flash messages, and captioned data tables out of the box — see [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md)
@@ -135,7 +135,7 @@ The "designed for AI agents" tagline is the reason Billet exists, so here's what
 
 ### CLAUDE.md and skills — the agent's guide
 
-The repo ships a deliberately short [`CLAUDE.md`](CLAUDE.md) plus a set of skills in `.claude/skills/`. `CLAUDE.md` covers only what an agent can't learn by reading the repo — the gotchas: two JSX runtimes with no hydration, why service tests mock the database module before importing, why `bun test` isn't the test command, where security headers actually come from. Everything procedural lives in skills that load on demand:
+The repo ships a deliberately short [`CLAUDE.md`](CLAUDE.md) plus a set of skills in `.claude/skills/`. `CLAUDE.md` covers only what an agent can't learn by reading the repo — the gotchas: JSX with no hydration, why service tests mock the database module before importing, why `bun test` isn't the test command, where security headers actually come from. Everything procedural lives in skills that load on demand:
 
 | Skill | Loads when |
 |---|---|
@@ -248,10 +248,11 @@ Visit [http://localhost:3000](http://localhost:3000) — migrations run automati
 ```
 src/
 ├── client/                     # Browser-side code
-│   ├── main.ts                 # Entry point — routes to page controllers
+│   ├── main.ts                 # Entry point — registers pages and components
 │   ├── page-lifecycle.ts       # Page init/cleanup system
+│   ├── reactive/               # Signals, components, and the data-* binding vocabulary
 │   ├── style.css               # Global styles (CSS entry point)
-│   ├── components/             # Shared CSS (nav, layout)
+│   ├── components/             # Shared components + CSS (nav, layout, project search)
 │   └── pages/                  # Page-specific JS + CSS (co-located)
 │
 ├── server/                     # Server-side code

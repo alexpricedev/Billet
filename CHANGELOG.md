@@ -7,6 +7,51 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## Unreleased
+
+Preact leaves the browser. It stays as the server's template engine — every page still renders
+through `renderToString`, and JSX is still what gives templates a typecheck — but nothing in
+`src/client/` imports it any more, the client bundle no longer marks it external, and the import
+map, the `esm.sh` preconnect, and `https://esm.sh` in the CSP `script-src` are gone. The one island
+(the project search) is rewritten against a reactive layer that lives in the repo.
+
+`src/client/reactive/` is that layer, in three files. `signal.ts` is a signal, computed, effect and
+batch, synchronous and pull-based so an effect reading a signal and a computed of it runs once per
+write. `component.ts` is `defineComponent`, `registerComponent` and `mount`: a component is a
+factory that receives its root element and returns named signals, computeds and actions; `mount`
+wires them to `data-text`, `data-show`, `data-value`, `data-class`, `data-attr`, `data-prop` and
+`data-on` attributes under a `data-component` root. `attributes.ts` is that vocabulary, shared by
+the templates that write it and the client that reads it, with a typed `component<T>()` builder so a
+template's binding names are checked against the component's exported type — a misspelt name fails
+`bun run typecheck`.
+
+The attributes carry names, never expressions, so nothing on the page evaluates a string and
+`'unsafe-eval'` stays out of the CSP. The template owns the markup, the component owns the state,
+nothing is rendered twice, and the page without JavaScript is the same HTML. The search box on
+`/projects` now ships in the server markup, hidden by CSS until the component mounts, and its
+"no matches" row is server-rendered too; it also matches on the title cell rather than the whole row,
+so searching "guest" no longer matches every row. Client tests for a component render the real
+template as their fixture (`project-search.test.tsx`) rather than a hand-copied fragment.
+
+### Breaking changes
+
+- **A fork with its own Preact islands has to bring Preact back or rewrite them.** The bundle no
+  longer marks `preact` external, so an island that imports it would be bundled from
+  `node_modules` — which works, but ships a copy of Preact your fork used to load from esm.sh, and
+  the import map that used to resolve it is gone from `layouts.tsx`. Either restore the
+  `--external` flags, the import map, and `https://esm.sh` in `script-src` (all in
+  `package.json`, `src/server/components/layouts.tsx` and `src/server/utils/security-headers.ts`)
+  or rewrite the island as a component against `src/client/reactive/`. `project-search.ts` is the
+  worked example; the `writing-tests` skill's client reference has the test pattern.
+- **`src/client/pages/projects.ts` is deleted, and `projects.tsx` no longer renders
+  `#projects-search` or `data-projects`.** A fork that extended either should move the behaviour
+  into the `project-search` component or its markup in the template.
+- **`data-component` now also mounts components.** It was a CSS hook on `<body>` and the nav; both
+  still work unchanged, because a root whose name has no registered component is skipped. But
+  `data-text`, `data-show` and the other binding attributes are now read on every element under a
+  `data-component` root that *is* registered, so a fork using those attribute names for something
+  else should rename them.
+
 ## 3.5.0
 
 `railway.json` is deleted. Railway [deprecated Config as Code](https://docs.railway.com/config-as-code):

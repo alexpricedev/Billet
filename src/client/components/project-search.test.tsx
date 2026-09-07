@@ -1,155 +1,145 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { render } from "preact";
-import { ProjectSearch } from "./project-search";
+import { mount, registerComponent } from "@client/reactive/component";
+import { Projects } from "@server/templates/projects";
+import { renderToString } from "preact-render-to-string";
+import { projectSearch } from "./project-search";
 
-const projects = [
-  { id: 1, title: "Alpha" },
-  { id: 2, title: "Beta" },
-  { id: 3, title: "Gamma" },
-];
+// The fixture is the real template, not a hand-copied fragment: the component
+// binds to whatever `projects.tsx` renders, so drift between the two would fail
+// here rather than in the browser. The page is parsed into a <template>, whose
+// content is inert, and only <main> goes into the document — anywhere live,
+// happy-dom would try to fetch the layout's stylesheet and bundle.
+const mainOf = (html: string): string => {
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const main = template.content.querySelector("main");
+  if (!main) throw new Error("Template rendered no <main>");
+  return main.innerHTML;
+};
 
-describe("ProjectSearch", () => {
-  let container: HTMLDivElement;
+const page = renderToString(
+  <Projects
+    projects={[
+      { id: 1, title: "Alpha", created_by: null },
+      { id: 2, title: "Beta", created_by: "someone@example.com" },
+      { id: 3, title: "Gamma", created_by: null },
+    ]}
+    state={{}}
+    isAuthenticated={false}
+    createCsrfToken="token"
+    deleteCsrfTokens={{}}
+    user={null}
+  />,
+);
+
+registerComponent(projectSearch);
+
+const searchInput = (): HTMLInputElement => {
+  const el = document.getElementById("project-search-input");
+  if (!(el instanceof HTMLInputElement)) throw new Error("No search input");
+  return el;
+};
+
+const projectRows = (): HTMLTableRowElement[] =>
+  Array.from(
+    document.querySelectorAll<HTMLTableRowElement>(
+      "#projects-list tbody tr:not(.empty-row)",
+    ),
+  );
+
+const emptyRow = (): HTMLTableRowElement => {
+  const el = document.querySelector(".empty-row");
+  if (!(el instanceof HTMLTableRowElement)) throw new Error("No empty row");
+  return el;
+};
+
+const type = (value: string) => {
+  const input = searchInput();
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+};
+
+describe("project search", () => {
+  let unmount: () => void;
 
   beforeEach(() => {
-    container = document.createElement("div");
-    document.body.appendChild(container);
-
-    const list = document.createElement("div");
-    list.id = "projects-list";
-    const table = document.createElement("table");
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-    for (const label of ["Title", "Created by"]) {
-      const th = document.createElement("th");
-      th.textContent = label;
-      headerRow.appendChild(th);
-    }
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-    const tbody = document.createElement("tbody");
-    for (const p of projects) {
-      const row = document.createElement("tr");
-      const td = document.createElement("td");
-      td.textContent = p.title;
-      row.appendChild(td);
-      tbody.appendChild(row);
-    }
-    table.appendChild(tbody);
-    list.appendChild(table);
-    document.body.appendChild(list);
+    document.body.innerHTML = mainOf(page);
+    unmount = mount();
   });
 
   afterEach(() => {
+    unmount();
     document.body.innerHTML = "";
   });
 
-  test("renders search input", () => {
-    render(<ProjectSearch projects={projects} />, container);
-    const input = container.querySelector("input");
-    expect(input).not.toBeNull();
-    if (!input) throw new Error("Input not found");
-    expect(input.placeholder).toBe("Search projects...");
+  test("the template renders the component root the client registers", () => {
+    const root = document.querySelector(
+      `[data-component="${projectSearch.name}"]`,
+    );
+    expect(root).not.toBeNull();
+    expect(root?.hasAttribute("data-mounted")).toBe(true);
   });
 
-  test("always shows count", () => {
-    render(<ProjectSearch projects={projects} />, container);
-    const countText = container.querySelector(".search-count");
-    expect(countText).not.toBeNull();
-    if (!countText) throw new Error("Count not found");
-    expect(countText.textContent).toContain("Showing 3 of 3");
+  test("starts with every row visible and the full count", () => {
+    expect(projectRows().every((row) => !row.hidden)).toBe(true);
+    expect(document.querySelector(".search-count")?.textContent).toBe(
+      "Showing 3 of 3",
+    );
+    expect(emptyRow().hidden).toBe(true);
   });
 
-  test("filters and shows count when query is entered", async () => {
-    render(<ProjectSearch projects={projects} />, container);
-    const input = container.querySelector("input");
-    if (!input) throw new Error("Input not found");
+  test("hides rows whose title doesn't match, case-insensitively", () => {
+    type("BETA");
 
-    input.value = "alpha";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-
-    await new Promise((r) => setTimeout(r, 10));
-
-    const countText = container.querySelector(".search-count");
-    expect(countText).not.toBeNull();
-    if (!countText) throw new Error("Count not found");
-    expect(countText.textContent).toContain("Showing 1 of 3");
+    expect(projectRows().map((row) => row.hidden)).toEqual([true, false, true]);
+    expect(document.querySelector(".search-count")?.textContent).toBe(
+      "Showing 1 of 3",
+    );
   });
 
-  test("hides non-matching rows in the server-rendered table", async () => {
-    render(<ProjectSearch projects={projects} />, container);
-    const input = container.querySelector("input");
-    if (!input) throw new Error("Input not found");
-
-    input.value = "beta";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-
-    await new Promise((r) => setTimeout(r, 10));
-
-    const listEl = document.getElementById("projects-list");
-    if (!listEl) throw new Error("List not found");
-    const rows = listEl.querySelectorAll("tbody tr");
-    expect((rows[0] as HTMLElement).hidden).toBe(true);
-    expect((rows[1] as HTMLElement).hidden).toBe(false);
-    expect((rows[2] as HTMLElement).hidden).toBe(true);
+  test("matches on the title, not the whole row", () => {
+    // Every row says "Guest" or "User" in its second cell.
+    type("guest");
+    expect(projectRows().every((row) => row.hidden)).toBe(true);
   });
 
-  test("shows all rows when query is cleared", async () => {
-    render(<ProjectSearch projects={projects} />, container);
-    const input = container.querySelector("input");
-    if (!input) throw new Error("Input not found");
+  test("shows the empty row when nothing matches, and hides it again", () => {
+    type("zzz");
+    expect(emptyRow().hidden).toBe(false);
+    expect(emptyRow().textContent).toContain("No matching projects found.");
+    expect(document.querySelector(".search-count")?.textContent).toBe(
+      "Showing 0 of 3",
+    );
 
-    input.value = "beta";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 10));
-
-    input.value = "";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 10));
-
-    const listEl = document.getElementById("projects-list");
-    if (!listEl) throw new Error("List not found");
-    const rows = listEl.querySelectorAll("tbody tr:not(.empty-row)");
-    for (const row of Array.from(rows)) {
-      expect((row as HTMLElement).hidden).toBe(false);
-    }
+    type("alpha");
+    expect(emptyRow().hidden).toBe(true);
   });
 
-  test("shows empty row when no results match", async () => {
-    render(<ProjectSearch projects={projects} />, container);
-    const input = container.querySelector("input");
-    if (!input) throw new Error("Input not found");
-
-    input.value = "zzz";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-
-    await new Promise((r) => setTimeout(r, 10));
-
-    const listEl = document.getElementById("projects-list");
-    if (!listEl) throw new Error("List not found");
-    const emptyRow = listEl.querySelector(".empty-row") as HTMLElement;
-    expect(emptyRow).not.toBeNull();
-    expect(emptyRow.hidden).toBe(false);
-    expect(emptyRow.textContent).toContain("No matching projects found.");
+  test("clearing the query restores every row", () => {
+    type("beta");
+    type("");
+    expect(projectRows().every((row) => !row.hidden)).toBe(true);
   });
+});
 
-  test("hides empty row when results match again", async () => {
-    render(<ProjectSearch projects={projects} />, container);
-    const input = container.querySelector("input");
-    if (!input) throw new Error("Input not found");
+describe("project search without projects", () => {
+  test("renders no search box, and mounting is harmless", () => {
+    const empty = renderToString(
+      <Projects
+        projects={[]}
+        state={{}}
+        isAuthenticated={false}
+        createCsrfToken="token"
+        deleteCsrfTokens={{}}
+        user={null}
+      />,
+    );
+    document.body.innerHTML = mainOf(empty);
 
-    input.value = "zzz";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 10));
-
-    input.value = "alpha";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 10));
-
-    const listEl = document.getElementById("projects-list");
-    if (!listEl) throw new Error("List not found");
-    const emptyRow = listEl.querySelector(".empty-row") as HTMLElement;
-    expect(emptyRow).not.toBeNull();
-    expect(emptyRow.hidden).toBe(true);
+    const unmount = mount();
+    expect(document.getElementById("project-search-input")).toBeNull();
+    expect(document.body.textContent).toContain("No projects yet.");
+    unmount();
+    document.body.innerHTML = "";
   });
 });

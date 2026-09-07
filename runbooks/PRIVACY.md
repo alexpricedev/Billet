@@ -97,7 +97,7 @@ document.addEventListener("cc:consent-granted", (e) => {
 });
 
 // "Manage cookies" trigger — data attribute, never inline onclick, so it fits
-// Billet's server-JSX + islands model.
+// Billet's server-JSX + data-attribute binding model.
 for (const el of document.querySelectorAll<HTMLElement>("[data-cc-open-prefs]")) {
   el.addEventListener("click", () => CookieConsent.current()?.show());
 }
@@ -202,10 +202,6 @@ you add one:
 - **Gate non-essential scripts behind consent** (§3, Step 4).
 - **Re-audit periodically** — list every contacted domain in DevTools' network
   panel and justify each one.
-
-> Framework maintainer note: the esm.sh Preact modules loaded via the inline
-> importmap in `layouts.tsx` carry no SRI (importmaps can't express `integrity`).
-> Self-host Preact or pin to an immutable versioned URL if you want them covered.
 
 ## 7. Data minimisation & logging
 
