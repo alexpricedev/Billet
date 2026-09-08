@@ -7,6 +7,7 @@
 <!-- Delete the lines that don't apply. -->
 
 - [ ] Verified in the browser — CI has none
+- [ ] New client code: which of the three tiers in `CLAUDE.md` is it, and why not the one above it?
 - [ ] New third-party script has a CSP entry, an SRI `integrity` hash, and a `preconnect` in `layouts.tsx`
 - [ ] New page is registered in `client/main.ts` and its CSS `@import`ed in `client/style.css`
 - [ ] New table is added to `cleanupTestData` in `test-utils/helpers.ts`
