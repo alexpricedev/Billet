@@ -82,6 +82,22 @@ const send = (form: HTMLFormElement): Promise<Response> => {
 };
 
 /**
+ * Parse the HTML a fragment response returned into its element. `parent` is
+ * the tag the markup is legal inside: a `<tr>` needs a `tbody`, most things
+ * are fine in the default `div`. A table row parsed on its own is silently
+ * dropped by the HTML parser, which is the whole reason this takes a parent.
+ */
+export function parseFragment(html: string, parent = "div"): HTMLElement {
+  const holder = document.createElement(parent);
+  holder.innerHTML = html;
+  const el = holder.firstElementChild;
+  if (!(el instanceof HTMLElement)) {
+    throw new RequestError(200, "Fragment response contained no element");
+  }
+  return el;
+}
+
+/**
  * Post `form` as a fragment request and resolve with the response body — the
  * HTML the controller rendered, or empty for a 204. Retries once when the
  * server refreshes a stale CSRF token; rejects with `RequestError` otherwise.

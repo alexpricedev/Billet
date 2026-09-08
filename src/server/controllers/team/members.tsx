@@ -1,6 +1,3 @@
-import type { BunRequest } from "bun";
-import { checkCsrf, isRecoverableCsrfFailure } from "../../middleware/csrf";
-import { requireOrgRole } from "../../middleware/org";
 import {
   isOrgRole,
   listMembers,
@@ -8,14 +5,10 @@ import {
   removeMember,
   updateMemberRole,
 } from "../../services/organizations";
-import { teamsEnabled } from "../../services/teams-mode";
 import type { TeamState } from "../../templates/team";
-import { render404 } from "../../utils/errors";
+import { formAction } from "../../utils/form-action";
 import { readFormValues } from "../../utils/form-data";
-import { redirect } from "../../utils/response";
-import { stateHelpers } from "../../utils/state";
-
-const { setFlash } = stateHelpers<TeamState>();
+import { type OrgAuthorized, orgRoleGuard } from "./guards";
 
 /**
  * Resolve a member by id *within the caller's org*.
@@ -43,39 +36,30 @@ const refusal = (
 ): NonNullable<TeamState["state"]> =>
   error === "last-owner" ? "last-owner" : "member-gone";
 
+// Admins and above. A stale token flashes and never replays the action.
+const memberAction = formAction<TeamState, OrgAuthorized>;
+
+const adminOnly = {
+  redirectTo: "/team",
+  guard: orgRoleGuard("admin"),
+  onExpired: () => ({ state: "action-csrf-expired" as const }),
+};
+
 export const teamMembers = {
-  async updateRole(req: BunRequest): Promise<Response> {
-    if (!teamsEnabled()) return render404();
-
-    const guard = await requireOrgRole(req, "admin");
-    if (!guard.authorized) return guard.response;
-
-    const csrf = await checkCsrf(req, {
-      method: "POST",
-      path: new URL(req.url).pathname,
-    });
-    if (!csrf.ok) {
-      if (!isRecoverableCsrfFailure(csrf)) return csrf.response;
-
-      setFlash(req, { state: "action-csrf-expired" });
-      return redirect("/team");
-    }
-
+  updateRole: memberAction(adminOnly)(async (req, _ctx, guard) => {
     const { org_role } = await readFormValues(req, ["org_role"]);
 
     if (!org_role || !isOrgRole(org_role)) {
-      setFlash(req, { state: "invalid-role" });
-      return redirect("/team");
+      return { reject: 400, flash: { state: "invalid-role" } };
     }
 
     const orgId = guard.membership.org.id;
     const target = await findInOrg(orgId, req.params.id);
 
-    // Not-found rather than 404, so "wrong org" and "already gone" stay
-    // indistinguishable from the outside.
+    // Not-found rather than 404 to the page, so "wrong org" and "already
+    // gone" stay indistinguishable from the outside.
     if (!target) {
-      setFlash(req, { state: "member-gone" });
-      return redirect("/team");
+      return { reject: 404, flash: { state: "member-gone" } };
     }
 
     // Not your own role. The owner-only rule below already stops the upward
@@ -83,8 +67,7 @@ export const teamMembers = {
     // the threshold this page requires and leaves you unable to undo it. A
     // trapdoor, and the same one removal was refused for.
     if (target.id === guard.ctx.user?.id) {
-      setFlash(req, { state: "self-role-change" });
-      return redirect("/team");
+      return { reject: 403, flash: { state: "self-role-change" } };
     }
 
     // Only an owner may grant or revoke ownership. Without this an admin could
@@ -92,48 +75,29 @@ export const teamMembers = {
     const touchesOwnership =
       target.org_role === "owner" || org_role === "owner";
     if (touchesOwnership && guard.membership.role !== "owner") {
-      setFlash(req, { state: "owner-only" });
-      return redirect("/team");
+      return { reject: 403, flash: { state: "owner-only" } };
     }
 
     const result = await updateMemberRole(orgId, target.id, org_role);
 
     if (!result.success) {
-      setFlash(req, { state: refusal(result.error), email: target.email });
-      return redirect("/team");
+      return {
+        reject: 409,
+        flash: { state: refusal(result.error), email: target.email },
+      };
     }
 
-    setFlash(req, {
-      state: "role-changed",
-      email: target.email,
-      org_role,
-    });
-    return redirect("/team");
-  },
+    return {
+      flash: { state: "role-changed", email: target.email, org_role },
+    };
+  }),
 
-  async destroy(req: BunRequest): Promise<Response> {
-    if (!teamsEnabled()) return render404();
-
-    const guard = await requireOrgRole(req, "admin");
-    if (!guard.authorized) return guard.response;
-
-    const csrf = await checkCsrf(req, {
-      method: "POST",
-      path: new URL(req.url).pathname,
-    });
-    if (!csrf.ok) {
-      if (!isRecoverableCsrfFailure(csrf)) return csrf.response;
-
-      setFlash(req, { state: "action-csrf-expired" });
-      return redirect("/team");
-    }
-
+  destroy: memberAction(adminOnly)(async (req, _ctx, guard) => {
     const orgId = guard.membership.org.id;
     const target = await findInOrg(orgId, req.params.id);
 
     if (!target) {
-      setFlash(req, { state: "member-gone" });
-      return redirect("/team");
+      return { reject: 404, flash: { state: "member-gone" } };
     }
 
     // Leaving your own team isn't a shipped action — see runbooks/TEAMS.md §8.
@@ -141,23 +105,22 @@ export const teamMembers = {
     // saying the same thing, so the hidden control isn't the only thing
     // stopping it.
     if (target.id === guard.ctx.user?.id) {
-      setFlash(req, { state: "self-removal" });
-      return redirect("/team");
+      return { reject: 403, flash: { state: "self-removal" } };
     }
 
     if (target.org_role === "owner" && guard.membership.role !== "owner") {
-      setFlash(req, { state: "owner-only" });
-      return redirect("/team");
+      return { reject: 403, flash: { state: "owner-only" } };
     }
 
     const result = await removeMember(orgId, target.id);
 
     if (!result.success) {
-      setFlash(req, { state: refusal(result.error), email: target.email });
-      return redirect("/team");
+      return {
+        reject: 409,
+        flash: { state: refusal(result.error), email: target.email },
+      };
     }
 
-    setFlash(req, { state: "member-removed", email: target.email });
-    return redirect("/team");
-  },
+    return { flash: { state: "member-removed", email: target.email } };
+  }),
 };

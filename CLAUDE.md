@@ -124,6 +124,29 @@ inner root.
 No Web Components. Shadow DOM and custom-element lifecycles need browser infrastructure to test;
 pure functions and these components are both testable under `bun:test`.
 
+### Client code has three tiers, and the default is the first
+
+The server owns state and rendering. The client owns two things: presentation of state already on
+the page, and intercepting a form the page could have posted anyway. The test to apply before
+writing any client code: *if JavaScript were off, would this be wrong, or merely slower?* Wrong
+means it is server work. Slower is the only case where enhancement is a candidate.
+
+1. **Plain form, redirect, flash.** The default for every mutation. Needs no justification.
+2. **Enhanced form.** The same form and controller, answered with a fragment. Only when a reload
+   would lose context the user is actively holding — a list they are working through, a filter they
+   set. Write the reason in a comment on the component.
+3. **Presentation over rows already rendered.** Show, hide, count, filter. Signals hold interface
+   state for one page view, never domain data.
+
+`src/client/boundaries.test.ts` is the fence, and it fails the suite rather than a review: no
+`fetch`, markup building, `JSON.parse`, routing or storage in client code outside
+`reactive/request.ts`; no runtime imports across the server/client line in either direction (types
+cross freely); nothing in `src/shared/` touches the DOM or `node:`; and the built `main.js` stays
+under a byte budget. Raise the budget or add an exemption only with the reason written next to it —
+the number moving is the signal that something is being built on the client that belongs on the
+server. Optimistic updates, client-side templates and client routing are not tiers; they are the
+client application this project exists to not become.
+
 ### Every mutation is a form, and the fetch is an enhancement of it
 
 The todo page's add, toggle and delete are plain `<form method="POST">`s that work without
@@ -139,10 +162,28 @@ same header, which `submitForm` writes back into the form and retries once. Only
 gets that. A forged or cross-origin token fails hard with no header, exactly as a plain post does —
 see `isRecoverableCsrfFailure` for why the distinction is load-bearing.
 
-`submitForm` sends `redirect: "manual"`, so a controller that redirects (`requireAuth` sending a
-guest to `/login`) reads as a failure rather than a login page handed back as a row. On any failure
-the component falls back to `form.submit()`, and the server's flash says what happened. Never
-return a full page to a fragment request, and never return a fragment to a plain post.
+`submitForm` sends `redirect: "manual"`, so a controller that redirects reads as a failure rather
+than a login page handed back as a row; `formAction` answers a fragment request that a guard
+refused with a 401 (sent to `/login`) or 403 instead of the redirect. On any failure the component
+falls back to `form.submit()`, and the server's flash says what happened. Never return a full page
+to a fragment request, and never return a fragment to a plain post.
+
+### POST controllers are `formAction` handlers, and GET controllers mint with `csrfTokens`
+
+`formAction` (`src/server/utils/form-action.ts`) owns everything around the decision: the guard
+(`"session"`, `"user"`, or a function such as `orgRoleGuard`), the CSRF check with stale-token
+recovery on both paths, and the response — redirect-and-flash for a plain post, fragment or bare
+status for a fragment request. A handler returns an outcome, not a Response: `{ flash, fragment,
+status }` for success, `{ reject, flash }` for a refusal, or a `Response` as the escape hatch. The
+same handler serves both kinds of request; it never checks which it got. Every POST controller
+outside `controllers/auth/` uses it; the auth routes stay on the raw `checkCsrf` on purpose,
+because re-issuing a token around a credential-bearing action is a different risk calculation.
+
+`csrfTokens(ctx)` (`src/server/utils/csrf-tokens.ts`) is the GET side: `for(path)`,
+`forUser(path)`, `forEach(rows, path)` and `nav()`, each null (or absent) when the session can't
+mint, which the templates already treat as "render the form anyway". Tokens are minted in the
+controller and passed as props; templates stay pure functions, which is what lets client tests
+render them as fixtures.
 
 ### Service tests mock the DB module before importing the service
 

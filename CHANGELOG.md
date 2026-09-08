@@ -43,6 +43,21 @@ stale-but-authentic token gets `refreshCsrfToken()`: a 403 carrying a fresh toke
 `submitForm` writes back into the form and retries once. Forged or cross-origin tokens fail hard
 with no header, as before. On any failure the component falls back to `form.submit()`.
 
+**`formAction` and `csrfTokens` take the plumbing out of controllers.** Every POST controller
+outside `controllers/auth/` is now a `formAction` handler: the wrapper owns the guard (`"session"`,
+`"user"`, or a function such as `orgRoleGuard`), the CSRF check with stale-token recovery on both
+paths, and the response — redirect-and-flash for a plain post, fragment or bare status for a
+fragment request; a guard that would redirect a fragment request answers 401 or 403 instead. A
+handler returns `{ flash, fragment, status }`, `{ reject, flash }` or a `Response`. `csrfTokens(ctx)`
+mints the GET side in one call per form or per row. The todo, forms and team controllers shrink
+accordingly, with no behaviour change on the plain-post path.
+
+**Client code has three tiers, and a test enforces the fence.** `src/client/boundaries.test.ts`
+fails the suite on `fetch`, markup building, `JSON.parse`, routing or storage in client code
+outside `reactive/request.ts`; on runtime imports across the server/client line; on DOM or `node:`
+in `src/shared/`; and on `main.js` growing past a byte budget. CLAUDE.md states the tiers and the
+question to ask before writing client code; the PR template asks which tier a change is.
+
 **Todos replace projects.** Migration `009` drops `project` and creates `todo` with a
 `completed_at` column. `/todos` lists, adds, toggles and deletes; add and toggle return the row as
 a fragment, delete returns a 204. The `todo-list` component filters by all, active or completed,

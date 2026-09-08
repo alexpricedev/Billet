@@ -1,8 +1,6 @@
 import type { BunRequest } from "bun";
 import { getSessionContext, requireAuth } from "../../middleware/auth";
-import { checkCsrf, isRecoverableCsrfFailure } from "../../middleware/csrf";
 import { requireOrgRole } from "../../middleware/org";
-import { createCsrfToken } from "../../services/csrf";
 import { listInvites } from "../../services/invites";
 import {
   createOrganizationForUser,
@@ -12,14 +10,28 @@ import {
 } from "../../services/organizations";
 import { setSessionCookie } from "../../services/sessions";
 import { teamsEnabled } from "../../services/teams-mode";
+import type { User } from "../../services/users";
 import type { TeamState } from "../../templates/team";
 import { Team } from "../../templates/team";
+import { csrfTokens } from "../../utils/csrf-tokens";
 import { render404 } from "../../utils/errors";
+import { type ActionGuard, formAction } from "../../utils/form-action";
 import { readFormValues } from "../../utils/form-data";
 import { redirect, render } from "../../utils/response";
 import { fitFlashState, stateHelpers } from "../../utils/state";
 
-const { getFlash, setFlash } = stateHelpers<TeamState>();
+const { getFlash } = stateHelpers<TeamState>();
+
+// Creating a team needs a signed-in user but no membership yet — the one team
+// action requireOrgRole can't guard, because there is no org to have a role in.
+const signedInUser: ActionGuard<User> = async (req: BunRequest) => {
+  if (!teamsEnabled()) return { ok: false, response: render404() };
+  const ctx = await getSessionContext(req);
+  if (!ctx.isAuthenticated || !ctx.user) {
+    return { ok: false, response: redirect("/login") };
+  }
+  return { ok: true, value: ctx.user, ctx };
+};
 
 export const team = {
   async index(req: BunRequest): Promise<Response> {
@@ -31,17 +43,12 @@ export const team = {
     const ctx = await getSessionContext(req);
     if (!ctx.user || !ctx.sessionId) return redirect("/login");
 
-    const sessionId = ctx.sessionId;
-
     if (ctx.requiresSetCookie) {
-      setSessionCookie(req, sessionId);
+      setSessionCookie(req, ctx.sessionId);
     }
 
-    const navCsrfToken = await createCsrfToken(
-      sessionId,
-      "POST",
-      "/auth/logout",
-    );
+    const tokens = csrfTokens(ctx);
+    const navCsrfToken = await tokens.nav();
 
     const membership = await getMembership(ctx.user.id);
 
@@ -57,7 +64,7 @@ export const team = {
           membership={null}
           members={[]}
           invites={[]}
-          createCsrfToken={await createCsrfToken(sessionId, "POST", "/team")}
+          createCsrfToken={await tokens.for("/team")}
           inviteCsrfToken={null}
           roleCsrfTokens={{}}
           removeCsrfToken={null}
@@ -79,39 +86,11 @@ export const team = {
       listInvites(orgId),
     ]);
 
-    // Tokens are bound to a method and a path, so every form on the page needs
-    // its own — one can't be reused across the rows. Same as todos.index.
-    const roleCsrfTokens: Record<string, string> = {};
-    for (const member of members) {
-      roleCsrfTokens[member.id] = await createCsrfToken(
-        sessionId,
-        "POST",
-        `/team/members/${member.id}/role`,
-      );
-    }
-
-    const revokeCsrfTokens: Record<string, string> = {};
-    for (const invite of invites) {
-      revokeCsrfTokens[invite.id] = await createCsrfToken(
-        sessionId,
-        "POST",
-        `/team/invites/${invite.id}/revoke`,
-      );
-    }
-
     // Removal is a two-step confirm, so only the member named in ?remove=
     // needs a token — one, not one per row.
     const requestedRemoval = new URL(req.url).searchParams.get("remove");
     const removeTarget =
       members.find((member) => member.id === requestedRemoval) ?? null;
-
-    const removeCsrfToken = removeTarget
-      ? await createCsrfToken(
-          sessionId,
-          "POST",
-          `/team/members/${removeTarget.id}/remove`,
-        )
-      : null;
 
     return render(
       <Team
@@ -121,58 +100,54 @@ export const team = {
         members={members}
         invites={invites}
         createCsrfToken={null}
-        inviteCsrfToken={
-          await createCsrfToken(sessionId, "POST", "/team/invites")
+        inviteCsrfToken={await tokens.for("/team/invites")}
+        roleCsrfTokens={
+          await tokens.forEach(
+            members,
+            (member) => `/team/members/${member.id}/role`,
+          )
         }
-        roleCsrfTokens={roleCsrfTokens}
-        removeCsrfToken={removeCsrfToken}
+        removeCsrfToken={
+          removeTarget
+            ? await tokens.for(`/team/members/${removeTarget.id}/remove`)
+            : null
+        }
         removeTarget={removeTarget}
-        revokeCsrfTokens={revokeCsrfTokens}
+        revokeCsrfTokens={
+          await tokens.forEach(
+            invites,
+            (invite) => `/team/invites/${invite.id}/revoke`,
+          )
+        }
         state={getFlash(req)}
       />,
     );
   },
 
-  async create(req: BunRequest): Promise<Response> {
-    if (!teamsEnabled()) return render404();
-
-    const authRedirect = await requireAuth(req);
-    if (authRedirect) return authRedirect;
-
-    const ctx = await getSessionContext(req);
-    if (!ctx.user || !ctx.sessionId) return redirect("/login");
-
-    const csrf = await checkCsrf(req, { method: "POST", path: "/team" });
-    if (!csrf.ok) {
-      if (!isRecoverableCsrfFailure(csrf)) return csrf.response;
-
-      // Stale but authentic: hand the name back with a fresh token rather than
-      // making the user retype it.
-      const stale = await readFormValues(req, ["name"]);
-      setFlash(
-        req,
-        fitFlashState<TeamState>({ state: "csrf-expired", name: stale.name }, [
-          "name",
-        ]),
-      );
-      return redirect("/team");
-    }
-
+  create: formAction<TeamState, User>({
+    redirectTo: "/team",
+    guard: signedInUser,
+    // Stale but authentic: hand the name back with a fresh token rather than
+    // making the user retype it.
+    onExpired: async (req) => {
+      const { name } = await readFormValues(req, ["name"]);
+      return fitFlashState<TeamState>({ state: "csrf-expired", name }, [
+        "name",
+      ]);
+    },
+  })(async (req, _ctx, user) => {
     const { name } = await readFormValues(req, ["name"]);
 
     if (!name || validateOrgName(name)) {
-      setFlash(req, { state: "invalid-name", name });
-      return redirect("/team");
+      return { reject: 400, flash: { state: "invalid-name", name } };
     }
 
-    const result = await createOrganizationForUser(ctx.user.id, name);
+    const result = await createOrganizationForUser(user.id, name);
 
     if (!result.success) {
-      setFlash(req, { state: result.error });
-      return redirect("/team");
+      return { reject: 409, flash: { state: result.error } };
     }
 
-    setFlash(req, { state: "team-created" });
-    return redirect("/team");
-  },
+    return { flash: { state: "team-created" } };
+  }),
 };

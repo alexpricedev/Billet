@@ -1,5 +1,5 @@
 import { bind, defineComponent } from "@client/reactive/component";
-import { submitForm } from "@client/reactive/request";
+import { parseFragment, submitForm } from "@client/reactive/request";
 import { computed, effect, signal } from "@client/reactive/signal";
 import { remainingLabel } from "@shared/todo";
 
@@ -38,12 +38,8 @@ export const todoList = defineComponent("todo-list", (root) => {
     for (const row of rows.value) row.hidden = !shown.has(row);
   });
 
-  // A `<tr>` can't be parsed on its own; a detached tbody gives it a legal
-  // parent to parse into.
   const rowFrom = (html: string): HTMLTableRowElement => {
-    const holder = document.createElement("tbody");
-    holder.innerHTML = html;
-    const row = holder.firstElementChild;
+    const row = parseFragment(html, "tbody");
     if (!(row instanceof HTMLTableRowElement)) {
       throw new Error("Expected the server to answer with a table row");
     }
