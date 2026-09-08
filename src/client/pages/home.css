@@ -407,7 +407,9 @@
     /* biome-ignore lint/style/noDescendingSpecificity: Biome compares nested
        `&:hover` blocks by their literal text without resolving `&`, so this
        pairs with `.hero-actions .btn-primary:hover` — a selector that can
-       never match this element. */
+       never match this element. Upstream bug, open since 2026-04:
+       https://github.com/biomejs/biome/issues/9768. Drop this comment once
+       it is fixed; the rule stays on for the rest of the file. */
     &:hover {
       text-decoration: none;
 
