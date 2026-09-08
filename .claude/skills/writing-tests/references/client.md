@@ -39,11 +39,11 @@ The fixture has to match what the server actually renders — the same ids, clas
 
 A component binds to markup the server rendered, so the fixture is the template itself. Render it
 with `renderToString`, take `<main>` out of an inert `<template>` (anywhere live, happy-dom would
-try to fetch the layout's stylesheet and bundle), register the component, and `mount()`:
+try to fetch the layout's stylesheet and bundle), register the component, and `ui.mount()`:
 
 ```tsx
 import { renderToString } from "preact-render-to-string";
-import { mount, registerComponent } from "@client/reactive/component";
+import * as ui from "@client/reactive";
 import { Todos } from "@server/templates/todos";
 import { todoList } from "./todo-list";
 
@@ -51,16 +51,16 @@ const template = document.createElement("template");
 template.innerHTML = renderToString(<Todos todos={[…]} … />);
 document.body.innerHTML = template.content.querySelector("main")?.innerHTML ?? "";
 
-registerComponent(todoList);
-const unmount = mount();
+ui.registerComponent(todoList);
+const unmount = ui.mount();
 
 filterButton("Active").click();
 expect(doneRow.hidden).toBe(true); // effects run synchronously — nothing to await
 ```
 
 Because the fixture is the real template, a renamed id or a moved element fails here rather than in
-the browser, and there is no hand-copied HTML to keep in step. Call the disposer `mount()` returns
-in `afterEach` so the next test's `mount()` starts clean. `src/client/components/todo-list.test.tsx`
+the browser, and there is no hand-copied HTML to keep in step. Call the disposer `ui.mount()` returns
+in `afterEach` so the next test's `ui.mount()` starts clean. `src/client/components/todo-list.test.tsx`
 is the full example.
 
 A component that calls `server.submit` needs `globalThis.fetch` replaced for the file (happy-dom's

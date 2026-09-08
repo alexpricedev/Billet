@@ -29,6 +29,12 @@ actions; `mount` wires them to `data-text`, `data-show`, `data-value`, `data-cla
 for markup inserted later. The attributes carry names, never expressions, so nothing on the page
 evaluates a string and `'unsafe-eval'` stays out of the CSP.
 
+**Components import the layer as two namespaces.** `import * as ui from "@client/reactive"` (a
+barrel over `signal.ts` and `component.ts`) and `import * as server from "@client/reactive/request"`,
+so a component body reads as its own logic with the framework calls prefixed — `ui.signal`,
+`ui.bind`, `server.submit`, `server.parse`. The request module is kept out of the `ui` barrel on
+purpose: every enhanced form in a codebase is a `server.` call, one grep away.
+
 **`src/shared/` is the seam both sides import.** `attributes.ts` is the `data-*` vocabulary with a
 typed `component<T>()` builder, so a template's binding names are checked against the component's
 exported type and a misspelt name fails `bun run typecheck`. `protocol.ts` holds the header names
