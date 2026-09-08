@@ -99,15 +99,20 @@ A page script is for one-off wiring. For state that drives the DOM — a filter,
 counter — write a component instead, in `src/client/components/<name>.ts`:
 
 ```ts
-export const dashboardFilter = defineComponent("dashboard-filter", (root) => {
-  const query = signal("");
-  return { query, count: computed(() => /* … */) };
+import * as ui from "@client/reactive";
+
+export const dashboardFilter = ui.defineComponent("dashboard-filter", (root) => {
+  const query = ui.signal("");
+  return { query, count: ui.computed(() => /* … */) };
 });
 export type DashboardFilter = typeof dashboardFilter;
 ```
 
-Register it in `main.ts` with `registerComponent(dashboardFilter)` — the same quiet failure as an
-unregistered page if you forget — and bind it from the template with typed attributes:
+The framework is imported as a namespace — `ui` for state and binding, and `server` from
+`@client/reactive/request` for the one round trip a component may make — so the component's own
+logic is what reads bare. Register it in `main.ts` with `ui.registerComponent(dashboardFilter)` —
+the same quiet failure as an unregistered page if you forget — and bind it from the template with
+typed attributes:
 
 ```tsx
 import type { DashboardFilter } from "@client/components/dashboard-filter";
@@ -122,8 +127,8 @@ const filter = component<DashboardFilter>("dashboard-filter");
 ```
 
 The `import type` is erased, so the server never loads the component; a name that the component
-doesn't return is a type error. `mount()` runs once in `main.ts` for every registered component on
-the page, so there is nothing to add to the page script. `src/client/components/todo-list.ts` and
+doesn't return is a type error. `ui.mount()` runs once in `main.ts` for every registered component
+on the page, so there is nothing to add to the page script. `src/client/components/todo-list.ts` and
 its use in `todos.tsx` are the worked example.
 
 To update the page from the server without a reload, keep the mutation a plain form and add a
