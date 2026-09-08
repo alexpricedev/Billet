@@ -89,7 +89,12 @@ silently renders at the default width. React used to rewrite these; nothing does
 
 `src/client/reactive/` is the whole client framework: `signal.ts` (signal, computed, effect, batch),
 `component.ts` (`defineComponent`, `registerComponent`, `mount`, `bind`) and `request.ts`
-(`submitForm`), with the `data-*` vocabulary in `src/shared/attributes.ts`. A component is a factory that receives its root element and returns *named* signals,
+(`submit`, `parse`), with the `data-*` vocabulary in `src/shared/attributes.ts`. Components import
+it as two namespaces — `import * as ui from "@client/reactive"` for state and binding, `import * as
+server from "@client/reactive/request"` for the round trip — so framework calls read `ui.signal`
+and `server.submit` and a component's own logic is what's left bare. `request.ts` is kept out of the
+`ui` barrel on purpose: every enhanced form in the codebase is a `server.` call, one grep away. A
+component is a factory that receives its root element and returns *named* signals,
 computeds and actions; the template puts those names in `data-text`, `data-show`, `data-value`,
 `data-class`, `data-attr`, `data-prop` and `data-on` attributes under a `data-component` root, and
 `mount()` in `main.ts` wires them. The template owns the markup and the component owns the state —
@@ -150,7 +155,7 @@ client application this project exists to not become.
 ### Every mutation is a form, and the fetch is an enhancement of it
 
 The todo page's add, toggle and delete are plain `<form method="POST">`s that work without
-JavaScript through the redirect-and-flash flow. `submitForm` (`src/client/reactive/request.ts`)
+JavaScript through the redirect-and-flash flow. `server.submit` (`src/client/reactive/request.ts`)
 posts the same form with two headers: the form's CSRF token promoted to `X-CSRF-Token`, which
 `checkCsrf` reads before the body, and `X-Fragment: 1`. A controller checks `isFragmentRequest(req)`
 and answers with `renderFragment(<TodoRow />)` — the same server component the page renders with —
@@ -158,11 +163,11 @@ instead of the redirect; the client inserts or swaps the row and calls `bind`. T
 in `src/shared/protocol.ts` and `services/csrf.ts` re-exports them; don't spell them anywhere else.
 
 A stale token on a fragment request gets `refreshCsrfToken()`: a 403 carrying a fresh token in the
-same header, which `submitForm` writes back into the form and retries once. Only `expired-token`
+same header, which `server.submit` writes back into the form and retries once. Only `expired-token`
 gets that. A forged or cross-origin token fails hard with no header, exactly as a plain post does —
 see `isRecoverableCsrfFailure` for why the distinction is load-bearing.
 
-`submitForm` sends `redirect: "manual"`, so a controller that redirects reads as a failure rather
+`server.submit` sends `redirect: "manual"`, so a controller that redirects reads as a failure rather
 than a login page handed back as a row; `formAction` answers a fragment request that a guard
 refused with a 401 (sent to `/login`) or 403 instead of the redirect. On any failure the component
 falls back to `form.submit()`, and the server's flash says what happened. Never return a full page

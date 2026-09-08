@@ -119,7 +119,7 @@ nothing on the page evaluates a string. Frameworks that put expressions in
 attributes (Alpine, petite-vue, in-DOM Vue) need `'unsafe-eval'`; adding one
 means widening this policy.
 
-**Enhanced form posts and CSRF.** `submitForm` (`src/client/reactive/request.ts`)
+**Enhanced form posts and CSRF.** `server.submit` (`src/client/reactive/request.ts`)
 posts a form with its CSRF token promoted to the `X-CSRF-Token` header, which
 `checkCsrf` reads before the body, plus `X-Fragment: 1`. Origin validation
 applies to those posts exactly as to plain ones. A token that is stale but

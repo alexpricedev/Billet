@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { mount, registerComponent } from "@client/reactive/component";
+import * as ui from "@client/reactive";
 import { TodoRow } from "@server/components/todo-row";
 import type { Todo } from "@server/services/todo";
 import { Todos } from "@server/templates/todos";
@@ -50,7 +50,7 @@ const rowHtml = (todo: Todo, showActions = false) =>
     />,
   );
 
-registerComponent(todoList);
+ui.registerComponent(todoList);
 
 type Call = { url: string; init: RequestInit };
 const calls: Call[] = [];
@@ -81,7 +81,7 @@ afterEach(() => {
 
 const load = (isAuthenticated = false, todos = seed) => {
   document.body.innerHTML = page(isAuthenticated, todos);
-  unmount = mount();
+  unmount = ui.mount();
 };
 
 const rows = (): HTMLTableRowElement[] =>
@@ -105,7 +105,7 @@ const submit = (form: Element | null) => {
   if (!(form instanceof HTMLFormElement)) throw new Error("No form");
   form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 };
-// submitForm awaits fetch and the body read; two turns of the loop is enough.
+// server.submit awaits fetch and the body read; two turns of the loop is enough.
 const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("todo list", () => {

@@ -35,12 +35,12 @@ exported type and a misspelt name fails `bun run typecheck`. `protocol.ts` holds
 the fetch helper and the server agree on; `services/csrf.ts` re-exports its CSRF constants from
 there. `todo.ts` is copy both sides render. Nothing in the directory touches the DOM or `node:`.
 
-**Fragments over forms.** `submitForm` (`src/client/reactive/request.ts`) posts a form with its
+**Fragments over forms.** `server.submit` (`src/client/reactive/request.ts`) posts a form with its
 CSRF token promoted to `X-CSRF-Token` and an `X-Fragment: 1` header, refusing redirects. A
 controller checks `isFragmentRequest(req)` and answers with `renderFragment(<TodoRow />)` — the
 same server component the page renders — instead of the redirect-and-flash a plain post gets. A
 stale-but-authentic token gets `refreshCsrfToken()`: a 403 carrying a fresh token that
-`submitForm` writes back into the form and retries once. Forged or cross-origin tokens fail hard
+`server.submit` writes back into the form and retries once. Forged or cross-origin tokens fail hard
 with no header, as before. On any failure the component falls back to `form.submit()`.
 
 **`formAction` and `csrfTokens` take the plumbing out of controllers.** Every POST controller

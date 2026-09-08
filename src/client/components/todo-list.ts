@@ -1,6 +1,5 @@
-import { bind, defineComponent } from "@client/reactive/component";
-import { parseFragment, submitForm } from "@client/reactive/request";
-import { computed, effect, signal } from "@client/reactive/signal";
+import * as ui from "@client/reactive";
+import * as server from "@client/reactive/request";
 import { remainingLabel } from "@shared/todo";
 
 type Filter = "all" | "active" | "completed";
@@ -11,7 +10,7 @@ type Filter = "all" | "active" | "completed";
 // the form was. State the server owns (done or not) stays in the markup as
 // `data-completed`; the component only decides which rows are shown and
 // keeps the count.
-export const todoList = defineComponent("todo-list", (root) => {
+export const todoList = ui.defineComponent("todo-list", (root) => {
   const tbody = root.querySelector("tbody");
   if (!tbody) throw new Error("todo-list needs a <tbody> to manage");
 
@@ -22,24 +21,24 @@ export const todoList = defineComponent("todo-list", (root) => {
 
   // Re-read after every insert, swap or removal: the DOM is the source of
   // truth for the rows, the signal is what makes the filter and count follow.
-  const rows = signal(readRows());
+  const rows = ui.signal(readRows());
   const refresh = () => rows.set(readRows());
 
-  const filter = signal<Filter>("all");
-  const visible = computed(() =>
+  const filter = ui.signal<Filter>("all");
+  const visible = ui.computed(() =>
     rows.value.filter(
       (row) =>
         filter.value === "all" ||
         (filter.value === "completed") === isDone(row),
     ),
   );
-  effect(() => {
+  ui.effect(() => {
     const shown = new Set(visible.value);
     for (const row of rows.value) row.hidden = !shown.has(row);
   });
 
   const rowFrom = (html: string): HTMLTableRowElement => {
-    const row = parseFragment(html, "tbody");
+    const row = server.parse(html, "tbody");
     if (!(row instanceof HTMLTableRowElement)) {
       throw new Error("Expected the server to answer with a table row");
     }
@@ -56,7 +55,7 @@ export const todoList = defineComponent("todo-list", (root) => {
       if (!(form instanceof HTMLFormElement)) return;
       event.preventDefault();
       try {
-        const html = await submitForm(form);
+        const html = await server.submit(form);
         apply(form, html);
         refresh();
       } catch {
@@ -69,7 +68,7 @@ export const todoList = defineComponent("todo-list", (root) => {
     const emptyRow = tbody.querySelector(".empty-row");
     if (emptyRow) tbody.insertBefore(row, emptyRow);
     else tbody.appendChild(row);
-    bind(row);
+    ui.bind(row);
     form.reset();
     form.querySelector<HTMLInputElement>("input[name='title']")?.focus();
   });
@@ -79,7 +78,7 @@ export const todoList = defineComponent("todo-list", (root) => {
     if (!current) return;
     const next = rowFrom(html);
     current.replaceWith(next);
-    bind(next);
+    ui.bind(next);
   });
 
   const remove = enhance((form) => {
@@ -87,13 +86,13 @@ export const todoList = defineComponent("todo-list", (root) => {
   });
 
   return {
-    remaining: computed(() =>
+    remaining: ui.computed(() =>
       remainingLabel(rows.value.filter((row) => !isDone(row)).length),
     ),
-    isEmpty: computed(() => visible.value.length === 0),
-    isAll: computed(() => filter.value === "all"),
-    isActive: computed(() => filter.value === "active"),
-    isCompleted: computed(() => filter.value === "completed"),
+    isEmpty: ui.computed(() => visible.value.length === 0),
+    isAll: ui.computed(() => filter.value === "all"),
+    isActive: ui.computed(() => filter.value === "active"),
+    isCompleted: ui.computed(() => filter.value === "completed"),
     showAll: () => filter.set("all"),
     showActive: () => filter.set("active"),
     showCompleted: () => filter.set("completed"),

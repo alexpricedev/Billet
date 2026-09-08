@@ -63,7 +63,7 @@ the browser, and there is no hand-copied HTML to keep in step. Call the disposer
 in `afterEach` so the next test's `mount()` starts clean. `src/client/components/todo-list.test.tsx`
 is the full example.
 
-A component that calls `submitForm` needs `globalThis.fetch` replaced for the file (happy-dom's
+A component that calls `server.submit` needs `globalThis.fetch` replaced for the file (happy-dom's
 fetch enforces the Same-Origin Policy and would go to the network). Queue `Response`s whose body is
 the real row — `renderToString(<TodoRow … />)` — dispatch `submit` on the form, `await` one turn of
 the event loop, and assert on the table. Restore the real `fetch` in `afterEach`.

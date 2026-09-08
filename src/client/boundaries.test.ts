@@ -32,7 +32,7 @@ const FORBIDDEN_IN_CLIENT: Rule[] = [
   {
     name: "network",
     pattern: /\bfetch\(|XMLHttpRequest|new WebSocket|new EventSource/,
-    why: "the client talks to the server through submitForm, and the server answers with HTML",
+    why: "the client talks to the server through server.submit, and the server answers with HTML",
   },
   {
     name: "markup built on the client",

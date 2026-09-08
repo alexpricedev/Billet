@@ -15,7 +15,7 @@ import { stateHelpers } from "./state";
 // require a user, check the CSRF token, branch three ways on failure — and
 // close by producing two shapes of response: a redirect with a flash for a
 // plain form post, a fragment for the same post sent by the client's
-// `submitForm`. This wraps both ends, so a controller is left with the
+// `server.submit`. This wraps both ends, so a controller is left with the
 // decision in the middle and can't forget stale-token recovery on either path.
 //
 // A plain post and a fragment request run the same handler. Only the response
@@ -63,7 +63,7 @@ export type ActionHandler<State, G> = (
 ) => Promise<ActionOutcome<State>>;
 
 // A guard that answers a fragment request with a redirect is answering a
-// plain post, not a fetch. `submitForm` refuses redirects anyway; a status
+// plain post, not a fetch. `server.submit` refuses redirects anyway; a status
 // says why, so the client can tell "sign in" from "not allowed".
 const refuseFragment = (response: Response): Response => {
   if (response.status < 300 || response.status >= 400) return response;

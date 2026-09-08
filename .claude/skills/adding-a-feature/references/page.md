@@ -129,8 +129,8 @@ its use in `todos.tsx` are the worked example.
 To update the page from the server without a reload, keep the mutation a plain form and add a
 fragment branch to the controller: `isFragmentRequest(req)` → `renderFragment(<Row />)` from
 `src/server/utils/fragment.ts`, with the row as a server component the page also renders. The
-component intercepts the form's `submit`, calls `submitForm(form)`, inserts the row, and calls
-`bind(row)`. `todos.tsx` (controller) and `todo-list.ts` show every branch, including the stale
+component intercepts the form's `submit`, calls `server.submit(form)`, inserts the row, and calls
+`ui.bind(row)`. `todos.tsx` (controller) and `todo-list.ts` show every branch, including the stale
 CSRF token refresh.
 
 ## 7. Page CSS — `src/client/pages/dashboard.css`
