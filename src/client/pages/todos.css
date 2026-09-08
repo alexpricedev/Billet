@@ -1,0 +1,163 @@
+[data-page="todos"] {
+  .todo-form {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+
+    input {
+      flex: 1;
+
+      @media (width <= 640px) {
+        width: 100%;
+      }
+    }
+
+    button {
+      @media (width <= 640px) {
+        width: 100%;
+      }
+    }
+
+    @media (width <= 640px) {
+      flex-direction: column;
+    }
+  }
+
+  .todos-header {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin: 1.5rem 0 1rem;
+
+    @media (width <= 640px) {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+
+  .todo-count {
+    font-size: 13px;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .todo-filters {
+    border: 0;
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    padding: 4px 10px;
+
+    &:hover,
+    &:focus {
+      background: var(--color-surface-hover);
+    }
+
+    &.active {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+  }
+
+  /* The filters do nothing until the component binds them, so the page
+     without JavaScript never shows controls that do nothing. */
+  [data-component="todo-list"]:not([data-mounted]) .todo-filters {
+    display: none;
+  }
+
+  .todo-list tr:hover td {
+    background: var(--color-surface-hover);
+  }
+
+  .toggle-cell {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .toggle-form,
+  .delete-form {
+    display: inline;
+  }
+
+  /* A button drawn as a checkbox, because a real checkbox can't post a form
+     without JavaScript. aria-pressed carries the state for assistive tech. */
+  .toggle-btn {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    color: var(--color-success);
+    display: inline-flex;
+    font-size: 13px;
+    height: 22px;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    width: 22px;
+
+    &:hover,
+    &:focus {
+      border-color: var(--color-primary);
+    }
+
+    &[aria-pressed="true"] {
+      border-color: var(--color-success);
+    }
+  }
+
+  tr.done .todo-title {
+    color: var(--color-text-tertiary);
+    text-decoration: line-through;
+  }
+
+  .delete-cell {
+    text-align: right;
+  }
+
+  .delete-btn {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-danger);
+    font-size: 12px;
+    padding: 4px 10px;
+
+    &:hover,
+    &:focus {
+      background: rgba(248, 113, 113, 0.1);
+    }
+  }
+
+  .api-section {
+    margin-top: 2.5rem;
+  }
+
+  .endpoint-path {
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .method-get {
+    color: var(--color-success);
+  }
+
+  .method-post {
+    color: var(--color-primary);
+  }
+
+  .method-put {
+    color: var(--color-warning);
+  }
+
+  .method-delete {
+    color: var(--color-danger);
+  }
+}

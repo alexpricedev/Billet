@@ -23,7 +23,7 @@ error blocks the commit.
 
 ```bash
 bun run test:changed                                      # only tests affected by uncommitted edits
-bun run test:file src/server/services/project.test.ts   # one file, migrations first
+bun run test:file src/server/services/todo.test.ts      # one file, migrations first
 bun run lint:write                                       # apply Biome's safe fixes
 bun run typecheck                                        # types only
 ```

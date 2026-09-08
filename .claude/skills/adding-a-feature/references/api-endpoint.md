@@ -1,7 +1,7 @@
 # Adding an API endpoint
 
 Same flow as a page, without the template or client layers.
-`src/server/controllers/api/projects.ts` is the full CRUD example, and
+`src/server/controllers/api/todos.ts` is the full CRUD example, and
 `src/server/controllers/api/request-guard.ts` holds the guards every endpoint runs.
 
 ## 1. Service — `src/server/services/<resource>.ts`
@@ -10,7 +10,7 @@ Export functions and their types. If a view route already needs this logic, shar
 rather than having one route call the other over HTTP — routes must not fetch routes.
 
 A collection the API exposes needs a paginated read that returns the total alongside the rows —
-see `getProjectPage`. Without the count, a client that receives exactly `limit` rows can't tell
+see `getTodoPage`. Without the count, a client that receives exactly `limit` rows can't tell
 whether it reached the end or the middle.
 
 ## 2. Controller — `src/server/controllers/api/<resource>.ts`

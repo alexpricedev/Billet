@@ -10,10 +10,10 @@ Build a fixture matching the server-rendered HTML, call `init()`, assert on the 
 ```ts
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-describe("projects page", () => {
+describe("forms page", () => {
   beforeEach(() => {
     document.body.innerHTML = `
-      <table id="projects-list"><tbody><tr><td>Test Project</td></tr></tbody></table>
+      <div class="form-card"><form><input name="name" required /></form></div>
     `;
   });
 
@@ -21,8 +21,8 @@ describe("projects page", () => {
     document.body.innerHTML = "";
   });
 
-  test("filters rows", async () => {
-    const { init } = await import("./projects");
+  test("sets a custom validity message", async () => {
+    const { init } = await import("./forms");
     init();
     // ...assert
   });
@@ -44,25 +44,29 @@ try to fetch the layout's stylesheet and bundle), register the component, and `m
 ```tsx
 import { renderToString } from "preact-render-to-string";
 import { mount, registerComponent } from "@client/reactive/component";
-import { Projects } from "@server/templates/projects";
-import { projectSearch } from "./project-search";
+import { Todos } from "@server/templates/todos";
+import { todoList } from "./todo-list";
 
 const template = document.createElement("template");
-template.innerHTML = renderToString(<Projects projects={[…]} … />);
+template.innerHTML = renderToString(<Todos todos={[…]} … />);
 document.body.innerHTML = template.content.querySelector("main")?.innerHTML ?? "";
 
-registerComponent(projectSearch);
+registerComponent(todoList);
 const unmount = mount();
 
-input.value = "beta";
-input.dispatchEvent(new Event("input", { bubbles: true }));
-expect(row.hidden).toBe(true); // effects run synchronously — nothing to await
+filterButton("Active").click();
+expect(doneRow.hidden).toBe(true); // effects run synchronously — nothing to await
 ```
 
 Because the fixture is the real template, a renamed id or a moved element fails here rather than in
 the browser, and there is no hand-copied HTML to keep in step. Call the disposer `mount()` returns
-in `afterEach` so the next test's `mount()` starts clean. `src/client/components/project-search.test.tsx`
+in `afterEach` so the next test's `mount()` starts clean. `src/client/components/todo-list.test.tsx`
 is the full example.
+
+A component that calls `submitForm` needs `globalThis.fetch` replaced for the file (happy-dom's
+fetch enforces the Same-Origin Policy and would go to the network). Queue `Response`s whose body is
+the real row — `renderToString(<TodoRow … />)` — dispatch `submit` on the form, `await` one turn of
+the event loop, and assert on the table. Restore the real `fetch` in `afterEach`.
 
 For the reactive layer itself — a new binding attribute, say — write an inline fixture with a
 throwaway component, as `src/client/reactive/component.test.ts` does. The registry is module

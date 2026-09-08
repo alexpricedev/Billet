@@ -88,8 +88,8 @@ silently renders at the default width. React used to rewrite these; nothing does
 ### Client interactivity binds to the markup the server rendered
 
 `src/client/reactive/` is the whole client framework: `signal.ts` (signal, computed, effect, batch),
-`component.ts` (`defineComponent`, `registerComponent`, `mount`), and `attributes.ts` (the `data-*`
-vocabulary). A component is a factory that receives its root element and returns *named* signals,
+`component.ts` (`defineComponent`, `registerComponent`, `mount`, `bind`) and `request.ts`
+(`submitForm`), with the `data-*` vocabulary in `src/shared/attributes.ts`. A component is a factory that receives its root element and returns *named* signals,
 computeds and actions; the template puts those names in `data-text`, `data-show`, `data-value`,
 `data-class`, `data-attr`, `data-prop` and `data-on` attributes under a `data-component` root, and
 `mount()` in `main.ts` wires them. The template owns the markup and the component owns the state —
@@ -99,8 +99,11 @@ The attributes carry **names, never expressions**. That is what keeps `'unsafe-e
 CSP, and it is what makes the names checkable: a template builds them through
 `component<T>("name")` from `attributes.ts`, where `T` is the component's exported type
 (`import type` — erased, so the server never loads client code). A misspelt binding or component
-name fails `bun run typecheck`. `attributes.ts` is the one file under `src/client/` that server
-code imports at runtime; keep it free of DOM references.
+name fails `bun run typecheck`.
+
+`src/shared/` is the seam between the two sides: the attribute vocabulary, the header names in
+`protocol.ts`, and copy both sides render (`todo.ts`). Both the server and the bundle import it at
+runtime, so nothing in it may touch the DOM or import from `node:`.
 
 Reads are `.value` on both signals and computeds; only a signal has `.set()`. A method rather than
 a setter because TypeScript ignores `readonly` when checking assignability, so a computed would
@@ -109,12 +112,37 @@ otherwise pass wherever a writable signal is required — the `data-value` check
 Effects run synchronously when a signal is set, so a client test writes a signal or dispatches an
 `input` event and asserts on the DOM on the next line. A component that is defined but never passed
 to `registerComponent` in `main.ts` never mounts — the same quiet failure as an unregistered page.
+
+`mount` binds what is on the page when it runs. Markup that arrives later — a row the server returned
+to a fetch — is bound by `bind(el)`, which attaches it to the enclosing component and mounts any
+component roots inside it. Insert a fragment without calling `bind` and its `data-on` does nothing;
+`todo-list.ts` is the pattern to copy.
 `data-component` is also a plain CSS hook on `<body>` and the nav; a root whose name has no
 registered component is skipped, and bindings inside a nested `data-component` belong to that
 inner root.
 
 No Web Components. Shadow DOM and custom-element lifecycles need browser infrastructure to test;
 pure functions and these components are both testable under `bun:test`.
+
+### Every mutation is a form, and the fetch is an enhancement of it
+
+The todo page's add, toggle and delete are plain `<form method="POST">`s that work without
+JavaScript through the redirect-and-flash flow. `submitForm` (`src/client/reactive/request.ts`)
+posts the same form with two headers: the form's CSRF token promoted to `X-CSRF-Token`, which
+`checkCsrf` reads before the body, and `X-Fragment: 1`. A controller checks `isFragmentRequest(req)`
+and answers with `renderFragment(<TodoRow />)` — the same server component the page renders with —
+instead of the redirect; the client inserts or swaps the row and calls `bind`. The header names live
+in `src/shared/protocol.ts` and `services/csrf.ts` re-exports them; don't spell them anywhere else.
+
+A stale token on a fragment request gets `refreshCsrfToken()`: a 403 carrying a fresh token in the
+same header, which `submitForm` writes back into the form and retries once. Only `expired-token`
+gets that. A forged or cross-origin token fails hard with no header, exactly as a plain post does —
+see `isRecoverableCsrfFailure` for why the distinction is load-bearing.
+
+`submitForm` sends `redirect: "manual"`, so a controller that redirects (`requireAuth` sending a
+guest to `/login`) reads as a failure rather than a login page handed back as a row. On any failure
+the component falls back to `form.submit()`, and the server's flash says what happened. Never
+return a full page to a fragment request, and never return a fragment to a plain post.
 
 ### Service tests mock the DB module before importing the service
 
@@ -335,7 +363,7 @@ changes to it are not covered by `bun run check`.
 
 ### Naming that isn't inferable
 
-App controllers export a plain name (`home`, `projects`); API controllers use an `Api` suffix
+App controllers export a plain name (`home`, `todos`); API controllers use an `Api` suffix
 (`examplesApi`, `statsApi`) so both can be barrel-exported when they share a resource name.
 
 ## Skills

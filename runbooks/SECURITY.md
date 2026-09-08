@@ -119,6 +119,16 @@ nothing on the page evaluates a string. Frameworks that put expressions in
 attributes (Alpine, petite-vue, in-DOM Vue) need `'unsafe-eval'`; adding one
 means widening this policy.
 
+**Enhanced form posts and CSRF.** `submitForm` (`src/client/reactive/request.ts`)
+posts a form with its CSRF token promoted to the `X-CSRF-Token` header, which
+`checkCsrf` reads before the body, plus `X-Fragment: 1`. Origin validation
+applies to those posts exactly as to plain ones. A token that is stale but
+verifies against the session secret is answered with a 403 carrying a fresh
+token in the same header, and the client retries once; a forged, missing or
+cross-origin token gets no header — `isRecoverableCsrfFailure` is the gate, and
+widening it would turn the app into a token vending machine for
+attacker-initiated posts. The header names live in `src/shared/protocol.ts`.
+
 ## 4. Subresource Integrity (third-party scripts)
 
 The homepage loads the lottie animation library from unpkg with a pinned version
@@ -173,9 +183,9 @@ curl -s https://yourdomain.com/.well-known/security.txt
 ```
 
 - **In a browser:** load the site, open the console, confirm no `Refused to
-  load…` / CSP violations, that the hero animation plays, and that the search
-  box on `/projects` appears and filters (it stays hidden until the bundle
-  mounts it).
+  load…` / CSP violations, that the hero animation plays, and that on `/todos`
+  the filter buttons appear (they stay hidden until the bundle mounts the
+  component) and adding a todo updates the list without a page load.
 - **Scanners:** [securityheaders.com](https://securityheaders.com),
   [Mozilla Observatory](https://observatory.mozilla.org), and Google's
   [CSP Evaluator](https://csp-evaluator.withgoogle.com) for policy strength.

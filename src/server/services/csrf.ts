@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { CSRF_FIELD, CSRF_HEADER } from "@shared/protocol";
 import { computeHMAC, generateSecureToken } from "../utils/crypto";
 import {
   type DatabaseMutationResult,
@@ -7,8 +8,9 @@ import {
 import { db } from "./database";
 
 // CSRF configuration constants
-export const CSRF_HEADER_NAME = "X-CSRF-Token";
-export const CSRF_FIELD_NAME = "_csrf";
+// Shared with the client's fetch helper via src/shared/protocol.ts.
+export const CSRF_HEADER_NAME = CSRF_HEADER;
+export const CSRF_FIELD_NAME = CSRF_FIELD;
 export const CSRF_SECRET_LENGTH = 32;
 export const CSRF_NONCE_LENGTH = 16;
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { MOUNTED_ATTR } from "./attributes";
-import { defineComponent, mount, registerComponent } from "./component";
+import { MOUNTED_ATTR } from "@shared/attributes";
+import { bind, defineComponent, mount, registerComponent } from "./component";
 import { computed, signal } from "./signal";
 
 // A component exercising every binding. Registered once; the registry is
@@ -198,6 +198,79 @@ describe("mount", () => {
     // Disposed roots can be mounted again — a fresh factory, fresh state.
     mount();
     expect(byId("count").textContent).toBe("0");
+  });
+});
+
+describe("bind", () => {
+  test("attaches markup inserted after mount to the enclosing component", () => {
+    document.body.innerHTML = `
+      <div data-component="counter">
+        <ul id="list"><li id="a" data-text="count"></li></ul>
+        <button id="up" data-on="click:increment"></button>
+      </div>
+    `;
+    mount();
+    byId("up").click();
+
+    byId("list").insertAdjacentHTML(
+      "beforeend",
+      `<li id="b"><span id="b-count" data-text="count"></span> <button id="up2" data-on="click:increment"></button></li>`,
+    );
+    // Not bound yet: the text is whatever the fragment carried.
+    expect(byId("b-count").textContent).toBe("");
+
+    bind(byId("b"));
+    expect(byId("b-count").textContent).toBe("1");
+    byId("up2").click();
+    expect(byId("a").textContent).toBe("2");
+    expect(byId("b-count").textContent).toBe("2");
+  });
+
+  test("releases late bindings with the component", () => {
+    document.body.innerHTML = `
+      <div data-component="counter"><ul id="list"></ul></div>
+    `;
+    const unmount = mount();
+    byId("list").insertAdjacentHTML(
+      "beforeend",
+      `<li id="late" data-on="click:increment" data-text="count"></li>`,
+    );
+    bind(byId("late"));
+    byId("late").click();
+    expect(byId("late").textContent).toBe("1");
+
+    unmount();
+    byId("late").click();
+    expect(byId("late").textContent).toBe("1");
+  });
+
+  test("mounts component roots inside the inserted markup", () => {
+    document.body.innerHTML = `<div id="host"></div>`;
+    byId("host").insertAdjacentHTML(
+      "beforeend",
+      `<section id="frag"><div data-component="counter"><span id="c" data-text="count"></span></div></section>`,
+    );
+
+    bind(byId("frag"));
+    expect(byId("c").textContent).toBe("0");
+  });
+
+  test("is a plain mount when the element is itself a component root", () => {
+    document.body.innerHTML = `<div id="host"></div>`;
+    byId("host").insertAdjacentHTML(
+      "beforeend",
+      `<div id="root" data-component="counter"><span id="c" data-text="count"></span></div>`,
+    );
+
+    bind(byId("root"));
+    expect(byId("c").textContent).toBe("0");
+    expect(byId("root").hasAttribute(MOUNTED_ATTR)).toBe(true);
+  });
+
+  test("does nothing for markup outside any mounted component", () => {
+    document.body.innerHTML = `<span id="loose" data-text="count">kept</span>`;
+    expect(() => bind(byId("loose"))).not.toThrow();
+    expect(byId("loose").textContent).toBe("kept");
   });
 });
 

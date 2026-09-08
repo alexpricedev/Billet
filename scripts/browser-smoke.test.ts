@@ -174,66 +174,90 @@ describe("browser smoke", () => {
     );
   });
 
-  test("the project search binds to the server-rendered table", async () => {
-    // Create a row first so the journey doesn't depend on seed data — a guest
-    // can add a project, and the redirect lands back on the list.
-    const title = `Smoke ${Date.now()}`;
-    await view.navigate(`${BASE}/projects`);
-    await view.click("#project-title");
-    await view.type(title);
-    await clickThrough(".project-form button[type='submit']");
-    await until(bodyText, (text) => text.includes(title));
+  test("the todo list adds, toggles and filters without a page load", async () => {
+    await view.navigate(`${BASE}/todos`);
 
-    // The search box ships hidden and is revealed by data-mounted, which only
-    // the bundle sets — so its appearance proves main.js ran and mount() found
-    // the component under the CSP.
+    // The filters ship hidden and are revealed by data-mounted, which only
+    // the bundle sets — so their appearance proves main.js ran and mount()
+    // found the component under the CSP.
     const mounted = await until(
       () =>
         view.evaluate<boolean>(
-          `document.querySelector('[data-component="project-search"]')?.hasAttribute("data-mounted") ?? false`,
+          `document.querySelector('[data-component="todo-list"]')?.hasAttribute("data-mounted") ?? false`,
         ),
       (ok) => ok === true,
     );
     expect(mounted).toBe(true);
 
-    const total = await view.evaluate<number>(
-      `document.querySelectorAll("#projects-list tbody tr:not(.empty-row)").length`,
+    // A marker on window survives only if the page is never reloaded. Every
+    // assertion below that reads it is asserting "no navigation happened".
+    await view.evaluate(`window.__smoke = "same page"`);
+    const rowsBefore = await view.evaluate<number>(
+      `document.querySelectorAll("tbody tr[data-id]").length`,
     );
-    expect(total).toBeGreaterThan(0);
 
-    // Trusted key events into the bound input drive the signal; the summary,
-    // the row visibility and the "no matches" row all follow from it.
-    await view.click("#project-search-input");
-    await view.type("no-such-project-zzz");
-    const noMatches = await until(
-      () =>
-        view.evaluate<string>(
-          `document.querySelector(".search-count")?.textContent ?? ""`,
-        ),
-      (text) => text.startsWith("Showing 0 of"),
-    );
-    expect(noMatches).toBe(`Showing 0 of ${total}`);
-    const emptyRowShown = await view.evaluate<boolean>(
-      `!document.querySelector(".empty-row")?.hidden`,
-    );
-    expect(emptyRowShown).toBe(true);
-
-    await view.evaluate(
-      `(() => { const i = document.querySelector("#project-search-input"); i.value = ""; i.dispatchEvent(new Event("input", { bubbles: true })); })()`,
-    );
+    // Add: the form's submit is intercepted, the server answers with the
+    // row, and it lands in the table with trusted key events all the way.
+    const title = `Smoke ${Date.now()}`;
+    await view.click("#todo-title");
     await view.type(title);
-    const oneMatch = await until(
+    await view.click(".todo-form button[type='submit']");
+    const rowsAfter = await until(
       () =>
-        view.evaluate<string>(
-          `document.querySelector(".search-count")?.textContent ?? ""`,
+        view.evaluate<number>(
+          `document.querySelectorAll("tbody tr[data-id]").length`,
         ),
-      (text) => text.startsWith("Showing 1 of"),
+      (n) => n === rowsBefore + 1,
     );
-    expect(oneMatch).toBe(`Showing 1 of ${total}`);
-    const visibleTitles = await view.evaluate<string[]>(
-      `Array.from(document.querySelectorAll("#projects-list tbody tr:not(.empty-row):not([hidden]) td:first-child")).map((td) => td.textContent)`,
+    expect(rowsAfter).toBe(rowsBefore + 1);
+    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
+
+    const newId = await view.evaluate<string>(
+      `Array.from(document.querySelectorAll("tbody tr[data-id]")).find((tr) => tr.querySelector(".todo-title")?.textContent === ${JSON.stringify(title)})?.dataset.id ?? ""`,
     );
-    expect(visibleTitles).toEqual([title]);
+    expect(newId).not.toBe("");
+    const rowSelector = `tbody tr[data-id="${newId}"]`;
+    const countBefore = await view.evaluate<string>(
+      `document.querySelector(".todo-count")?.textContent ?? ""`,
+    );
+
+    // Toggle: the row is swapped for the server's completed version, and the
+    // count follows.
+    await view.click(`${rowSelector} .toggle-btn`);
+    const completed = await until(
+      () =>
+        view.evaluate<boolean>(
+          `document.querySelector('${rowSelector}')?.hasAttribute("data-completed") ?? false`,
+        ),
+      (ok) => ok === true,
+    );
+    expect(completed).toBe(true);
+    const countAfter = await view.evaluate<string>(
+      `document.querySelector(".todo-count")?.textContent ?? ""`,
+    );
+    expect(countAfter).not.toBe(countBefore);
+    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
+
+    // Filter: Active hides the row just completed; All brings it back.
+    await view.click(".todo-filters button:nth-of-type(2)");
+    const hidden = await until(
+      () =>
+        view.evaluate<boolean>(
+          `document.querySelector('${rowSelector}')?.hidden ?? false`,
+        ),
+      (ok) => ok === true,
+    );
+    expect(hidden).toBe(true);
+    await view.click(".todo-filters button:nth-of-type(1)");
+    const shown = await until(
+      () =>
+        view.evaluate<boolean>(
+          `document.querySelector('${rowSelector}')?.hidden === false`,
+        ),
+      (ok) => ok === true,
+    );
+    expect(shown).toBe(true);
+    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
   });
 
   test("the captcha solves its proof of work in the page", async () => {

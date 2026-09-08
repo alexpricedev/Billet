@@ -246,8 +246,8 @@ the predicate eventually will be.
 
 ## 8. Deliberately not shipped, and why
 
-- **Core does not scope domain data by org.** The `project` table has no `org_id` and
-  `services/project.ts` is untouched. What "belongs to" an org is product-specific — some rows
+- **Core does not scope domain data by org.** The `todo` table has no `org_id` and
+  `services/todo.ts` is untouched. What "belongs to" an org is product-specific — some rows
   are per-user, some per-org, some global — so a guessed column on the example table would be
   wrong for most forks and load-bearing enough that removing it is worse than adding it. Use the
   seam in §7.

@@ -120,7 +120,8 @@ parallel with a database per worker.
 
 - **Preact JSX as a template engine** — server-rendered to a string, no hydration, and no framework runtime on the page. Preact is a build-time detail of the server; nothing in the browser imports it
 - **Bun CSS bundler** with `@import` resolution, CSS nesting, and minification — no external CSS tooling needed
-- **Reactive components that bind to the server's markup** — `src/client/reactive/` is a few hundred lines: signals, computeds and effects, plus `data-*` bindings (`data-text`, `data-show`, `data-value`, `data-on`…) that name a component's state by name, never by expression. No virtual DOM, nothing rendered twice, no `'unsafe-eval'` in the CSP, and the binding names in a template are typechecked against the component. Ships with a live table filter as the example
+- **Reactive components that bind to the server's markup** — `src/client/reactive/` is a few hundred lines: signals, computeds and effects, plus `data-*` bindings (`data-text`, `data-show`, `data-value`, `data-on`…) that name a component's state by name, never by expression. No virtual DOM, nothing rendered twice, no `'unsafe-eval'` in the CSP, and the binding names in a template are typechecked against the component
+- **Progressive enhancement over plain forms** — every mutation on the todo page is a `<form>` that works without JavaScript. With it, `submitForm` posts the same form with the CSRF token as a header and asks for a fragment; the controller answers with the server-rendered row instead of a redirect, and a stale token is refreshed and retried once. The classic todo list is the worked example — add, toggle, delete and filter, no page loads
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
 - **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
 - **Accessibility baseline** — semantic landmarks, labelled form controls, a keyboard focus ring, reduced-motion support, announced flash messages, and captioned data tables out of the box — see [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md)
@@ -250,9 +251,9 @@ src/
 ├── client/                     # Browser-side code
 │   ├── main.ts                 # Entry point — registers pages and components
 │   ├── page-lifecycle.ts       # Page init/cleanup system
-│   ├── reactive/               # Signals, components, and the data-* binding vocabulary
+│   ├── reactive/               # Signals, components, bind() and the form submit helper
 │   ├── style.css               # Global styles (CSS entry point)
-│   ├── components/             # Shared components + CSS (nav, layout, project search)
+│   ├── components/             # Shared components + CSS (nav, layout, todo list)
 │   └── pages/                  # Page-specific JS + CSS (co-located)
 │
 ├── server/                     # Server-side code
@@ -275,6 +276,8 @@ src/
 │       ├── cli.ts / migrate.ts # Migration tooling
 │       ├── seed.ts             # Development seed data
 │       └── migrations/         # Numbered migration files
+│
+├── shared/                     # The seam both sides import: data-* vocabulary, header names, shared copy
 │
 └── types/                      # Global TypeScript declarations
 
@@ -300,8 +303,8 @@ conventions below are what a new endpoint should follow, and
 [`.claude/skills/adding-a-feature/references/api-endpoint.md`](.claude/skills/adding-a-feature/references/api-endpoint.md)
 is the checklist for adding one.
 
-> **These endpoints are unauthenticated**, like the `/projects` page they mirror — the demo lets
-> guests create projects. Anything exposing real data needs `requireAuth` from
+> **These endpoints are unauthenticated**, like the `/todos` page they mirror — the demo lets
+> guests create and toggle todos. Anything exposing real data needs `requireAuth` from
 > `src/server/middleware/auth.ts` (or a token check for machine callers) before it ships.
 
 ### Conventions
@@ -324,14 +327,14 @@ is the checklist for adding one.
 
 | Method | Path | Returns |
 |---|---|---|
-| `GET` | `/api/projects` | `{ data: Project[], pagination: { total, limit, offset } }` |
-| `POST` | `/api/projects` | `201` + `{ data: Project }`, with a `Location` header |
-| `GET` | `/api/projects/:id` | `{ data: Project }` |
-| `PUT` | `/api/projects/:id` | `{ data: Project }` |
-| `DELETE` | `/api/projects/:id` | `204`, no body |
+| `GET` | `/api/todos` | `{ data: Todo[], pagination: { total, limit, offset } }` |
+| `POST` | `/api/todos` | `201` + `{ data: Todo }`, with a `Location` header |
+| `GET` | `/api/todos/:id` | `{ data: Todo }` |
+| `PUT` | `/api/todos/:id` | `{ data: Todo }` — `title` required, `completed` optional boolean |
+| `DELETE` | `/api/todos/:id` | `204`, no body |
 | `GET` | `/api/stats` | `{ data: VisitorStats }` |
 
-`GET /api/projects` accepts `?limit=` (1–100, default 25) and `?offset=` (default 0). Values
+`GET /api/todos` accepts `?limit=` (1–100, default 25) and `?offset=` (default 0). Values
 outside those bounds are **rejected with a 400 rather than clamped** — a client silently handed
 100 rows when it asked for 5000 has no way to tell it received a page.
 
@@ -339,12 +342,12 @@ outside those bounds are **rejected with a 400 rather than clamped** — a clien
 (`invalid_id`) and never reaches the database.
 
 ```bash
-curl -X POST http://localhost:3000/api/projects \
+curl -X POST http://localhost:3000/api/todos \
   -H 'Content-Type: application/json' \
-  -d '{"title":"My project"}'
+  -d '{"title":"Buy milk"}'
 # 201 Created
-# Location: /api/projects/7
-# {"data":{"id":7,"title":"My project","created_by":null}}
+# Location: /api/todos/7
+# {"data":{"id":7,"title":"Buy milk","completed_at":null,"created_by":null}}
 ```
 
 ### Status codes

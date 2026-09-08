@@ -2,11 +2,11 @@ import {
   forms,
   home,
   llmsTxt,
-  projects,
   robotsTxt,
   securityTxt,
   sitemap,
   stack,
+  todos,
   webmanifest,
 } from "../controllers/app";
 import {
@@ -33,12 +33,15 @@ export const appRoutes = {
     GET: forms.index,
     POST: forms.create,
   }),
-  "/projects": createRouteHandler({
-    GET: projects.index,
-    POST: projects.create,
+  "/todos": createRouteHandler({
+    GET: todos.index,
+    POST: todos.create,
   }),
-  "/projects/:id/delete": createRouteHandler({
-    POST: projects.destroy,
+  "/todos/:id/toggle": createRouteHandler({
+    POST: todos.toggle,
+  }),
+  "/todos/:id/delete": createRouteHandler({
+    POST: todos.destroy,
   }),
   "/login": createRouteHandler({
     GET: login.index,

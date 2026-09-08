@@ -8,6 +8,11 @@
 // `registerComponent` in `main.ts` makes it mountable, and a definition that is
 // never registered never runs — the same quiet failure as a page that isn't
 // registered, and worth the same care.
+//
+// Markup that arrives later — a row the server rendered in answer to a fetch —
+// is not bound by `mount`, which ran before it existed. `bind(el)` attaches it
+// to the component whose root encloses it, so a component that inserts a
+// fragment calls `bind` on it and the fragment's attributes work like the rest.
 
 import {
   type Action,
@@ -17,7 +22,7 @@ import {
   type ComponentFactory,
   MOUNTED_ATTR,
   parsePairs,
-} from "./attributes";
+} from "@shared/attributes";
 import {
   effect,
   isReadable,
@@ -28,9 +33,14 @@ import {
 
 const registry = new Map<string, ComponentDefinition<string, Bindings>>();
 
-// Roots that currently have a live component, so a second `mount` over the
-// same subtree (after a fragment swap, say) doesn't double-bind them.
-const mounted = new WeakSet<Element>();
+// One live component per mounted root. Also what stops a second `mount` over
+// the same subtree (after a fragment swap, say) from double-binding it.
+interface Instance {
+  readonly name: string;
+  bindings: Bindings;
+  readonly disposers: Array<() => void>;
+}
+const instances = new WeakMap<HTMLElement, Instance>();
 
 export function defineComponent<N extends string, B extends Bindings>(
   name: N,
@@ -61,19 +71,26 @@ export function mount(scope: ParentNode = document): () => void {
   const disposers: Array<() => void> = [];
   for (const root of roots) {
     const definition = registry.get(root.getAttribute(ATTR.component) ?? "");
-    if (!definition || mounted.has(root)) continue;
+    if (!definition || instances.has(root)) continue;
 
-    mounted.add(root);
-    const dispose = runScope(() => {
-      const bindings = definition.factory(root);
-      bind(root, definition.name, bindings);
-    });
+    const instance: Instance = {
+      name: definition.name,
+      bindings: {},
+      disposers: [],
+    };
+    instances.set(root, instance);
+    instance.disposers.push(
+      runScope(() => {
+        instance.bindings = definition.factory(root);
+        bindElements(instance, ownedElements(root));
+      }),
+    );
     root.setAttribute(MOUNTED_ATTR, "");
 
     disposers.push(() => {
-      dispose();
+      for (const dispose of instance.disposers) dispose();
       root.removeAttribute(MOUNTED_ATTR);
-      mounted.delete(root);
+      instances.delete(root);
     });
   }
 
@@ -82,10 +99,29 @@ export function mount(scope: ParentNode = document): () => void {
   };
 }
 
-// The root and its descendants, stopping at any nested component root: those
-// elements belong to the inner component, whatever its name binds to.
-function ownedElements(root: HTMLElement): HTMLElement[] {
-  const owned: HTMLElement[] = [root];
+/**
+ * Attach markup inserted after `mount` ran. `el` and its descendants bind to
+ * the component whose root encloses them (their effects and listeners are
+ * released with that component), and any component roots inside `el` are
+ * mounted. Call it once on whatever a fragment response was inserted as.
+ */
+export function bind(el: HTMLElement): void {
+  if (!el.hasAttribute(ATTR.component)) {
+    const root = el.parentElement?.closest<HTMLElement>(`[${ATTR.component}]`);
+    const instance = root ? instances.get(root) : undefined;
+    if (instance) {
+      instance.disposers.push(
+        runScope(() => bindElements(instance, ownedElements(el))),
+      );
+    }
+  }
+  mount(el);
+}
+
+// The element and its descendants, stopping at any nested component root:
+// those elements belong to the inner component, whatever its name binds to.
+function ownedElements(el: HTMLElement): HTMLElement[] {
+  const owned: HTMLElement[] = [el];
   const visit = (parent: Element) => {
     for (const child of Array.from(parent.children)) {
       if (child.hasAttribute(ATTR.component)) continue;
@@ -93,11 +129,13 @@ function ownedElements(root: HTMLElement): HTMLElement[] {
       visit(child);
     }
   };
-  visit(root);
+  visit(el);
   return owned;
 }
 
-function bind(root: HTMLElement, name: string, bindings: Bindings): void {
+function bindElements(instance: Instance, elements: HTMLElement[]): void {
+  const { name, bindings } = instance;
+
   const readable = (attr: string, key: string): Readable<unknown> => {
     const binding = bindings[key];
     if (!isReadable(binding)) {
@@ -117,7 +155,7 @@ function bind(root: HTMLElement, name: string, bindings: Bindings): void {
     return binding;
   };
 
-  for (const el of ownedElements(root)) {
+  for (const el of elements) {
     const text = el.getAttribute(ATTR.text);
     if (text !== null) {
       const source = readable(ATTR.text, text);
