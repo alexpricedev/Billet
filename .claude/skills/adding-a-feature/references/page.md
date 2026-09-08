@@ -1,8 +1,8 @@
 # Adding a page
 
-Worked example: a `/dashboard` page. Read `src/server/controllers/app/projects.tsx` and
-`src/server/templates/projects.tsx` alongside this — they're the fullest example in the repo
-(list, create, delete, auth, flash messages, a reactive component).
+Worked example: a `/dashboard` page. Read `src/server/controllers/app/todos.tsx` and
+`src/server/templates/todos.tsx` alongside this — they're the fullest example in the repo
+(list, create, toggle, delete, auth, flash messages, a reactive component, fragment responses).
 
 ## 1. Service — `src/server/services/dashboard.ts`
 
@@ -58,7 +58,7 @@ Multiple methods, or anything that must reject others with a 405:
 "/dashboard": createRouteHandler({ GET: dashboard.index, POST: dashboard.create }),
 ```
 
-Route params are typed through the handler — `projects.destroy<"/projects/:id/delete">` in
+Route params are typed through the handler — `todos.destroy<"/todos/:id/delete">` in
 `app.tsx` is the pattern to copy.
 
 ## 6. Client script — `src/client/pages/dashboard.ts`
@@ -91,7 +91,7 @@ unregistered page if you forget — and bind it from the template with typed att
 
 ```tsx
 import type { DashboardFilter } from "@client/components/dashboard-filter";
-import { component } from "@client/reactive/attributes";
+import { component } from "@shared/attributes";
 
 const filter = component<DashboardFilter>("dashboard-filter");
 // …
@@ -103,8 +103,15 @@ const filter = component<DashboardFilter>("dashboard-filter");
 
 The `import type` is erased, so the server never loads the component; a name that the component
 doesn't return is a type error. `mount()` runs once in `main.ts` for every registered component on
-the page, so there is nothing to add to the page script. `src/client/components/project-search.ts`
-and its use in `projects.tsx` are the worked example.
+the page, so there is nothing to add to the page script. `src/client/components/todo-list.ts` and
+its use in `todos.tsx` are the worked example.
+
+To update the page from the server without a reload, keep the mutation a plain form and add a
+fragment branch to the controller: `isFragmentRequest(req)` → `renderFragment(<Row />)` from
+`src/server/utils/fragment.ts`, with the row as a server component the page also renders. The
+component intercepts the form's `submit`, calls `submitForm(form)`, inserts the row, and calls
+`bind(row)`. `todos.tsx` (controller) and `todo-list.ts` show every branch, including the stale
+CSRF token refresh.
 
 ## 7. Page CSS — `src/client/pages/dashboard.css`
 

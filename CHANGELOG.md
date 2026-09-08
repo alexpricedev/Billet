@@ -7,50 +7,81 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
-## Unreleased
+## 4.0.0
 
-Preact leaves the browser. It stays as the server's template engine — every page still renders
-through `renderToString`, and JSX is still what gives templates a typecheck — but nothing in
-`src/client/` imports it any more, the client bundle no longer marks it external, and the import
-map, the `esm.sh` preconnect, and `https://esm.sh` in the CSP `script-src` are gone. The one island
-(the project search) is rewritten against a reactive layer that lives in the repo.
+Preact leaves the browser, the demo resource becomes a todo list, and the two meet in the middle:
+every action on `/todos` is a plain form that works without JavaScript, and with it the same form
+posts in place and the server answers with the row. A major version because the resource is
+renamed and its table replaced — see **Breaking changes**.
 
-`src/client/reactive/` is that layer, in three files. `signal.ts` is a signal, computed, effect and
-batch, synchronous and pull-based so an effect reading a signal and a computed of it runs once per
-write. `component.ts` is `defineComponent`, `registerComponent` and `mount`: a component is a
-factory that receives its root element and returns named signals, computeds and actions; `mount`
-wires them to `data-text`, `data-show`, `data-value`, `data-class`, `data-attr`, `data-prop` and
-`data-on` attributes under a `data-component` root. `attributes.ts` is that vocabulary, shared by
-the templates that write it and the client that reads it, with a typed `component<T>()` builder so a
-template's binding names are checked against the component's exported type — a misspelt name fails
-`bun run typecheck`.
+**Preact stays as the server's template engine only.** Every page still renders through
+`renderToString`, and JSX is still what gives templates a typecheck, but nothing in `src/client/`
+imports it any more. The client bundle no longer marks it external, and the import map, the
+`esm.sh` preconnect, and `https://esm.sh` in the CSP `script-src` are gone. `main.js` is a few
+kilobytes with no framework in it.
 
-The attributes carry names, never expressions, so nothing on the page evaluates a string and
-`'unsafe-eval'` stays out of the CSP. The template owns the markup, the component owns the state,
-nothing is rendered twice, and the page without JavaScript is the same HTML. The search box on
-`/projects` now ships in the server markup, hidden by CSS until the component mounts, and its
-"no matches" row is server-rendered too; it also matches on the title cell rather than the whole row,
-so searching "guest" no longer matches every row. Client tests for a component render the real
-template as their fixture (`project-search.test.tsx`) rather than a hand-copied fragment.
+**`src/client/reactive/` is the replacement.** `signal.ts` is a signal, computed, effect and
+batch, synchronous and pull-based, so an effect reading a signal and a computed of it runs once
+per write. `component.ts` is `defineComponent`, `registerComponent`, `mount` and `bind`: a
+component is a factory that receives its root element and returns named signals, computeds and
+actions; `mount` wires them to `data-text`, `data-show`, `data-value`, `data-class`, `data-attr`,
+`data-prop` and `data-on` attributes under a `data-component` root, and `bind(el)` does the same
+for markup inserted later. The attributes carry names, never expressions, so nothing on the page
+evaluates a string and `'unsafe-eval'` stays out of the CSP.
+
+**`src/shared/` is the seam both sides import.** `attributes.ts` is the `data-*` vocabulary with a
+typed `component<T>()` builder, so a template's binding names are checked against the component's
+exported type and a misspelt name fails `bun run typecheck`. `protocol.ts` holds the header names
+the fetch helper and the server agree on; `services/csrf.ts` re-exports its CSRF constants from
+there. `todo.ts` is copy both sides render. Nothing in the directory touches the DOM or `node:`.
+
+**Fragments over forms.** `submitForm` (`src/client/reactive/request.ts`) posts a form with its
+CSRF token promoted to `X-CSRF-Token` and an `X-Fragment: 1` header, refusing redirects. A
+controller checks `isFragmentRequest(req)` and answers with `renderFragment(<TodoRow />)` — the
+same server component the page renders — instead of the redirect-and-flash a plain post gets. A
+stale-but-authentic token gets `refreshCsrfToken()`: a 403 carrying a fresh token that
+`submitForm` writes back into the form and retries once. Forged or cross-origin tokens fail hard
+with no header, as before. On any failure the component falls back to `form.submit()`.
+
+**Todos replace projects.** Migration `009` drops `project` and creates `todo` with a
+`completed_at` column. `/todos` lists, adds, toggles and deletes; add and toggle return the row as
+a fragment, delete returns a 204. The `todo-list` component filters by all, active or completed,
+keeps the count, and swaps rows in place. `/api/todos` mirrors the old API with `completed_at` in
+the payload and an optional `completed` boolean on `PUT`. The delete column still renders only for
+authenticated users. Client tests render the real template as their fixture and mock `fetch` with
+real `TodoRow` output; the browser smoke test adds a todo, toggles it and filters without a page
+load, checking a window marker to prove no navigation happened.
 
 ### Breaking changes
 
+- **The `project` table is dropped and `todo` created in its place.** Migration `009` does not
+  copy rows; the demo resource is starter content. A fork that kept the `project` table for real
+  data must either remove migration `009` before merging (and then also keep its own copies of the
+  project service, controllers, templates and tests, which this release deletes) or migrate the
+  rows into `todo` in a migration of its own that runs before `009`.
+- **Every `project` file is renamed or deleted.** `services/project.ts` → `services/todo.ts`
+  (`Todo` gains `completed_at`, `updateTodo` takes an optional `completed`, `toggleTodo` is new).
+  `controllers/app/projects.tsx` → `controllers/app/todos.tsx` (with `toggle`),
+  `controllers/api/projects.ts` → `controllers/api/todos.ts` (`todosApi`),
+  `templates/projects.tsx` → `templates/todos.tsx`, and `components/todo-row.tsx` is new. Routes
+  move from `/projects` to `/todos` (plus `/todos/:id/toggle`) and from `/api/projects` to
+  `/api/todos`; the nav label is **Todos**; the sitemap and `llms.txt` follow. `createMockProject`
+  is `createMockTodo`; `cleanupTestData` truncates `todo`; `seedTestData` inserts todos, one
+  completed. Grep a fork for `project` before merging.
 - **A fork with its own Preact islands has to bring Preact back or rewrite them.** The bundle no
-  longer marks `preact` external, so an island that imports it would be bundled from
-  `node_modules` — which works, but ships a copy of Preact your fork used to load from esm.sh, and
-  the import map that used to resolve it is gone from `layouts.tsx`. Either restore the
-  `--external` flags, the import map, and `https://esm.sh` in `script-src` (all in
-  `package.json`, `src/server/components/layouts.tsx` and `src/server/utils/security-headers.ts`)
-  or rewrite the island as a component against `src/client/reactive/`. `project-search.ts` is the
+  longer marks `preact` external and the import map that resolved it is gone from `layouts.tsx`.
+  Either restore the `--external` flags, the import map, and `https://esm.sh` in `script-src`
+  (`package.json`, `src/server/components/layouts.tsx`, `src/server/utils/security-headers.ts`),
+  or rewrite the island as a component against `src/client/reactive/`. `todo-list.ts` is the
   worked example; the `writing-tests` skill's client reference has the test pattern.
-- **`src/client/pages/projects.ts` is deleted, and `projects.tsx` no longer renders
-  `#projects-search` or `data-projects`.** A fork that extended either should move the behaviour
-  into the `project-search` component or its markup in the template.
 - **`data-component` now also mounts components.** It was a CSS hook on `<body>` and the nav; both
   still work unchanged, because a root whose name has no registered component is skipped. But
-  `data-text`, `data-show` and the other binding attributes are now read on every element under a
-  `data-component` root that *is* registered, so a fork using those attribute names for something
-  else should rename them.
+  `data-text`, `data-show` and the other binding attributes are read on every element under a
+  registered root, so a fork using those attribute names for something else should rename them.
+- **`X-Fragment` and `X-CSRF-Token` are now defined in `src/shared/protocol.ts`.**
+  `CSRF_HEADER_NAME` and `CSRF_FIELD_NAME` in `services/csrf.ts` are re-exports with the same
+  values; a fork that imports them is unaffected. A fork with its own `src/shared/` directory or
+  `@shared/*` path alias has a conflict to resolve in `tsconfig.json`.
 
 ## 3.5.0
 

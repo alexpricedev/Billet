@@ -17,9 +17,9 @@ mock.module("./database", () => ({
 }));
 
 import { db } from "./database";
-import { createProject, getProjects } from "./project";
+import { createTodo, getTodos } from "./todo";
 
-describe("Project service", () => {
+describe("Todo service", () => {
   beforeEach(async () => {
     await cleanupTestData(db);
   });
@@ -45,11 +45,11 @@ Four things this shape is load-bearing on:
 
 ## Isolation
 
-`cleanupTestData(db)` truncates `user_tokens`, `sessions`, `users`, and `project`, and restarts
-`project_id_seq`. Call it in `beforeEach`, not `afterEach` — a failed test then leaves its rows
+`cleanupTestData(db)` truncates `user_tokens`, `sessions`, `users`, and `todo`, and restarts
+`todo_id_seq`. Call it in `beforeEach`, not `afterEach` — a failed test then leaves its rows
 behind for inspection. Extend that helper when you add a table rather than truncating inline.
 
-`seedTestData(db)` inserts three known projects. `randomEmail()` gives a collision-free address
+`seedTestData(db)` inserts three known todos, the last one completed. `randomEmail()` gives a collision-free address
 for user fixtures.
 
 ## What to cover

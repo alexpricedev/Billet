@@ -80,7 +80,7 @@ export const team = {
     ]);
 
     // Tokens are bound to a method and a path, so every form on the page needs
-    // its own — one can't be reused across the rows. Same as projects.index.
+    // its own — one can't be reused across the rows. Same as todos.index.
     const roleCsrfTokens: Record<string, string> = {};
     for (const member of members) {
       roleCsrfTokens[member.id] = await createCsrfToken(

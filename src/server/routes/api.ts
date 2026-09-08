@@ -1,4 +1,4 @@
-import { projectsApi, statsApi } from "../controllers/api";
+import { statsApi, todosApi } from "../controllers/api";
 import { createApiRouteHandler } from "../utils/route-handler";
 
 // Every API route goes through `createApiRouteHandler`, including the read-only
@@ -8,13 +8,13 @@ export const apiRoutes = {
   "/api/stats": createApiRouteHandler({
     GET: statsApi.index,
   }),
-  "/api/projects": createApiRouteHandler({
-    GET: projectsApi.index,
-    POST: projectsApi.create,
+  "/api/todos": createApiRouteHandler({
+    GET: todosApi.index,
+    POST: todosApi.create,
   }),
-  "/api/projects/:id": createApiRouteHandler({
-    GET: projectsApi.show,
-    PUT: projectsApi.update,
-    DELETE: projectsApi.destroy,
+  "/api/todos/:id": createApiRouteHandler({
+    GET: todosApi.show,
+    PUT: todosApi.update,
+    DELETE: todosApi.destroy,
   }),
 };

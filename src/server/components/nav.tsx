@@ -3,7 +3,7 @@ import { CsrfField } from "./csrf-field";
 
 const navLinks = [
   { href: "/stack", label: "Stack", name: "stack" },
-  { href: "/projects", label: "CRUD", name: "projects" },
+  { href: "/todos", label: "Todos", name: "todos" },
   { href: "/forms", label: "Forms", name: "forms" },
 ];
 

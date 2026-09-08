@@ -68,7 +68,10 @@ Keep the baseline intact by following these when you add pages:
 - **Forms** — never rely on a placeholder as a label (it vanishes on input and
   is invisible to voice control). Wrap fields in `FormField` for a visible
   label, or add a `.sr-only` `<label htmlFor>` for compact/inline inputs (see
-  the create form and the search box in `projects.tsx`).
+  the add form in `todos.tsx`). A control that shows state rather than text —
+  the done/not-done toggle in `todo-row.tsx` — carries `aria-pressed` and an
+  `aria-label` naming the item, because a bare ✓ says nothing to a screen
+  reader.
 - **Tables** — use the `DataTable` component, pass a `caption`, and give every
   header cell `scope="col"` (or `scope="row"`). Pass `captionVisible` if you
   want the caption shown rather than screen-reader-only.

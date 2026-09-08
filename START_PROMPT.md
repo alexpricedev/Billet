@@ -60,7 +60,7 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 | `src/server/templates/login.tsx` | Page title |
 | `src/server/templates/home.tsx` | Page title |
 | `src/server/templates/forms.tsx` | Page title |
-| `src/server/templates/projects.tsx` | Page title |
+| `src/server/templates/todos.tsx` | Page title |
 | `src/server/components/layouts.tsx` | Logo text in `<span>Billet</span>` |
 | `src/server/services/seo.ts` | `SITE_NAME` and `SITE_DESCRIPTION` → project name and description |
 

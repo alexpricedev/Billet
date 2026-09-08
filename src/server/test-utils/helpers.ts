@@ -12,26 +12,26 @@ export const cleanupTestData = async (db: SQL): Promise<void> => {
      the tables together also removes the ordering problem: a single TRUNCATE
      checks its foreign keys once, at the end.
 
-     RESTART IDENTITY resets `project_id_seq`, which the project tests assert
+     RESTART IDENTITY resets `todo_id_seq`, which the todo tests assert
      against by literal id. */
   await db`
     TRUNCATE TABLE
       organization_invites, organization_members, organizations,
       user_tokens, sessions, users,
-      project
+      todo
     RESTART IDENTITY CASCADE
   `;
 };
 
 /**
- * Seed the database with test data for project table
+ * Seed the database with test data for the todo table: two open, one done.
  *
  * @param db - The database connection to use (should be the mocked testDb from each test file)
  */
 export const seedTestData = async (db: SQL): Promise<void> => {
-  await db`INSERT INTO project (title, created_by) VALUES (${"Test Project 1"}, ${"alice@example.com"})`;
-  await db`INSERT INTO project (title, created_by) VALUES (${"Test Project 2"}, ${null})`;
-  await db`INSERT INTO project (title, created_by) VALUES (${"Test Project 3"}, ${"bob@example.com"})`;
+  await db`INSERT INTO todo (title, created_by) VALUES (${"Test Todo 1"}, ${"alice@example.com"})`;
+  await db`INSERT INTO todo (title, created_by) VALUES (${"Test Todo 2"}, ${null})`;
+  await db`INSERT INTO todo (title, completed_at, created_by) VALUES (${"Test Todo 3"}, now(), ${"bob@example.com"})`;
 };
 
 /**

@@ -34,10 +34,10 @@ const PAGES: LlmsPage[] = [
       "Server-rendered form handling with validation, CSRF protection, and progressive enhancement.",
   },
   {
-    path: "/projects",
-    title: "Projects",
+    path: "/todos",
+    title: "Todos",
     description:
-      "A CRUD example backed by a shared service layer, exposed as both HTML pages and a JSON API.",
+      "A todo list backed by a shared service layer, exposed as HTML forms that work without JavaScript, in-place fragments when it is on, and a JSON API.",
   },
 ];
 

@@ -1,7 +1,7 @@
 // The attribute vocabulary a component speaks — shared by the server templates
 // that write it and the client that reads it, so the two can't drift on a
-// spelling. This file has no DOM dependency: server templates import it at
-// runtime, so keep it that way.
+// spelling. Like everything in src/shared/, it has no DOM and no Node
+// dependency: both sides import it at runtime.
 //
 // Every attribute carries the *name* of something the component returned — a
 // signal, a computed, or an action — never an expression. That is what keeps
@@ -13,7 +13,7 @@
 // `attr`, `prop` and `on`. `parsePairs` splits on the *last* colon, so a class
 // like `md:flex` on the left survives.
 
-import type { Readable, Signal } from "./signal";
+import type { Readable, Signal } from "@client/reactive/signal";
 
 export type Action = (event: Event) => void;
 export type Bindings = Record<string, Readable<unknown> | Action>;

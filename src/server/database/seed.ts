@@ -5,10 +5,10 @@ import { log } from "../services/logger";
 export const seedIfEmpty = async (): Promise<void> => {
   const [{ count: userCount }] =
     await db`SELECT count(*)::int AS count FROM users`;
-  const [{ count: projectCount }] =
-    await db`SELECT count(*)::int AS count FROM project`;
+  const [{ count: todoCount }] =
+    await db`SELECT count(*)::int AS count FROM todo`;
 
-  if (userCount > 0 || projectCount > 0) return;
+  if (userCount > 0 || todoCount > 0) return;
 
   log.info("seed", "Empty database detected — seeding starter data");
 
@@ -23,16 +23,16 @@ export const seedIfEmpty = async (): Promise<void> => {
   `;
 
   await db`
-    INSERT INTO project (title, created_by)
-    SELECT title, created_by FROM (VALUES
-      ('Hello World', 'alice@example.com'),
-      ('Server-Side Rendering', NULL),
-      ('Magic Link Auth', 'admin@example.com')
-    ) AS v(title, created_by)
-    WHERE NOT EXISTS (SELECT 1 FROM project WHERE project.title = v.title)
+    INSERT INTO todo (title, completed_at, created_by)
+    SELECT title, completed_at, created_by FROM (VALUES
+      ('Read the README', now(), 'alice@example.com'),
+      ('Add a todo without a page reload', NULL, NULL),
+      ('Ship it', NULL, 'admin@example.com')
+    ) AS v(title, completed_at, created_by)
+    WHERE NOT EXISTS (SELECT 1 FROM todo WHERE todo.title = v.title)
   `;
 
-  log.info("seed", "Seeded 5 users and 3 projects");
+  log.info("seed", "Seeded 5 users and 3 todos");
 };
 
 // Allow running directly via `bun run seed`

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { Readable, Signal } from "@client/reactive/signal";
 import {
   ATTR,
   type ComponentDefinition,
@@ -6,7 +7,6 @@ import {
   formatPairs,
   parsePairs,
 } from "./attributes";
-import type { Readable, Signal } from "./signal";
 
 describe("parsePairs", () => {
   test("splits space-separated target:name pairs", () => {
