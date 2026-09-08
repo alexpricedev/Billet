@@ -91,7 +91,7 @@ describe("Todos Controller", () => {
   };
 
   // A plain form post from the page, or — with `fragment` — the same post as
-  // the client's submitForm sends it.
+  // the client's server.submit sends it.
   const post = (
     url: string,
     sessionId: string | null,

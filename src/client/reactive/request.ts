@@ -1,4 +1,8 @@
-// The enhanced form submit. A component intercepts a form's `submit` event and
+// The client's one conversation with the server, imported as a namespace so
+// every call reads `server.submit(form)` and the enhanced forms in a codebase
+// are one grep away.
+//
+// A component intercepts a form's `submit` event and
 // sends the same fields to the same action, with two headers on top: the CSRF
 // token from the form's hidden field, promoted to the header `checkCsrf` reads
 // first, and the fragment header that tells the controller to answer with
@@ -8,7 +12,7 @@
 //
 // Tokens are time-bucketed on the server, and a stale one still proves
 // possession of the session, so a controller answers it with a 403 carrying a
-// fresh token in the same header. `submitForm` writes that token back into the
+// fresh token in the same header. `submit` writes that token back into the
 // form and retries once. Anything else is thrown as a `RequestError` for the
 // caller to decide about — the usual answer is to fall back to `form.submit()`
 // and let the server render the flash it would have rendered anyway.
@@ -87,7 +91,7 @@ const send = (form: HTMLFormElement): Promise<Response> => {
  * are fine in the default `div`. A table row parsed on its own is silently
  * dropped by the HTML parser, which is the whole reason this takes a parent.
  */
-export function parseFragment(html: string, parent = "div"): HTMLElement {
+export function parse(html: string, parent = "div"): HTMLElement {
   const holder = document.createElement(parent);
   holder.innerHTML = html;
   const el = holder.firstElementChild;
@@ -102,7 +106,7 @@ export function parseFragment(html: string, parent = "div"): HTMLElement {
  * HTML the controller rendered, or empty for a 204. Retries once when the
  * server refreshes a stale CSRF token; rejects with `RequestError` otherwise.
  */
-export async function submitForm(form: HTMLFormElement): Promise<string> {
+export async function submit(form: HTMLFormElement): Promise<string> {
   let response = await send(form);
 
   const refreshed = response.headers.get(CSRF_HEADER);

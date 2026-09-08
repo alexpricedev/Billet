@@ -5,7 +5,7 @@ import { createCsrfToken } from "../services/csrf";
 
 // The server half of the fragment protocol in `src/shared/protocol.ts`. A
 // plain form post gets the redirect-and-flash flow; the same post sent by the
-// client's `submitForm` carries the fragment header, and the controller answers
+// client's `server.submit` carries the fragment header, and the controller answers
 // with the one piece of rendered HTML the page needs to update itself — a row,
 // a card — through the same server component the full page renders with, so
 // the two can't drift. Security headers are still applied centrally.
@@ -33,7 +33,7 @@ export const emptyFragment = (): Response =>
 
 // The fragment counterpart of the flash-and-redirect a stale token gets on a
 // plain post. The token was authentic, just old, so hand back a fresh one in
-// the header `submitForm` retries with. Never called for any other CSRF
+// the header `server.submit` retries with. Never called for any other CSRF
 // failure — see `isRecoverableCsrfFailure`.
 export const refreshCsrfToken = async (
   sessionId: string,

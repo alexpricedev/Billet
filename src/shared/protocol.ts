@@ -2,7 +2,7 @@
 // on. One definition, imported by both, so a rename can't half-land. Like
 // everything in src/shared/, no DOM and no Node imports.
 
-// Sent by `submitForm` so a controller can answer with a rendered fragment
+// Sent by `server.submit` so a controller can answer with a rendered fragment
 // (a row, a card) instead of the redirect a plain form post gets.
 export const FRAGMENT_HEADER = "X-Fragment";
 
