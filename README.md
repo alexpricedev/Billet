@@ -136,7 +136,7 @@ The "designed for AI agents" tagline is the reason Billet exists, so here's what
 
 ### CLAUDE.md and skills — the agent's guide
 
-The repo ships a deliberately short [`CLAUDE.md`](CLAUDE.md) plus a set of skills in `.claude/skills/`. `CLAUDE.md` covers only what an agent can't learn by reading the repo — the gotchas: JSX with no hydration, why service tests mock the database module before importing, why `bun test` isn't the test command, where security headers actually come from. Everything procedural lives in skills that load on demand:
+The repo ships a deliberately short [`CLAUDE.md`](CLAUDE.md) plus a set of skills in `.claude/skills/`. `CLAUDE.md` covers only what an agent can't learn by reading the repo — the gotchas: JSX with no hydration, why service tests mock the database module before importing, why `bun test` isn't the test command, where security headers actually come from. Guidance that only matters in one part of the tree lives in path-scoped rules under `.claude/rules/`, loaded when those files are opened, and everything procedural lives in skills that load on demand:
 
 | Skill | Loads when |
 |---|---|
@@ -288,6 +288,7 @@ scripts/
 
 .claude/
 ├── settings.json               # Hooks shared with every agent on the repo
+├── rules/                      # Path-scoped instructions, loaded when matching files are opened
 ├── hooks/
 │   └── no-shared-stash.ts      # Denies `git stash`, points at `bun run wip`
 └── skills/                     # Progressive-disclosure guides for agents

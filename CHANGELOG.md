@@ -62,7 +62,9 @@ accordingly, with no behaviour change on the plain-post path.
 fails the suite on `fetch`, markup building, `JSON.parse`, routing or storage in client code
 outside `reactive/request.ts`; on runtime imports across the server/client line; on DOM or `node:`
 in `src/shared/`; and on `main.js` growing past a byte budget. CLAUDE.md states the tiers and the
-question to ask before writing client code; the PR template asks which tier a change is.
+question to ask before writing client code; how the layer, the fragment protocol and `formAction`
+work moves to path-scoped rules in `.claude/rules/`, loaded when the matching files are opened, in
+line with Anthropic's guidance to keep CLAUDE.md short; the PR template asks which tier a change is.
 
 **Todos replace projects.** Migration `009` drops `project` and creates `todo` with a
 `completed_at` column. `/todos` lists, adds, toggles and deletes; add and toggle return the row as
