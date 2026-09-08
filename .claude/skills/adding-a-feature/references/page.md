@@ -116,9 +116,9 @@ typed attributes:
 
 ```tsx
 import type { DashboardFilter } from "@client/components/dashboard-filter";
-import { component } from "@shared/attributes";
+import { bindings } from "@shared/attributes";
 
-const filter = component<DashboardFilter>("dashboard-filter");
+const filter = bindings<DashboardFilter>("dashboard-filter");
 // …
 <div {...filter.root}>
   <input {...filter.value("query")} />

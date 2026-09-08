@@ -1,5 +1,5 @@
 import type { TodoList } from "@client/components/todo-list";
-import { component } from "@shared/attributes";
+import { bindings } from "@shared/attributes";
 import { remainingLabel } from "@shared/todo";
 import type { JSX } from "preact";
 import { CsrfField } from "../components/csrf-field";
@@ -34,7 +34,7 @@ export type TodosProps = {
 
 // Binding names below are checked against the client component's type, so a
 // rename on either side fails `bun run typecheck` rather than going quiet.
-const list = component<TodoList>("todo-list");
+const list = bindings<TodoList>("todo-list");
 
 export const Todos = (props: TodosProps): JSX.Element => {
   // Only re-fill the add form when that submit failed.

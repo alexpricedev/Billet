@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { Readable, Signal } from "@client/reactive/signal";
 import {
   ATTR,
+  bindings,
   type ComponentDefinition,
-  component,
   formatPairs,
   parsePairs,
 } from "./attributes";
@@ -36,7 +36,7 @@ describe("parsePairs", () => {
   });
 });
 
-describe("component()", () => {
+describe("bindings()", () => {
   type Demo = ComponentDefinition<
     "demo",
     {
@@ -45,7 +45,7 @@ describe("component()", () => {
       toggle: () => void;
     }
   >;
-  const demo = component<Demo>("demo");
+  const demo = bindings<Demo>("demo");
 
   test("root carries the component name", () => {
     expect(demo.root).toEqual({ [ATTR.component]: "demo" });

@@ -17,7 +17,7 @@ export interface Readable<T> {
 // Reads go through `.value` on both; only a signal has `set`. A method rather
 // than a setter because TypeScript ignores `readonly` when checking
 // assignability, so a computed would otherwise pass wherever a signal is
-// required — the check `component<T>()` makes for `data-value`.
+// required — the check `bindings<T>()` makes for `data-value`.
 export interface Signal<T> extends Readable<T> {
   set(next: T): void;
 }
