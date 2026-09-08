@@ -404,6 +404,10 @@
       transition: transform 150ms ease;
     }
 
+    /* biome-ignore lint/style/noDescendingSpecificity: Biome compares nested
+       `&:hover` blocks by their literal text without resolving `&`, so this
+       pairs with `.hero-actions .btn-primary:hover` — a selector that can
+       never match this element. */
     &:hover {
       text-decoration: none;
 
