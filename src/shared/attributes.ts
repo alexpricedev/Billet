@@ -5,7 +5,7 @@
 //
 // Every attribute carries the *name* of something the component returned — a
 // signal, a computed, or an action — never an expression. That is what keeps
-// `'unsafe-eval'` out of the CSP, and it's what lets `component<T>()` typecheck
+// `'unsafe-eval'` out of the CSP, and it's what lets `bindings<T>()` typecheck
 // the names in a template against the client's bindings type.
 //
 // Values are names, so the attribute grammar is tiny: a bare name for `text`,
@@ -81,18 +81,20 @@ type EventName = keyof HTMLElementEventMap;
 
 /**
  * Typed attribute builders for one component, for spreading onto JSX in a
- * server template. `C` is the type of the client's `defineComponent` result —
+ * server template. Named for what it returns — the template's bindings to a
+ * client component — rather than "component", which already means the JSX
+ * function on the server and the factory on the client. `C` is the type of the client's `defineComponent` result —
  * import it with `import type`, which erases at compile time, so the template
  * gets the component's binding names without the server loading its code.
  *
- *   const search = component<ProjectSearch>("project-search");
+ *   const search = bindings<ProjectSearch>("project-search");
  *   <div {...search.root}>
  *     <input {...search.value("query")} />
  *     <p {...search.text("summary")} />
  *
  * A name that the component doesn't return is a type error in the template.
  */
-export function component<C extends ComponentDefinition<string, Bindings>>(
+export function bindings<C extends ComponentDefinition<string, Bindings>>(
   name: C["name"],
 ) {
   type B = BindingsOf<C>;

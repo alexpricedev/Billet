@@ -36,7 +36,7 @@ so a component body reads as its own logic with the framework calls prefixed —
 purpose: every enhanced form in a codebase is a `server.` call, one grep away.
 
 **`src/shared/` is the seam both sides import.** `attributes.ts` is the `data-*` vocabulary with a
-typed `component<T>()` builder, so a template's binding names are checked against the component's
+typed `bindings<T>()` builder, so a template's binding names are checked against the component's
 exported type and a misspelt name fails `bun run typecheck`. `protocol.ts` holds the header names
 the fetch helper and the server agree on; `services/csrf.ts` re-exports its CSRF constants from
 there. `todo.ts` is copy both sides render. Nothing in the directory touches the DOM or `node:`.

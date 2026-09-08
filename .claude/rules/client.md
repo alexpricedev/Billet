@@ -26,7 +26,7 @@ no virtual DOM, nothing rendered twice, and the page without JavaScript is the s
 
 The attributes carry **names, never expressions**. That is what keeps `'unsafe-eval'` out of the
 CSP, and it is what makes the names checkable: a template builds them through
-`component<T>("name")` from `attributes.ts`, where `T` is the component's exported type
+`bindings<T>("name")` from `attributes.ts`, where `T` is the component's exported type
 (`import type` — erased, so the server never loads client code). A misspelt binding or component
 name fails `bun run typecheck`.
 

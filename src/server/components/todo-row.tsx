@@ -1,9 +1,9 @@
 import type { TodoList } from "@client/components/todo-list";
-import { component } from "@shared/attributes";
+import { bindings } from "@shared/attributes";
 import type { Todo } from "../services/todo";
 import { CsrfField } from "./csrf-field";
 
-const list = component<TodoList>("todo-list");
+const list = bindings<TodoList>("todo-list");
 
 interface TodoRowProps {
   todo: Todo;
