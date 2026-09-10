@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { testDatabase } from "../test-utils/database";
-import { cleanupTestData } from "../test-utils/helpers";
+import { cleanupTestData, expectQueryToReject } from "../test-utils/helpers";
 
 const connection = testDatabase();
 
@@ -112,22 +112,17 @@ describe("Organizations Service with PostgreSQL", () => {
   });
 
   describe("schema constraints", () => {
-    // try/catch rather than expect().rejects: a Bun.SQL tagged template is a
-    // lazy thenable, not a Promise, and .rejects never settles against one.
     test("the role CHECK rejects a value outside the three", async () => {
       const { user } = await seedOwner();
 
-      let rejected = false;
-      try {
-        await db`
+      // expectQueryToReject, not expect().rejects — see the helper for why a
+      // tagged template never settles against it.
+      await expectQueryToReject(
+        () => db`
           UPDATE organization_members SET org_role = 'superuser'
           WHERE user_id = ${user.id}
-        `;
-      } catch {
-        rejected = true;
-      }
-
-      expect(rejected).toBe(true);
+        `,
+      );
     });
 
     test("nothing is added to the users table", async () => {

@@ -66,6 +66,28 @@ question to ask before writing client code; how the layer, the fragment protocol
 work moves to path-scoped rules in `.claude/rules/`, loaded when the matching files are opened, in
 line with Anthropic's guidance to keep CLAUDE.md short; the PR template asks which tier a change is.
 
+**The Postgres pool is guarded, and four binding hazards have one answer each.** `db` from
+`src/server/services/database.ts` is now a `Proxy` over the pool whose `apply` trap checks every
+bound parameter, and `testDatabase()` wraps its pools the same way — so a query that throws in
+production throws in a test rather than passing there and failing against live data. It rejects an
+array (which binds as the string `"a,b"`, and inside `= ANY()` gets `insufficient data left in
+message`) and a plain object that has not been declared with `jsonbValue()` (which binds as
+`"[object Object]"`). Both were silent at every layer before, and both corrupt data, so the guard
+throws in production too. Nothing had to change to be covered: `db` was already the only tag in the
+codebase, and `db.begin`, `db.close` and the rest of the surface pass through untouched.
+
+`src/server/utils/sql.ts` is the writing half of `utils/database.ts`: `jsonbValue(obj)` declares a
+value destined for a `jsonb` column and its signature refuses a `string`, so
+`jsonbValue(JSON.stringify(prefs))` fails typecheck rather than storing a jsonb *string*;
+`inList(values)` builds an `IN` list and throws on an empty array rather than rendering `IN ()`;
+`textArrayLiteral(values)` builds the literal for a `text[]` column with every element quoted and
+escaped. `expectQueryToReject` joins `test-utils/helpers.ts` for asserting a query fails, because
+`expect(db`…`).rejects` never settles against a lazy thenable and times the file out instead.
+`src/server/database/driver-safety.test.ts` fails the suite on the four the guard structurally
+can't see, in the `Rule[]` shape `src/client/boundaries.test.ts` uses. The three-hazard section in
+CLAUDE.md becomes a short pointer to `.claude/rules/database.md`, loaded when a file that queries
+Postgres is opened.
+
 **Todos replace projects.** Migration `009` drops `project` and creates `todo` with a
 `completed_at` column. `/todos` lists, adds, toggles and deletes; add and toggle return the row as
 a fragment, delete returns a 204. The `todo-list` component filters by all, active or completed,

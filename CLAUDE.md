@@ -143,19 +143,16 @@ test file calls `new SQL(` directly. Don't fix a connection-exhaustion failure b
 `TEST_WORKERS`: that costs parallelism, hides the cause, and the next test file re-adds ten
 connections.
 
-### Three Bun.SQL behaviours that fail silently
+### The pool is guarded, and it is the only tag
 
-- **`expect(query).rejects` hangs instead of failing.** A `Bun.SQL` tagged template is a lazy
-  thenable, not a promise, so `.rejects` never resolves and the file times out with no failing
-  assertion to point at. Wrap it in an async IIFE:
-  `await expect((async () => { await sql`…` })()).rejects.toThrow(…)`.
-- **`= ANY(${array})` is wrong, not an error.** A JS array bound into `ANY()` serialises to a
-  comma-joined string (`malformed array literal: "a,b"`), and `sql.array()` double-quotes each
-  element so `['A']` arrives as `"A"` with the quotes inside the value. Use `IN ${sql(array)}`. For
-  a `text[]` *column*, build the Postgres array literal by hand.
-- **Bun JSON-encodes a value bound to a `jsonb` column itself.** `${JSON.stringify(obj)}` therefore
-  stores a jsonb *string* — one long scalar that reads back as text and matches no query, with no
-  error at any layer. Bind the object directly.
+`db` from `src/server/services/database.ts` is the single tag every query in the codebase uses, and
+it is a guarded `Proxy` over the pool — an array or an undeclared plain object bound as a parameter
+throws at the call site, in production as much as in tests. It has to be a throw: an array arrives
+as `"a,b"` and an object as `"[object Object]"`, both legal SQL with no error at any layer. Write
+`inList`, `textArrayLiteral` or `jsonbValue` from `src/server/utils/sql.ts` instead, and
+`expectQueryToReject` from `test-utils/helpers.ts` when asserting a query fails — `.rejects` on a
+tagged template hangs rather than failing. `src/server/database/driver-safety.test.ts` fails the
+suite on the ones the guard can't see. Detail and reasoning: `.claude/rules/database.md`.
 
 ### One preload sets the test environment
 
