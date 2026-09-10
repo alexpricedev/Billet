@@ -30,7 +30,7 @@ export const SITE_DESCRIPTION =
 
 // Public, indexable routes included in the sitemap. Private or noindex routes
 // (/login, /admin), API endpoints, and auth callbacks are intentionally omitted.
-export const SITEMAP_PATHS = ["/", "/stack", "/forms", "/projects"] as const;
+export const SITEMAP_PATHS = ["/", "/stack", "/forms", "/todos"] as const;
 
 // Absolute URL for a site-relative path. Exported so llms-txt.ts resolves against
 // the same origin rather than keeping its own copy of this line.

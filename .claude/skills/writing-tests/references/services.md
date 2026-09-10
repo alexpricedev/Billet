@@ -17,9 +17,9 @@ mock.module("./database", () => ({
 }));
 
 import { db } from "./database";
-import { createProject, getProjects } from "./project";
+import { createTodo, getTodos } from "./todo";
 
-describe("Project service", () => {
+describe("Todo service", () => {
   beforeEach(async () => {
     await cleanupTestData(db);
   });
@@ -45,12 +45,23 @@ Four things this shape is load-bearing on:
 
 ## Isolation
 
-`cleanupTestData(db)` truncates `user_tokens`, `sessions`, `users`, and `project`, and restarts
-`project_id_seq`. Call it in `beforeEach`, not `afterEach` — a failed test then leaves its rows
+`cleanupTestData(db)` truncates `user_tokens`, `sessions`, `users`, and `todo`, and restarts
+`todo_id_seq`. Call it in `beforeEach`, not `afterEach` — a failed test then leaves its rows
 behind for inspection. Extend that helper when you add a table rather than truncating inline.
 
-`seedTestData(db)` inserts three known projects. `randomEmail()` gives a collision-free address
+`seedTestData(db)` inserts three known todos, the last one completed. `randomEmail()` gives a collision-free address
 for user fixtures.
+
+## Asserting that a query fails
+
+`expectQueryToReject(() => db`…`)` from `test-utils/helpers.ts`, never `expect(db`…`).rejects` —
+which neither works nor fails. A Bun.SQL tagged template is a lazy thenable rather than a Promise,
+so `.rejects` never settles and the file times out at 60s with no failing assertion to point at.
+
+The pool a test gets from `testDatabase()` is guarded like the production one, so binding an array
+or a plain object throws rather than silently writing `"a,b"` or `"[object Object]"`. Use `inList`,
+`textArrayLiteral` and `jsonbValue` from `src/server/utils/sql.ts`; `.claude/rules/database.md` has
+the four hazards.
 
 ## What to cover
 

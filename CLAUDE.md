@@ -72,35 +72,32 @@ so a developer who never runs an agent never sees the rows.
 human's cookie out of their browser instead of minting one: it works, and it makes the agent's
 requests indistinguishable from the developer's in the logs.
 
-### One JSX runtime, two execution models
+### JSX is a server-side template engine, nothing more
 
 Everything compiles with Preact (`jsxImportSource: preact` in `tsconfig.json`) — there is no React
-in this project. What differs is *when* the JSX runs, and the `src/server/` vs `src/client/` split
-is the signal:
-
-- **`src/server/`** renders once through `renderToString()` from `preact-render-to-string` and ships
-  as HTML. It never hydrates, so `useState` in a server template does nothing.
-- **`src/client/`** mounts into the live DOM with `render()` from `preact` and is fully interactive.
-
-`preact` is a runtime **dependency**, not a devDependency — the server imports its JSX runtime, so a
-production install without it won't boot. The client bundle marks it `--external` and resolves it
-from the import map in `src/server/components/layouts.tsx`, so the version pinned there must stay in
-step with `package.json`.
-
-The import map carries **both** `preact/jsx-runtime` and `preact/jsx-dev-runtime`, and both are
-`--external` in the client build. Neither is dead weight. Bun 1.4 documents `"jsx": "react-jsx"` as
-emitting `jsx` from `<pkg>/jsx-runtime`, but the mere presence of a `bunfig.toml` — any content, even
-empty — makes it emit `jsxDEV` from `<pkg>/jsx-dev-runtime` instead. This repo has one, so the
-bundle and the server both use the dev runtime. Reproduce it by deleting `bunfig.toml` and
-rebuilding; the import changes. Whichever way Bun settles this, both entries are mapped, so nothing
-breaks — which is the only reason it isn't a live bug here. Don't prune the "unused" one.
+in this project, and no Preact reaches the browser either. `src/server/` renders once through
+`renderToString()` from `preact-render-to-string` and ships HTML. It never hydrates, so `useState`
+in a template does nothing, and nothing in `src/client/` imports `preact`. `preact` is still a
+runtime **dependency**, not a devDependency: the server imports its JSX runtime, so a production
+install without it won't boot.
 
 **Write SVG attributes in kebab-case** (`stroke-width`, not `strokeWidth`). Preact passes camelCase
 attribute names through verbatim, and the HTML parser doesn't recognise `strokeWidth` — the stroke
 silently renders at the default width. React used to rewrite these; nothing does now.
 
-No Web Components. Shadow DOM and custom-element lifecycles need browser infrastructure to test;
-pure functions and Preact islands are both testable under `bun:test`.
+### Client code has three tiers, and the default is the first
+
+The server owns state and rendering. Before writing any client code ask: *if JavaScript were off,
+would this be wrong, or merely slower?* Wrong is server work. The tiers, in order of preference:
+
+1. **Plain form, redirect, flash** — the default for every mutation, no justification needed.
+2. **Enhanced form** — same form and controller, answered with a fragment; only when a reload
+   would lose context the user is holding, with the reason in a comment on the component.
+3. **Presentation over rows already rendered** — show, hide, count, filter; never domain data.
+
+`src/client/boundaries.test.ts` enforces this and fails the suite rather than a review. How the
+client layer, the fragment protocol and `formAction` work is in `.claude/rules/`, which loads when
+you open the matching files.
 
 ### Service tests mock the DB module before importing the service
 
@@ -146,19 +143,16 @@ test file calls `new SQL(` directly. Don't fix a connection-exhaustion failure b
 `TEST_WORKERS`: that costs parallelism, hides the cause, and the next test file re-adds ten
 connections.
 
-### Three Bun.SQL behaviours that fail silently
+### The pool is guarded, and it is the only tag
 
-- **`expect(query).rejects` hangs instead of failing.** A `Bun.SQL` tagged template is a lazy
-  thenable, not a promise, so `.rejects` never resolves and the file times out with no failing
-  assertion to point at. Wrap it in an async IIFE:
-  `await expect((async () => { await sql`…` })()).rejects.toThrow(…)`.
-- **`= ANY(${array})` is wrong, not an error.** A JS array bound into `ANY()` serialises to a
-  comma-joined string (`malformed array literal: "a,b"`), and `sql.array()` double-quotes each
-  element so `['A']` arrives as `"A"` with the quotes inside the value. Use `IN ${sql(array)}`. For
-  a `text[]` *column*, build the Postgres array literal by hand.
-- **Bun JSON-encodes a value bound to a `jsonb` column itself.** `${JSON.stringify(obj)}` therefore
-  stores a jsonb *string* — one long scalar that reads back as text and matches no query, with no
-  error at any layer. Bind the object directly.
+`db` from `src/server/services/database.ts` is the single tag every query in the codebase uses, and
+it is a guarded `Proxy` over the pool — an array or an undeclared plain object bound as a parameter
+throws at the call site, in production as much as in tests. It has to be a throw: an array arrives
+as `"a,b"` and an object as `"[object Object]"`, both legal SQL with no error at any layer. Write
+`inList`, `textArrayLiteral` or `jsonbValue` from `src/server/utils/sql.ts` instead, and
+`expectQueryToReject` from `test-utils/helpers.ts` when asserting a query fails — `.rejects` on a
+tagged template hangs rather than failing. `src/server/database/driver-safety.test.ts` fails the
+suite on the ones the guard can't see. Detail and reasoning: `.claude/rules/database.md`.
 
 ### One preload sets the test environment
 
@@ -238,7 +232,7 @@ Password hashing lives in `src/server/utils/crypto.ts` and is deliberately *not*
 Every response gets its headers from `secureRoutes` / `handleGuarded` in
 `src/server/utils/security-headers.ts`. Controllers set only content-specific headers.
 
-The CSP script allowlist is `'self' 'unsafe-inline' https://unpkg.com https://esm.sh`. Any new
+The CSP script allowlist is `'self' 'unsafe-inline' https://unpkg.com`. Any new
 third-party script needs the CSP entry, an SRI `integrity` hash, and ideally a `preconnect` in
 `layouts.tsx` — otherwise it is silently blocked in the browser but passes every test.
 
@@ -321,7 +315,7 @@ changes to it are not covered by `bun run check`.
 
 ### Naming that isn't inferable
 
-App controllers export a plain name (`home`, `projects`); API controllers use an `Api` suffix
+App controllers export a plain name (`home`, `todos`); API controllers use an `Api` suffix
 (`examplesApi`, `statsApi`) so both can be barrel-exported when they share a resource name.
 
 ## Skills

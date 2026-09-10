@@ -13,9 +13,8 @@ import { maintenanceResponse } from "./maintenance";
 const isProduction = process.env.NODE_ENV === "production";
 
 // Content Security Policy. Enforcing, but deliberately host-allowlist based
-// rather than nonce + 'strict-dynamic': the page ships an inline importmap and
-// inline JSON-LD, and pulls Preact from esm.sh and lottie from unpkg. Those
-// inline blocks force 'unsafe-inline' here. The real wins this still buys:
+// rather than nonce + 'strict-dynamic': the page ships inline JSON-LD and pulls
+// lottie from unpkg. The inline block forces 'unsafe-inline' here. The real wins this still buys:
 // frame-ancestors (clickjacking), object-src/base-uri lockdown, a tight source
 // allowlist, and upgrade-insecure-requests. Hardening to nonce + 'strict-dynamic'
 // (which lets us drop 'unsafe-inline') is the documented follow-up.
@@ -27,7 +26,7 @@ const CONTENT_SECURITY_POLICY = [
   "img-src 'self' data:",
   "font-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline' https://unpkg.com https://esm.sh",
+  "script-src 'self' 'unsafe-inline' https://unpkg.com",
   "connect-src 'self'",
   // Production only, like HSTS below: WebKit applies the upgrade to
   // http://localhost subresources too (Chrome exempts localhost), so in dev it

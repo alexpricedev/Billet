@@ -7,7 +7,7 @@ import type { Subprocess } from "bun";
 // Chrome elsewhere), so these journeys must never gate the deterministic
 // suite. What they cover is exactly what happy-dom can't:
 //
-// - the client bundle executing in a real page (hydration, not just parsing)
+// - the client bundle executing in a real page (running, not just parsing)
 // - CSP: a blocked script passes every unit test and fails only here
 // - a full form journey with trusted input events, a real session cookie,
 //   and the CSRF token round-trip
@@ -135,7 +135,7 @@ describe("browser smoke", () => {
     expect(styleSheets).toBeGreaterThan(0);
   });
 
-  test("the client bundle hydrates the forms island", async () => {
+  test("the client bundle runs the forms page script", async () => {
     await view.navigate(`${BASE}/forms`);
 
     // set only by src/client/pages/forms.ts at init — proves main.js was
@@ -172,6 +172,92 @@ describe("browser smoke", () => {
       `${SCREENSHOT_DIR}/forms-success.png`,
       await view.screenshot(),
     );
+  });
+
+  test("the todo list adds, toggles and filters without a page load", async () => {
+    await view.navigate(`${BASE}/todos`);
+
+    // The filters ship hidden and are revealed by data-mounted, which only
+    // the bundle sets — so their appearance proves main.js ran and mount()
+    // found the component under the CSP.
+    const mounted = await until(
+      () =>
+        view.evaluate<boolean>(
+          `document.querySelector('[data-component="todo-list"]')?.hasAttribute("data-mounted") ?? false`,
+        ),
+      (ok) => ok === true,
+    );
+    expect(mounted).toBe(true);
+
+    // A marker on window survives only if the page is never reloaded. Every
+    // assertion below that reads it is asserting "no navigation happened".
+    await view.evaluate(`window.__smoke = "same page"`);
+    const rowsBefore = await view.evaluate<number>(
+      `document.querySelectorAll("tbody tr[data-id]").length`,
+    );
+
+    // Add: the form's submit is intercepted, the server answers with the
+    // row, and it lands in the table with trusted key events all the way.
+    const title = `Smoke ${Date.now()}`;
+    await view.click("#todo-title");
+    await view.type(title);
+    await view.click(".todo-form button[type='submit']");
+    const rowsAfter = await until(
+      () =>
+        view.evaluate<number>(
+          `document.querySelectorAll("tbody tr[data-id]").length`,
+        ),
+      (n) => n === rowsBefore + 1,
+    );
+    expect(rowsAfter).toBe(rowsBefore + 1);
+    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
+
+    const newId = await view.evaluate<string>(
+      `Array.from(document.querySelectorAll("tbody tr[data-id]")).find((tr) => tr.querySelector(".todo-title")?.textContent === ${JSON.stringify(title)})?.dataset.id ?? ""`,
+    );
+    expect(newId).not.toBe("");
+    const rowSelector = `tbody tr[data-id="${newId}"]`;
+    const countBefore = await view.evaluate<string>(
+      `document.querySelector(".todo-count")?.textContent ?? ""`,
+    );
+
+    // Toggle: the row is swapped for the server's completed version, and the
+    // count follows.
+    await view.click(`${rowSelector} .toggle-btn`);
+    const completed = await until(
+      () =>
+        view.evaluate<boolean>(
+          `document.querySelector('${rowSelector}')?.hasAttribute("data-completed") ?? false`,
+        ),
+      (ok) => ok === true,
+    );
+    expect(completed).toBe(true);
+    const countAfter = await view.evaluate<string>(
+      `document.querySelector(".todo-count")?.textContent ?? ""`,
+    );
+    expect(countAfter).not.toBe(countBefore);
+    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
+
+    // Filter: Active hides the row just completed; All brings it back.
+    await view.click(".todo-filters button:nth-of-type(2)");
+    const hidden = await until(
+      () =>
+        view.evaluate<boolean>(
+          `document.querySelector('${rowSelector}')?.hidden ?? false`,
+        ),
+      (ok) => ok === true,
+    );
+    expect(hidden).toBe(true);
+    await view.click(".todo-filters button:nth-of-type(1)");
+    const shown = await until(
+      () =>
+        view.evaluate<boolean>(
+          `document.querySelector('${rowSelector}')?.hidden === false`,
+        ),
+      (ok) => ok === true,
+    );
+    expect(shown).toBe(true);
+    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
   });
 
   test("the captcha solves its proof of work in the page", async () => {

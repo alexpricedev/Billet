@@ -478,9 +478,9 @@ describe("CSRF Service", () => {
       const sessionId = await createTestSession();
       const token = await mintAged(sessionId, TIME_WINDOW_MINUTES * 3);
 
-      expect(
-        await inspectCsrfToken(sessionId, "POST", "/projects", token),
-      ).toBe("invalid");
+      expect(await inspectCsrfToken(sessionId, "POST", "/todos", token)).toBe(
+        "invalid",
+      );
     });
   });
 });

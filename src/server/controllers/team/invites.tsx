@@ -1,6 +1,4 @@
 import type { BunRequest } from "bun";
-import { checkCsrf, isRecoverableCsrfFailure } from "../../middleware/csrf";
-import { requireOrgRole } from "../../middleware/org";
 import { rateLimit } from "../../middleware/rate-limit";
 import { getEmailService } from "../../services/email";
 import {
@@ -14,44 +12,36 @@ import { teamsEnabled } from "../../services/teams-mode";
 import type { TeamState } from "../../templates/team";
 import { appUrl } from "../../utils/app-url";
 import { render404 } from "../../utils/errors";
+import { type ActionGuard, formAction } from "../../utils/form-action";
 import { readFormValues } from "../../utils/form-data";
-import { redirect } from "../../utils/response";
-import { fitFlashState, stateHelpers } from "../../utils/state";
+import { fitFlashState } from "../../utils/state";
+import { type OrgAuthorized, orgRoleGuard } from "./guards";
 
-const { setFlash } = stateHelpers<TeamState>();
+// Every request here can send an email, so it gets the same budget as /login
+// and the verification resend rather than the default — before the org lookup,
+// so a flood never reaches the database.
+const adminWithEmailBudget: ActionGuard<OrgAuthorized> = async (
+  req: BunRequest,
+) => {
+  if (!teamsEnabled()) return { ok: false, response: render404() };
+  const limited = rateLimit(req, "auth", 5, 60_000);
+  if (limited) return { ok: false, response: limited };
+  return orgRoleGuard("admin")(req);
+};
 
 export const teamInvites = {
-  async create(req: BunRequest): Promise<Response> {
-    if (!teamsEnabled()) return render404();
-
-    // Every request here can send an email, so it gets the same budget as
-    // /login and the verification resend rather than the default.
-    const limited = rateLimit(req, "auth", 5, 60_000);
-    if (limited) return limited;
-
-    const guard = await requireOrgRole(req, "admin");
-    if (!guard.authorized) return guard.response;
-
-    const csrf = await checkCsrf(req, {
-      method: "POST",
-      path: "/team/invites",
-    });
-    if (!csrf.ok) {
-      if (!isRecoverableCsrfFailure(csrf)) return csrf.response;
-
-      // Stale but authentic. The only thing worth preserving is the address,
-      // which is safe to flash — the auth forms already round-trip one.
-      const stale = await readFormValues(req, ["email"]);
-      setFlash(
-        req,
-        fitFlashState<TeamState>(
-          { state: "csrf-expired", email: stale.email },
-          ["email"],
-        ),
-      );
-      return redirect("/team");
-    }
-
+  create: formAction<TeamState, OrgAuthorized>({
+    redirectTo: "/team",
+    guard: adminWithEmailBudget,
+    // Stale but authentic. The only thing worth preserving is the address,
+    // which is safe to flash — the auth forms already round-trip one.
+    onExpired: async (req) => {
+      const { email } = await readFormValues(req, ["email"]);
+      return fitFlashState<TeamState>({ state: "csrf-expired", email }, [
+        "email",
+      ]);
+    },
+  })(async (req, _ctx, guard) => {
     // readFormValues, not readPassword: trimming and dropping empties is right
     // for an address and a role, and nothing on this surface is a credential.
     // The field is named org_role, never role — a copy-paste that wrote this
@@ -62,15 +52,13 @@ export const teamInvites = {
     ]);
 
     if (!email?.includes("@") || email.length > 254) {
-      setFlash(req, { state: "invalid-email", email });
-      return redirect("/team");
+      return { reject: 400, flash: { state: "invalid-email", email } };
     }
 
     // Owner is not offered: ownership is granted from the members table by an
     // existing owner, never handed out blind to an address that hasn't accepted.
     if (!org_role || !isOrgRole(org_role) || org_role === "owner") {
-      setFlash(req, { state: "invalid-role", email });
-      return redirect("/team");
+      return { reject: 400, flash: { state: "invalid-role", email } };
     }
 
     const result = await createInvite(
@@ -81,8 +69,7 @@ export const teamInvites = {
     );
 
     if (!result.success) {
-      setFlash(req, { state: result.error, email });
-      return redirect("/team");
+      return { reject: 409, flash: { state: result.error, email } };
     }
 
     // Unlike the password reset, a send failure here is reported. That silence
@@ -99,38 +86,26 @@ export const teamInvites = {
       });
     } catch (error) {
       log.error("team", `Failed to send invite email: ${error}`);
-      setFlash(req, { state: "invite-failed", email: result.invite.email });
-      return redirect("/team");
+      return {
+        reject: 502,
+        flash: { state: "invite-failed", email: result.invite.email },
+      };
     }
 
-    setFlash(req, { state: "invite-sent", email: result.invite.email });
-    return redirect("/team");
-  },
+    return { flash: { state: "invite-sent", email: result.invite.email } };
+  }),
 
-  async destroy(req: BunRequest): Promise<Response> {
-    if (!teamsEnabled()) return render404();
-
-    const guard = await requireOrgRole(req, "admin");
-    if (!guard.authorized) return guard.response;
-
-    const csrf = await checkCsrf(req, {
-      method: "POST",
-      path: new URL(req.url).pathname,
-    });
-    if (!csrf.ok) {
-      if (!isRecoverableCsrfFailure(csrf)) return csrf.response;
-
-      // Never replay a mutation on a recovered token — bounce back so the row
-      // re-renders and the user confirms with a deliberate second click.
-      setFlash(req, { state: "action-csrf-expired" });
-      return redirect("/team");
-    }
-
+  // Never replay a mutation on a recovered token — the plain post bounces back
+  // so the row re-renders and the user confirms with a deliberate second click.
+  destroy: formAction<TeamState, OrgAuthorized>({
+    redirectTo: "/team",
+    guard: orgRoleGuard("admin"),
+    onExpired: () => ({ state: "action-csrf-expired" }),
+  })(async (req, _ctx, guard) => {
     // Scoped to the caller's org inside revokeInvite: being an admin of some
     // org must not be enough to revoke another org's invite.
     const revoked = await revokeInvite(guard.membership.org.id, req.params.id);
 
-    setFlash(req, { state: revoked ? "invite-revoked" : "invite-gone" });
-    return redirect("/team");
-  },
+    return { flash: { state: revoked ? "invite-revoked" : "invite-gone" } };
+  }),
 };

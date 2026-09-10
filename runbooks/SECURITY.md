@@ -78,7 +78,7 @@ The policy is enforcing and host-allowlist based. Current directives:
 ```
 default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none';
 img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline';
-script-src 'self' 'unsafe-inline' https://unpkg.com https://esm.sh;
+script-src 'self' 'unsafe-inline' https://unpkg.com;
 connect-src 'self'; upgrade-insecure-requests
 ```
 
@@ -89,7 +89,7 @@ every asset off the page in local dev and under the browser smoke tests.
 What it buys today: no other site can frame our pages (`frame-ancestors 'none'`),
 no plugins (`object-src 'none'`), no `<base>` injection (`base-uri 'none'`), any
 stray `http://` subresource is auto-upgraded to HTTPS, and code/styles/images may
-only load from us plus the two named CDNs.
+only load from us plus the one named CDN.
 
 **Adding a new external source.** If you pull a script, style, image, font, or
 API from a new origin, add that origin to the matching directive in
@@ -104,13 +104,30 @@ Forget one and the browser blocks the resource with a `Refused to load…` conso
 error. Test in a real browser after any change (see §6).
 
 **The `'unsafe-inline'` tradeoff.** `script-src` includes `'unsafe-inline'`
-because the page ships an inline import map and inline JSON-LD in
+because the page ships inline JSON-LD in
 [`layouts.tsx`](../src/server/components/layouts.tsx). That weakens CSP's XSS
 protection. The hardening path (a follow-up, not done here) is nonce +
 `'strict-dynamic'`: generate a per-request nonce, stamp it on every inline and
 first-party `<script>`, add `'nonce-…' 'strict-dynamic'` to `script-src`, and
-drop `'unsafe-inline'`. The cleanest enabler is self-hosting Preact and lottie so
-there are no CDN scripts and no inline import map to allow.
+drop `'unsafe-inline'`. The cleanest enabler is self-hosting lottie so there is
+no CDN script to allow.
+
+**No `'unsafe-eval'`, by design.** The client's reactive layer
+(`src/client/reactive/`) binds state to markup through `data-*` attributes that
+carry *names* of a component's signals and actions, never expressions, so
+nothing on the page evaluates a string. Frameworks that put expressions in
+attributes (Alpine, petite-vue, in-DOM Vue) need `'unsafe-eval'`; adding one
+means widening this policy.
+
+**Enhanced form posts and CSRF.** `server.submit` (`src/client/reactive/request.ts`)
+posts a form with its CSRF token promoted to the `X-CSRF-Token` header, which
+`checkCsrf` reads before the body, plus `X-Fragment: 1`. Origin validation
+applies to those posts exactly as to plain ones. A token that is stale but
+verifies against the session secret is answered with a 403 carrying a fresh
+token in the same header, and the client retries once; a forged, missing or
+cross-origin token gets no header — `isRecoverableCsrfFailure` is the gate, and
+widening it would turn the app into a token vending machine for
+attacker-initiated posts. The header names live in `src/shared/protocol.ts`.
 
 ## 4. Subresource Integrity (third-party scripts)
 
@@ -136,11 +153,6 @@ curl -sL "https://unpkg.com/lottie-web@<NEW>/build/player/lottie_light.min.js" \
 ```
 
 Update both the `src` version and the `integrity` value.
-
-**Preact / import map.** Preact is pinned (`@10.29.8`) but loaded via an ES
-module import map, which has no SRI equivalent in current browsers. Pinning the
-exact version is the mitigation. Self-hosting removes the third-party trust
-entirely.
 
 ## 5. Deploy & transport layer (host, not code)
 
@@ -171,7 +183,9 @@ curl -s https://yourdomain.com/.well-known/security.txt
 ```
 
 - **In a browser:** load the site, open the console, confirm no `Refused to
-  load…` / CSP violations and that the hero animation and any islands render.
+  load…` / CSP violations, that the hero animation plays, and that on `/todos`
+  the filter buttons appear (they stay hidden until the bundle mounts the
+  component) and adding a todo updates the list without a page load.
 - **Scanners:** [securityheaders.com](https://securityheaders.com),
   [Mozilla Observatory](https://observatory.mozilla.org), and Google's
   [CSP Evaluator](https://csp-evaluator.withgoogle.com) for policy strength.
@@ -212,8 +226,8 @@ want a spotless console.
 - **Reporting API (`Reporting-Endpoints` + CSP `report-to`)** — needs a collector
   endpoint to receive violation reports. Add one to observe CSP breakage in the
   wild before tightening the policy.
-- **COEP / CORP** — `Cross-Origin-Embedder-Policy` would break the unpkg/esm.sh
-  scripts, and a strict `Cross-Origin-Resource-Policy` would block social scrapers
+- **COEP / CORP** — `Cross-Origin-Embedder-Policy` would break the unpkg
+  script, and a strict `Cross-Origin-Resource-Policy` would block social scrapers
   from fetching the OG image. Only `Cross-Origin-Opener-Policy` is set. Revisit
   COEP if you ever need cross-origin isolation (e.g. `SharedArrayBuffer`).
 - **Trusted Types** (`require-trusted-types-for 'script'`) — pairs naturally with
