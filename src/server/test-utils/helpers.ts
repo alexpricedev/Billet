@@ -1,3 +1,4 @@
+import { expect } from "bun:test";
 import type { SQL } from "bun";
 
 /**
@@ -45,4 +46,29 @@ export const randomEmail = (domain = "example.com"): string => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
   return `test-${timestamp}-${random}@${domain}`;
+};
+
+/**
+ * Assert that a query fails — a constraint, a CHECK, a permission.
+ *
+ * `expect(db`…`).rejects` does not work here and does not fail either: a
+ * Bun.SQL tagged template is a lazy thenable rather than a Promise, so
+ * `.rejects` never settles and the file times out with no failing assertion to
+ * point at. Awaiting it inside a real async function is what gives Bun a
+ * promise to reject, and doing that in one place keeps the shape out of every
+ * test that needs it.
+ *
+ * @param run - Runs the query. Return it or await it; either works.
+ * @param expected - Optional message or pattern the error must match.
+ */
+export const expectQueryToReject = async (
+  run: () => unknown,
+  expected?: string | RegExp,
+): Promise<void> => {
+  const settled = (async () => {
+    await run();
+  })();
+  await (expected === undefined
+    ? expect(settled).rejects.toThrow()
+    : expect(settled).rejects.toThrow(expected));
 };
