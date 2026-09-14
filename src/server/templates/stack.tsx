@@ -10,7 +10,7 @@ interface StackProps {
 export const Stack = ({ user, csrfToken }: StackProps) => (
   <Layout
     title="Stack - Billet"
-    description="The Billet stack — Bun, server-rendered JSX, custom CSS, and PostgreSQL in one process with one test runner and one deploy target."
+    description="The Billet stack—Bun, server-rendered JSX, custom CSS, and PostgreSQL in one process with one test runner and one deploy target."
     canonicalPath="/stack"
     name="stack"
     user={user}
@@ -19,9 +19,10 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
     <h1>The Stack</h1>
     <p className="lead">
       Billet is a server-rendered TypeScript starter built on Bun. Templates are
-      JSX compiled at the edge — no client framework, no virtual DOM, no
-      hydration step. Pages arrive as plain HTML, and a few hundred lines of
-      signals bind interactivity to that markup where a page needs it.
+      JSX, compiled by Bun and rendered to HTML in the same process that answers
+      the request—no client framework, no virtual DOM, no hydration step. Pages
+      arrive as plain HTML, and a few hundred lines of signals bind
+      interactivity to that markup where a page needs it.
     </p>
 
     <section>
@@ -42,12 +43,15 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
       <h2>Project structure</h2>
       <pre>{`src/
 ├── client/                  # Browser-side code
-│   ├── main.ts              # Entry — routes to page init fns
+│   ├── main.ts              # Entry point: registers pages and components
+│   ├── page-lifecycle.ts    # Per-page init and cleanup
+│   ├── reactive/            # Signals, components, bind(), submit helper
 │   ├── style.css            # Global styles (CSS entry point)
-│   ├── components/          # Shared CSS (nav, layout)
+│   ├── components/          # Shared components + CSS (nav, todo list)
 │   └── pages/               # Page JS & CSS (co-located)
 │
 ├── server/                  # Server-side code (Bun)
+│   ├── main.ts              # Server entry point
 │   ├── routes/              # URL → controller mapping
 │   ├── controllers/         # Request handlers
 │   │   ├── app/             # View controllers (HTML)
@@ -61,13 +65,13 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
 │   ├── utils/               # Shared helpers
 │   └── database/            # Migrations
 │
-└── types/                   # Global type declarations`}</pre>
+└── shared/                  # The data-* vocabulary and header names both sides import`}</pre>
     </section>
 
     <section>
       <h2>Feedback stack</h2>
       <p className="text-secondary">
-        Four layers of automated checks run before code reaches production.
+        Five layers of automated checks run before code reaches production.
       </p>
       <DataTable>
         <thead>
@@ -103,6 +107,13 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
               scripts
             </td>
           </tr>
+          <tr>
+            <td>GitHub Actions CI</td>
+            <td>
+              Lint, build, and the full suite against a real PostgreSQL before a
+              branch can merge; a scheduled audit flags vulnerable dependencies
+            </td>
+          </tr>
         </tbody>
       </DataTable>
     </section>
@@ -136,8 +147,22 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
           <tr>
             <td>Signals</td>
             <td>
-              An in-repo reactive layer that binds to server markup by name — no
+              An in-repo reactive layer that binds to server markup by name—no
               virtual DOM, no eval, no full SPA
+            </td>
+          </tr>
+          <tr>
+            <td>Preact</td>
+            <td>
+              The JSX runtime, used only by <code>renderToString()</code> on the
+              server—none of it reaches the browser
+            </td>
+          </tr>
+          <tr>
+            <td>Resend</td>
+            <td>
+              Transactional email in production; a console provider takes its
+              place in development
             </td>
           </tr>
         </tbody>

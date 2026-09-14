@@ -18,8 +18,8 @@ interface HomeProps {
 
 export const Home = ({ user, csrfToken, message }: HomeProps) => (
   <Layout
-    title="Billet — The AI-native TypeScript starter"
-    description="Give your AI coding agents guardrails: server-rendered JSX, PostgreSQL via Bun, auth, security and 700+ tests in a single deploy target."
+    title="Billet—The AI-native TypeScript starter"
+    description="Give your AI coding agents guardrails: server-rendered JSX, PostgreSQL via Bun, auth, security and 900+ tests in a single deploy target."
     canonicalPath="/"
     name="home"
     user={user}
@@ -64,10 +64,10 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
       <p className="hero-tag">Full-stack TypeScript starter</p>
       <h1>Give your agents guardrails</h1>
       <p className="hero-sub">
-        Auth, security, migrations and 700+ tests, already bolted down.
-        Server-rendered JSX on Bun and PostgreSQL — one codebase, one test
-        runner, one deploy target. Your agent starts on your product, not on the
-        parts every app needs.
+        Auth, security, migrations and 900+ tests, already bolted down.
+        Server-rendered JSX on Bun and PostgreSQL, reactive without a virtual
+        DOM—one codebase, one test runner, one deploy target. Your agent starts
+        on your product, not on the parts every app needs.
       </p>
       <div className="hero-actions">
         <a
@@ -84,9 +84,9 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
 
     <section className="story">
       <aside className="etymology">
-        <strong>Billet</strong> <span className="text-quaternary">(noun)</span>{" "}
-        — A semi-finished piece of steel, shaped and ready to be worked into
-        something specific. Named for Sheffield — the Steel City, where crucible
+        <strong>Billet</strong> <span className="text-quaternary">(noun)</span>
+        —A semi-finished piece of steel, shaped and ready to be worked into
+        something specific. Named for Sheffield—the Steel City, where crucible
         steel was invented.
       </aside>
       <div className="story-grid">
@@ -104,9 +104,9 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
           <h2 className="section-label">The approach</h2>
           <p className="text-secondary">
             Single-instance server rendering with light-touch client JavaScript.
-            Templates are deterministic functions of their props — given the
-            same input, they produce the same HTML. Trivial to test without
-            browser simulation. One process, one deploy target.
+            Templates are deterministic functions of their props—given the same
+            input, they produce the same HTML. Trivial to test without browser
+            simulation. One process, one deploy target.
           </p>
         </div>
       </div>
@@ -116,7 +116,7 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
       <div className="backpressure-intro">
         <h2>Capture your backpressure</h2>
         <p className="text-secondary">
-          AI agents work best when they get told they're wrong immediately — not
+          AI agents work best when they get told they're wrong immediately—not
           by you, by the toolchain. Type errors, failing tests, lint warnings:
           that's backpressure. Every automated check that catches a mistake is
           one less time you have to context-switch back in to fix something a
@@ -148,13 +148,20 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
             Behavioural regressions, broken templates, bad responses
           </span>
         </div>
+        <div className="stack-row">
+          <span className="stack-layer">CI on every push</span>
+          <span className="stack-catches">
+            Lint, build and the whole suite on a real PostgreSQL before a branch
+            can merge
+          </span>
+        </div>
       </div>
     </section>
 
     <section className="features">
       <h2>What's included</h2>
       <p className="features-lead text-secondary">
-        Auth, security, database, testing, linting — the rails are laid so your
+        Auth, security, database, testing, linting—the rails are laid so your
         agent can focus on building your product.
       </p>
       <div className="feature-grid">
@@ -183,15 +190,32 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
         <div className="feature-card">
           <h3>Testing</h3>
           <p>
-            700+ tests, deterministic templates, real database testing, no
+            900+ tests, deterministic templates, real database testing, no
             browser simulation
           </p>
         </div>
         <div className="feature-card">
           <h3>Frontend</h3>
           <p>
-            Server-rendered JSX, custom CSS via Bun bundler, opt-in client
-            interactivity, flash messages
+            Server-rendered JSX, custom CSS via Bun bundler, flash messages, and
+            a small reactive layer that binds signals to the server's own
+            markup—no virtual DOM
+          </p>
+        </div>
+        <div className="feature-card">
+          <h3>Teams</h3>
+          <p>
+            Optional organisations: invite by email, manage members, and
+            owner/admin/member roles that stay separate from the platform admin
+            flag
+          </p>
+        </div>
+        <div className="feature-card">
+          <h3>Email</h3>
+          <p>
+            Transactional mail through Resend, or a console provider in
+            development; magic links, verification and password resets already
+            wired
           </p>
         </div>
         <div className="feature-card">
@@ -234,7 +258,7 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
           specification.website
         </a>{" "}
         is an open, platform-agnostic checklist of the technical features a good
-        website should have — 168 specs across foundations, SEO, accessibility,
+        website should have—168 specs across foundations, SEO, accessibility,
         security, performance, and more. Billet works through it section by
         section, so the boring-but-critical baseline is in place before you
         write a line of product code.
