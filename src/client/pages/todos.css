@@ -89,28 +89,28 @@
   }
 
   /* A button drawn as a checkbox, because a real checkbox can't post a form
-     without JavaScript. aria-pressed carries the state for assistive tech. */
+     without JavaScript. aria-pressed carries the state for assistive tech. The
+     circle belongs to the icon rather than to a border, so both states are the
+     same size and vertical-align keeps the row height off the button's content. */
   .toggle-btn {
     align-items: center;
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 50%;
-    color: var(--color-success);
+    border: none;
+    color: var(--color-text-quaternary);
     display: inline-flex;
-    font-size: 13px;
-    height: 22px;
+    height: 24px;
     justify-content: center;
-    line-height: 1;
     padding: 0;
-    width: 22px;
+    vertical-align: middle;
+    width: 24px;
 
     &:hover,
     &:focus {
-      border-color: var(--color-primary);
+      color: var(--color-primary);
     }
 
     &[aria-pressed="true"] {
-      border-color: var(--color-success);
+      color: var(--color-success);
     }
   }
 

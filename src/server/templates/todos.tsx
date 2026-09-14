@@ -57,10 +57,11 @@ export const Todos = (props: TodosProps): JSX.Element => {
     >
       <h1>Todos</h1>
       <p className="lead">
-        Every action here is an ordinary form that works without JavaScript.
-        With it, the same forms post in place and the server answers with the
-        row instead of a redirect — no client-side templates, no second copy of
-        the markup.
+        Every action here is a plain HTML form, so the page works with
+        JavaScript switched off. When JavaScript is on, those same forms post
+        without a reload and the server sends back just the row that changed—no
+        virtual DOM, no client-side templates, no second copy of the markup,
+        full reactivity.
       </p>
 
       {(props.state?.state === "submission-success" ||
@@ -75,14 +76,14 @@ export const Todos = (props: TodosProps): JSX.Element => {
 
       {props.state?.state === "csrf-expired" && (
         <Flash type="warning">
-          Your session timed out — nothing was saved. Check the title and add it
+          Your session timed out—nothing was saved. Check the title and add it
           again.
         </Flash>
       )}
 
       {props.state?.state === "action-csrf-expired" && (
         <Flash type="warning">
-          Your session timed out — nothing changed. Try again.
+          Your session timed out—nothing changed. Try again.
         </Flash>
       )}
 
@@ -92,6 +93,11 @@ export const Todos = (props: TodosProps): JSX.Element => {
 
       <div {...list.root}>
         <section className="card">
+          <h2>Try it out</h2>
+          <p className="text-tertiary">
+            Open the network tab and add a task. The response is one row of
+            HTML, not a page.
+          </p>
           <form
             method="POST"
             action="/todos"
@@ -159,7 +165,7 @@ export const Todos = (props: TodosProps): JSX.Element => {
 
         {!props.isAuthenticated && (
           <p className="text-tertiary">
-            <a href="/login">Log in</a> to delete todos — the delete column only
+            <a href="/login">Log in</a> to delete todos—the delete column only
             renders for authenticated users, showing how auth gates both
             controller logic and template output.
           </p>
@@ -213,7 +219,7 @@ export const Todos = (props: TodosProps): JSX.Element => {
         <h2>API Endpoints</h2>
         <p className="text-tertiary">
           The same service layer backs both the HTML forms above and the JSON
-          API below — adding an API is simple when business logic lives in one
+          API below—adding an API is simple when business logic lives in one
           place.
         </p>
         <div className="card">
@@ -225,7 +231,7 @@ export const Todos = (props: TodosProps): JSX.Element => {
                 </td>
                 <td className="endpoint-path">/api/todos</td>
                 <td className="text-tertiary">
-                  List todos (paginated — <code>?limit=</code>,{" "}
+                  List todos (paginated—<code>?limit=</code>,{" "}
                   <code>?offset=</code>)
                 </td>
               </tr>

@@ -5,6 +5,26 @@ import { CsrfField } from "./csrf-field";
 
 const list = bindings<TodoList>("todo-list");
 
+// Both states are the same 24x24 box with the same circle, so toggling a row
+// can't change its height. An empty button and one holding a glyph baseline-align
+// differently, which is what used to make the list shift under the one it toggled.
+const ToggleIcon = ({ done }: { done: boolean }) => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="10" />
+    {done && <path d="m16 9-5.5 5.5L8 12" />}
+  </svg>
+);
+
 interface TodoRowProps {
   todo: Todo;
   // Null when the visitor has no session: the form renders, the post fails
@@ -52,7 +72,7 @@ export const TodoRow = ({
                 : `Mark "${todo.title}" done`
             }
           >
-            {done ? "✓" : ""}
+            <ToggleIcon done={done} />
           </button>
         </form>
       </td>
