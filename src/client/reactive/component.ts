@@ -182,6 +182,15 @@ function bindElements(instance: Instance, elements: HTMLElement[]): void {
         );
       }
       const control = el as HTMLInputElement;
+      // A checkbox and a radio both carry a string `value`, so they clear the
+      // guard above and then bind the wrong thing: writing the signal back
+      // changes what the control *submits*, never what is checked. Checked
+      // state is the browser's to submit and the server's to own.
+      if (control.type === "checkbox" || control.type === "radio") {
+        throw new Error(
+          `[${name}] ${ATTR.value}="${value}" cannot bind a ${control.type} — use ${ATTR.prop}="checked:…" and ${ATTR.on}`,
+        );
+      }
       effect(() => {
         const next = String(binding.value ?? "");
         if (control.value !== next) control.value = next;

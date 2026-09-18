@@ -38,6 +38,12 @@ Reads are `.value` on both signals and computeds; only a signal has `.set()`. A 
 a setter because TypeScript ignores `readonly` when checking assignability, so a computed would
 otherwise pass wherever a writable signal is required — the `data-value` check depends on it.
 
+`data-value` is one control and one string signal, and deliberately nothing more. Checked state is
+`data-prop="checked:…"` plus `data-on`: the browser submits it and the server owns it, so a signal
+over a checkbox or a radio group would be domain data on the client — tier 3's line. Both types
+carry a string `value`, so they would otherwise bind silently and write back to what the control
+submits instead of what is checked; `bind` throws on them by name.
+
 Effects run synchronously when a signal is set, so a client test writes a signal or dispatches an
 `input` event and asserts on the DOM on the next line. A component that is defined but never passed
 to `registerComponent` in `main.ts` never mounts — the same quiet failure as an unregistered page.

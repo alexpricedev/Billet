@@ -307,4 +307,16 @@ describe("mount errors", () => {
     `;
     expect(() => mount()).toThrow(/data-value="label"/);
   });
+
+  test("rejects value on a checkbox or a radio", () => {
+    document.body.innerHTML = `
+      <div data-component="counter"><input type="checkbox" data-value="label" /></div>
+    `;
+    expect(() => mount()).toThrow(/data-value="label" cannot bind a checkbox/);
+
+    document.body.innerHTML = `
+      <div data-component="counter"><input type="radio" data-value="label" /></div>
+    `;
+    expect(() => mount()).toThrow(/data-value="label" cannot bind a radio/);
+  });
 });
