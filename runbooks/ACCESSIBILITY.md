@@ -24,13 +24,13 @@ These are handled in the framework layer and apply to every page automatically:
 | Navigation semantics | `nav.tsx` | `aria-label="Main navigation"` + `aria-current="page"` |
 | Native interactive elements | throughout | Real `<button>` / `<a>` / `<form>` — never `<div onclick>` |
 | Labelled form controls | `form-field.tsx`, templates | Every input has an associated `<label>` (see §3) |
-| Keyboard focus ring | `style.css` | Global `:focus-visible { outline }` — visible, keyboard-only |
-| Reduced motion | `style.css`, `home.ts` | `prefers-reduced-motion` shrinks transitions and stops the hero animation looping |
+| Keyboard focus ring | `base.css` | Global `:focus-visible { outline }` — visible, keyboard-only |
+| Reduced motion | `base.css`, `home.ts` | `prefers-reduced-motion` shrinks transitions and stops the hero animation looping |
 | Announced flash messages | `flash.tsx` | `role="alert"` for errors, `role="status"` for success |
 | Data tables | `data-table.tsx`, templates | `<caption>` + `scope="col"` header cells |
 | Accessible authentication | magic-link login | No password puzzle or CAPTCHA; `autocomplete="email"`; paste allowed |
-| Mobile inputs | `style.css` | Inputs are `font-size: 16px` so iOS Safari doesn't zoom on focus |
-| Screen-reader-only text | `.sr-only` utility | `style.css` — visually hidden, still announced |
+| Mobile inputs | `base.css` | Inputs are `font-size: 16px` so iOS Safari doesn't zoom on focus |
+| Screen-reader-only text | `.sr-only` utility | `base.css` — visually hidden, still announced |
 
 Icon-only SVGs (e.g. the hero) carry `aria-hidden="true"` and sit next to real
 text, so there are no unnamed links or buttons.

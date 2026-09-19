@@ -139,6 +139,23 @@ describe("client boundaries", () => {
     expect(offenders).toEqual([]);
   });
 
+  test("style.css is a manifest and nothing else", async () => {
+    // `@import` is hoisted above every other rule in a file, so a rule written
+    // in style.css lands *after* every imported one and silently wins ties
+    // against the pages and components it looks like it precedes. Keeping the
+    // entry to imports is what makes the order on screen the cascade order.
+    const source = await Bun.file(`${CLIENT}/style.css`).text();
+    const offenders = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "" && !line.startsWith("@import "));
+    expect(
+      offenders,
+      "style.css must hold only @import lines — put rules in base.css or a page/component file",
+    ).toEqual([]);
+  });
+
   test("the main bundle stays under its byte budget", async () => {
     // Built in memory with the same flags as `build:client`, so the number is
     // the one that ships. Nothing is written to dist/.

@@ -97,6 +97,18 @@ authenticated users. Client tests render the real template as their fixture and 
 real `TodoRow` output; the browser smoke test adds a todo, toggles it and filters without a page
 load, checking a window marker to prove no navigation happened.
 
+**`data-value` refuses a checkbox or a radio.** Both carry a string `value`, so they cleared the
+binder's "is this a form control" check and then bound the wrong thing: writing the signal back
+changed what the control submits, never what is checked. Checked state is the browser's to submit
+and the server's to own, so there is no group binding to add — `bind` throws and names
+`data-prop="checked:…"` and `data-on` instead.
+
+**`src/client/style.css` is a manifest and nothing else.** `@import` is hoisted above every other
+rule in a file, so the base rules that used to sit below the imports actually landed *after* them
+and silently won ties against the pages and components they appeared to precede. They move to
+`src/client/base.css`, imported first, then components, then pages — the order on screen is now the
+order in the cascade. `boundaries.test.ts` fails the suite if a rule goes back into the entry.
+
 ### Breaking changes
 
 - **The `project` table is dropped and `todo` created in its place.** Migration `009` does not

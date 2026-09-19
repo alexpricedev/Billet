@@ -1,0 +1,238 @@
+/* Base layer: tokens, the element defaults every page inherits, and the few
+   shared utility classes. Imported first by style.css so page and component
+   rules override it at equal specificity — see the manifest's comment. */
+
+:root {
+  --color-bg: #0a0a0b;
+  --color-surface: #141415;
+  --color-surface-hover: #1c1c1e;
+  --color-border: #222224;
+  --color-text: #ededef;
+  --color-text-secondary: #b4b5b9;
+  --color-text-tertiary: #8a8b8e;
+  --color-text-quaternary: #78797c;
+  --color-primary: #7c85f0;
+  --color-primary-hover: #9098f3;
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-warning: #fbbf24;
+  --font-main:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, monospace;
+  --radius: 0.5rem;
+  --shadow: none;
+}
+
+html {
+  background: var(--color-bg);
+  box-sizing: border-box;
+  color: var(--color-text);
+  font-size: 16px;
+  /* Reserve the scrollbar's space so pages that grow past one viewport don't
+     shift horizontally when the scrollbar appears (classic scrollbars only). */
+  scrollbar-gutter: stable;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+/* Visually hide content while keeping it available to assistive tech. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Keyboard focus ring — high-contrast, only on keyboard/AT focus (not mouse
+   clicks), so removing it from any control requires an explicit override. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  /* Browsers round the outline to follow border-radius, even on inline links. */
+  border-radius: 4px;
+}
+
+/* Give plain (non-button) inline links horizontal breathing room inside the
+   ring. outline-offset is uniform, so we add inline padding and cancel it with
+   an equal negative margin to avoid shifting surrounding text. */
+a:not([class]):focus-visible {
+  padding-inline: 0.4em;
+  margin-inline: -0.4em;
+}
+
+/* Honour the OS "reduce motion" setting — near-instant animations/transitions
+   for users prone to vestibular distress, migraines, or seizures. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  font-family: var(--font-main);
+  margin: 0;
+  /* 100vh first as the fallback; 100dvh tracks the actually-visible viewport on
+     mobile so the page isn't sized to include a retracted browser toolbar. */
+  min-height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: dvh override is a
+     deliberate progressive-enhancement fallback over the vh baseline. */
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
+  margin: 0 0 0.5em 0;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 2.2rem;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0 0 1.2em 0;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 150ms ease;
+
+  &:hover,
+  &:focus {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+}
+
+button {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  transition: all 150ms ease;
+
+  &:hover,
+  &:focus {
+    background: var(--color-primary-hover);
+  }
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  display: inline-block;
+  margin-bottom: 2rem;
+  padding: 24px;
+  width: 100%;
+
+  /* The trailing margin of the last block would otherwise stack on top of the
+     card's own padding and leave the bottom looking deeper than the top. */
+  > *:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+
+  &:hover,
+  &:focus {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--color-danger);
+
+  &:hover,
+  &:focus {
+    background: rgba(248, 113, 113, 0.1);
+  }
+}
+
+input,
+textarea,
+select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-family: inherit;
+  /* 16px keeps iOS Safari from zooming the viewport on focus. */
+  font-size: 16px;
+  padding: 8px 12px;
+  transition: border-color 150ms ease;
+
+  &::placeholder {
+    color: var(--color-text-quaternary);
+  }
+
+  &:focus-visible {
+    border-color: var(--color-primary);
+  }
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--color-text-tertiary);
+}
+
+.text-quaternary {
+  color: var(--color-text-quaternary);
+}
+
+.lead {
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  line-height: 1.7;
+}
