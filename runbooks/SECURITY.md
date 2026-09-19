@@ -33,6 +33,7 @@ route can still override any single header (e.g. a relaxed CSP for one page).
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Limits URL leakage to other sites |
 | `Cross-Origin-Opener-Policy` | `same-origin` | Isolates our browsing context |
 | `Permissions-Policy` | deny-all baseline, `fullscreen=(self)` | Turns off camera, mic, geolocation, USB, payment, etc. |
+| `X-Robots-Tag` | `noindex, nofollow` | **Only while `ALLOW_INDEXING` is unset** — see [SEO.md §1b](SEO.md). A route that sets its own is left alone |
 | `Content-Security-Policy` | see §3 | Source allowlist + clickjacking + https upgrade |
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | **Production only** (see §4) |
 
@@ -180,6 +181,10 @@ curl -sI https://yourdomain.com/ | grep -iE \
 
 # security.txt serves as text/plain with a real Contact + future Expires
 curl -s https://yourdomain.com/.well-known/security.txt
+
+# No X-Robots-Tag on a host that is meant to be indexed (see SEO.md §1b).
+# `noindex, nofollow` here means ALLOW_INDEXING is unset on this host.
+curl -sI https://yourdomain.com/ | grep -i x-robots-tag
 ```
 
 - **In a browser:** load the site, open the console, confirm no `Refused to

@@ -81,3 +81,13 @@ under a byte budget. Raise the budget or add an exemption only with the reason w
 the number moving is the signal that something is being built on the client that belongs on the
 server. Optimistic updates, client-side templates and client routing are not tiers; they are the
 client application this project exists to not become.
+
+## The stylesheet order is the import order
+
+`src/client/style.css` is a manifest of `@import` lines and nothing else — `base.css` (tokens,
+element defaults, shared utilities), then `components/`, then `pages/`. `@import` is hoisted above
+every other rule in a file, so a rule written into `style.css` would land *after* every imported
+one and silently win ties against the pages and components it appears to precede. Keeping the entry
+to imports is what makes the order on screen the order in the cascade, and `boundaries.test.ts`
+fails the suite if a rule goes back in. New page CSS goes in `pages/` with its `@import` in the
+page group; anything global goes in `base.css`.

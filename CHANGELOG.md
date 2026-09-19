@@ -133,6 +133,12 @@ order in the cascade. `boundaries.test.ts` fails the suite if a rule goes back i
   the next crawl, so the mistake is recoverable — it costs the re-crawl, not the rankings — but set
   it with the deploy and skip that. Everywhere else — previews, staging, review apps — wants the
   new default and needs no change. `runbooks/SEO.md` §1b has the reasoning.
+- **A fork with its own rules in `src/client/style.css` has to move them.** The entry is now a
+  manifest of `@import` lines and nothing else, and `src/client/boundaries.test.ts` fails the suite
+  on anything else in it. Move global rules to the new `src/client/base.css` (which holds what used
+  to sit below the imports) and page or component rules to their own file. A fork that only *added
+  imports* to `style.css` has nothing to do beyond resolving the merge — note the groups are now
+  ordered base → components → pages, so a page import belongs at the bottom rather than the top.
 - **The `project` table is dropped and `todo` created in its place.** Migration `009` does not
   copy rows; the demo resource is starter content. A fork that kept the `project` table for real
   data must either remove migration `009` before merging (and then also keep its own copies of the

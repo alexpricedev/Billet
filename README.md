@@ -252,7 +252,8 @@ src/
 │   ├── main.ts                 # Entry point — registers pages and components
 │   ├── page-lifecycle.ts       # Page init/cleanup system
 │   ├── reactive/               # Signals, components, bind() and the form submit helper
-│   ├── style.css               # Global styles (CSS entry point)
+│   ├── style.css               # CSS entry point — @import manifest, no rules of its own
+│   ├── base.css                # Tokens, element defaults, shared utilities
 │   ├── components/             # Shared components + CSS (nav, layout, todo list)
 │   └── pages/                  # Page-specific JS + CSS (co-located)
 │
@@ -277,13 +278,13 @@ src/
 │       ├── seed.ts             # Development seed data
 │       └── migrations/         # Numbered migration files
 │
-├── shared/                     # The seam both sides import: data-* vocabulary, header names, shared copy
-│
-└── types/                      # Global TypeScript declarations
+└── shared/                     # The seam both sides import: data-* vocabulary, header names, shared copy
 
 scripts/
 ├── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
+├── qa-session.ts               # Mints a QA session cookie so an agent never borrows a human's
 ├── benchmark.ts                # Times the suite, checks and build; saves/compares records
+├── browser-smoke.test.ts       # Real-browser smoke test — `bun run test:browser`, not in CI's sweep
 └── workspace.ts                # Per-workspace port + dev/test databases (provision/destroy)
 
 .claude/
@@ -431,6 +432,7 @@ These live in the dashboard rather than in a file on purpose. Railway has [depre
 | `CRYPTO_PEPPER` | Yes | Secret key for session tokens — run `bun run generate:pepper` to get one (see below) |
 | `APP_URL` | Yes | Your app's public URL — you'll get this from Railway after your first deploy (e.g. `https://my-app.up.railway.app`) |
 | `SITE_URL` | No | Canonical origin for canonicals, Open Graph tags, the sitemap, and JSON-LD. Defaults to `APP_URL`'s origin — set it only when the canonical domain differs from the app domain |
+| `ALLOW_INDEXING` | No | Set to `true` to let search engines index the site. Unset, every response and page says `noindex` and `robots.txt` drops its `Sitemap:` line, so a preview or staging host can't be indexed by accident. Set it on production only |
 | `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
 | `AUTH_MODE` | No | `magic-link` (default) or `password`. Mutually exclusive; any other value stops the server at boot |
 | `CAPTCHA_ENABLED` | No | Set to `true` to add a proof-of-work captcha to the login form. Off by default; `/login` is unchanged when unset |

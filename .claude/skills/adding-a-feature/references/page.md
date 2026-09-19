@@ -140,7 +140,12 @@ CSRF token refresh.
 
 ## 7. Page CSS — `src/client/pages/dashboard.css`
 
-Add `@import "./pages/dashboard.css";` to `src/client/style.css`. It is not picked up otherwise.
+Add `@import "./pages/dashboard.css";` to `src/client/style.css`, under the page-styles group
+at the bottom. It is not picked up otherwise. `style.css` holds imports and nothing else —
+base first, then components, then pages — because `@import` is hoisted above every other rule
+in a file, so the order of the imports is the order of the cascade. A rule written into
+`style.css` would land after all of them; put it in `base.css` or the page's own file.
+`src/client/boundaries.test.ts` fails the suite otherwise.
 
 ## 8. Test — `src/server/controllers/app/dashboard.test.ts`
 

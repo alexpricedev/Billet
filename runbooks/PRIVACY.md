@@ -66,7 +66,9 @@ node_modules/@alexpricedev/billet-cookie-consent/README.md
 bun add @alexpricedev/billet-cookie-consent
 ```
 
-**Step 1 — import the CSS once** in [`src/client/style.css`](../src/client/style.css):
+**Step 1 — import the CSS once** in [`src/client/style.css`](../src/client/style.css), with the
+component imports (the file is a manifest of `@import` lines and nothing else, ordered base →
+components → pages, because `@import` is hoisted and that order is the cascade):
 
 ```css
 @import "@alexpricedev/billet-cookie-consent/styles.css";
