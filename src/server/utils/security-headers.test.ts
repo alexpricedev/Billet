@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { SITE_NAME } from "../services/seo";
 import { createBunRequest } from "../test-utils/bun-request";
 import {
@@ -7,6 +7,37 @@ import {
   secureRoutes,
   withSecurityHeaders,
 } from "./security-headers";
+
+describe("X-Robots-Tag", () => {
+  afterEach(() => {
+    delete process.env.ALLOW_INDEXING;
+  });
+
+  // The header as well as the meta tag: an image, the sitemap, llms.txt and
+  // every JSON response is indexable on its own and has nowhere to put a
+  // <meta>. This is the layer with no gaps.
+  test("blocks indexing on every response by default", () => {
+    const res = withSecurityHeaders(new Response("ok"));
+
+    expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  });
+
+  test("stops blocking once indexing is switched on", () => {
+    process.env.ALLOW_INDEXING = "true";
+
+    const res = withSecurityHeaders(new Response("ok"));
+
+    expect(res.headers.get("X-Robots-Tag")).toBeNull();
+  });
+
+  test("leaves a route's own X-Robots-Tag alone", () => {
+    const res = withSecurityHeaders(
+      new Response("ok", { headers: { "X-Robots-Tag": "noarchive" } }),
+    );
+
+    expect(res.headers.get("X-Robots-Tag")).toBe("noarchive");
+  });
+});
 
 describe("withSecurityHeaders", () => {
   test("adds the core security headers to a bare response", () => {

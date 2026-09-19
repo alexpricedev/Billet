@@ -114,8 +114,8 @@ const MAX_SERIAL_ID = 2_147_483_647;
  * Read the trailing `:id` path segment as a positive integer.
  *
  * The parse this replaces (`Number.parseInt(segment) || 0`) handed its result
- * straight to the service, so `/api/projects/invalid` queried the database for
- * `NaN` and answered the miss with a 404 — telling the client the project did
+ * straight to the service, so `/api/todos/invalid` queried the database for
+ * `NaN` and answered the miss with a 404 — telling the client the todo did
  * not exist, when in fact it had never named one.
  */
 export const readIdParam = (req: BunRequest): IdResult => {

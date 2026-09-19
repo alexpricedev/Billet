@@ -10,10 +10,10 @@ Build a fixture matching the server-rendered HTML, call `init()`, assert on the 
 ```ts
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-describe("projects page", () => {
+describe("forms page", () => {
   beforeEach(() => {
     document.body.innerHTML = `
-      <table id="projects-list"><tbody><tr><td>Test Project</td></tr></tbody></table>
+      <div class="form-card"><form><input name="name" required /></form></div>
     `;
   });
 
@@ -21,8 +21,8 @@ describe("projects page", () => {
     document.body.innerHTML = "";
   });
 
-  test("filters rows", async () => {
-    const { init } = await import("./projects");
+  test("sets a custom validity message", async () => {
+    const { init } = await import("./forms");
     init();
     // ...assert
   });
@@ -35,24 +35,42 @@ tests in the same file, so `init()` would run against stale module state.
 The fixture has to match what the server actually renders — the same ids, classes, and
 `data-` attributes the script queries. If you change the template, change the fixture.
 
-## Preact islands
+## Components
 
-Render into a container and assert on the output:
+A component binds to markup the server rendered, so the fixture is the template itself. Render it
+with `renderToString`, take `<main>` out of an inert `<template>` (anywhere live, happy-dom would
+try to fetch the layout's stylesheet and bundle), register the component, and `ui.mount()`:
 
 ```tsx
-import { render } from "preact";
+import { renderToString } from "preact-render-to-string";
+import * as ui from "@client/reactive";
+import { Todos } from "@server/templates/todos";
+import { todoList } from "./todo-list";
 
-const container = document.createElement("div");
-document.body.appendChild(container);
-render(<ProjectSearch projects={[{ id: 1, title: "Test" }]} />, container);
-expect(container.textContent).toContain("Test");
+const template = document.createElement("template");
+template.innerHTML = renderToString(<Todos todos={[…]} … />);
+document.body.innerHTML = template.content.querySelector("main")?.innerHTML ?? "";
+
+ui.registerComponent(todoList);
+const unmount = ui.mount();
+
+filterButton("Active").click();
+expect(doneRow.hidden).toBe(true); // effects run synchronously — nothing to await
 ```
 
-Preact is the project-wide JSX runtime, so no pragma is needed. The file must be `.tsx` for the
-JSX to compile.
+Because the fixture is the real template, a renamed id or a moved element fails here rather than in
+the browser, and there is no hand-copied HTML to keep in step. Call the disposer `ui.mount()` returns
+in `afterEach` so the next test's `ui.mount()` starts clean. `src/client/components/todo-list.test.tsx`
+is the full example.
 
-Islands here reach outside their own tree (`ProjectSearch` toggles rows in the server-rendered
-table by id), so the fixture usually needs that surrounding markup in `document.body` too.
+A component that calls `server.submit` needs `globalThis.fetch` replaced for the file (happy-dom's
+fetch enforces the Same-Origin Policy and would go to the network). Queue `Response`s whose body is
+the real row — `renderToString(<TodoRow … />)` — dispatch `submit` on the form, `await` one turn of
+the event loop, and assert on the table. Restore the real `fetch` in `afterEach`.
+
+For the reactive layer itself — a new binding attribute, say — write an inline fixture with a
+throwaway component, as `src/client/reactive/component.test.ts` does. The registry is module
+state, so give each throwaway component a unique name.
 
 ## Page registration
 

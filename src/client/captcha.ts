@@ -1,6 +1,6 @@
 // First-party proof-of-work captcha solver. Standalone, zero-dependency bundle
-// (no Preact / no importmap) loaded only on the login page when CAPTCHA_ENABLED is
-// on. It reads the challenge the server embedded in the mount element, brute-forces
+// (nothing shared with main.js) loaded only on the login page when CAPTCHA_ENABLED
+// is on. It reads the challenge the server embedded in the mount element, brute-forces
 // the answer, and writes the solved payload into a hidden form field.
 //
 // The field/attribute names below MUST match src/server/services/captcha.ts. The

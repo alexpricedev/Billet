@@ -7,6 +7,167 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 4.0.0
+
+Preact leaves the browser, the demo resource becomes a todo list, and the two meet in the middle:
+every action on `/todos` is a plain form that works without JavaScript, and with it the same form
+posts in place and the server answers with the row. A major version because the resource is
+renamed and its table replaced — see **Breaking changes**.
+
+**Preact stays as the server's template engine only.** Every page still renders through
+`renderToString`, and JSX is still what gives templates a typecheck, but nothing in `src/client/`
+imports it any more. The client bundle no longer marks it external, and the import map, the
+`esm.sh` preconnect, and `https://esm.sh` in the CSP `script-src` are gone. `main.js` is a few
+kilobytes with no framework in it.
+
+**`src/client/reactive/` is the replacement.** `signal.ts` is a signal, computed, effect and
+batch, synchronous and pull-based, so an effect reading a signal and a computed of it runs once
+per write. `component.ts` is `defineComponent`, `registerComponent`, `mount` and `bind`: a
+component is a factory that receives its root element and returns named signals, computeds and
+actions; `mount` wires them to `data-text`, `data-show`, `data-value`, `data-class`, `data-attr`,
+`data-prop` and `data-on` attributes under a `data-component` root, and `bind(el)` does the same
+for markup inserted later. The attributes carry names, never expressions, so nothing on the page
+evaluates a string and `'unsafe-eval'` stays out of the CSP.
+
+**Components import the layer as two namespaces.** `import * as ui from "@client/reactive"` (a
+barrel over `signal.ts` and `component.ts`) and `import * as server from "@client/reactive/request"`,
+so a component body reads as its own logic with the framework calls prefixed — `ui.signal`,
+`ui.bind`, `server.submit`, `server.parse`. The request module is kept out of the `ui` barrel on
+purpose: every enhanced form in a codebase is a `server.` call, one grep away.
+
+**`src/shared/` is the seam both sides import.** `attributes.ts` is the `data-*` vocabulary with a
+typed `bindings<T>()` builder, so a template's binding names are checked against the component's
+exported type and a misspelt name fails `bun run typecheck`. `protocol.ts` holds the header names
+the fetch helper and the server agree on; `services/csrf.ts` re-exports its CSRF constants from
+there. `todo.ts` is copy both sides render. Nothing in the directory touches the DOM or `node:`.
+
+**Fragments over forms.** `server.submit` (`src/client/reactive/request.ts`) posts a form with its
+CSRF token promoted to `X-CSRF-Token` and an `X-Fragment: 1` header, refusing redirects. A
+controller checks `isFragmentRequest(req)` and answers with `renderFragment(<TodoRow />)` — the
+same server component the page renders — instead of the redirect-and-flash a plain post gets. A
+stale-but-authentic token gets `refreshCsrfToken()`: a 403 carrying a fresh token that
+`server.submit` writes back into the form and retries once. Forged or cross-origin tokens fail hard
+with no header, as before. On any failure the component falls back to `form.submit()`.
+
+**`formAction` and `csrfTokens` take the plumbing out of controllers.** Every POST controller
+outside `controllers/auth/` is now a `formAction` handler: the wrapper owns the guard (`"session"`,
+`"user"`, or a function such as `orgRoleGuard`), the CSRF check with stale-token recovery on both
+paths, and the response — redirect-and-flash for a plain post, fragment or bare status for a
+fragment request; a guard that would redirect a fragment request answers 401 or 403 instead. A
+handler returns `{ flash, fragment, status }`, `{ reject, flash }` or a `Response`. `csrfTokens(ctx)`
+mints the GET side in one call per form or per row. The todo, forms and team controllers shrink
+accordingly, with no behaviour change on the plain-post path.
+
+**Client code has three tiers, and a test enforces the fence.** `src/client/boundaries.test.ts`
+fails the suite on `fetch`, markup building, `JSON.parse`, routing or storage in client code
+outside `reactive/request.ts`; on runtime imports across the server/client line; on DOM or `node:`
+in `src/shared/`; and on `main.js` growing past a byte budget. CLAUDE.md states the tiers and the
+question to ask before writing client code; how the layer, the fragment protocol and `formAction`
+work moves to path-scoped rules in `.claude/rules/`, loaded when the matching files are opened, in
+line with Anthropic's guidance to keep CLAUDE.md short; the PR template asks which tier a change is.
+
+**The Postgres pool is guarded, and four binding hazards have one answer each.** `db` from
+`src/server/services/database.ts` is now a `Proxy` over the pool whose `apply` trap checks every
+bound parameter, and `testDatabase()` wraps its pools the same way — so a query that throws in
+production throws in a test rather than passing there and failing against live data. It rejects an
+array (which binds as the string `"a,b"`, and inside `= ANY()` gets `insufficient data left in
+message`) and a plain object that has not been declared with `jsonbValue()` (which binds as
+`"[object Object]"`). Both were silent at every layer before, and both corrupt data, so the guard
+throws in production too. Nothing had to change to be covered: `db` was already the only tag in the
+codebase, and `db.begin`, `db.close` and the rest of the surface pass through untouched.
+
+`src/server/utils/sql.ts` is the writing half of `utils/database.ts`: `jsonbValue(obj)` declares a
+value destined for a `jsonb` column and its signature refuses a `string`, so
+`jsonbValue(JSON.stringify(prefs))` fails typecheck rather than storing a jsonb *string*;
+`inList(values)` builds an `IN` list and throws on an empty array rather than rendering `IN ()`;
+`textArrayLiteral(values)` builds the literal for a `text[]` column with every element quoted and
+escaped. `expectQueryToReject` joins `test-utils/helpers.ts` for asserting a query fails, because
+`expect(db`…`).rejects` never settles against a lazy thenable and times the file out instead.
+`src/server/database/driver-safety.test.ts` fails the suite on the four the guard structurally
+can't see, in the `Rule[]` shape `src/client/boundaries.test.ts` uses. The three-hazard section in
+CLAUDE.md becomes a short pointer to `.claude/rules/database.md`, loaded when a file that queries
+Postgres is opened.
+
+**Todos replace projects.** Migration `009` drops `project` and creates `todo` with a
+`completed_at` column. `/todos` lists, adds, toggles and deletes; add and toggle return the row as
+a fragment, delete returns a 204. The `todo-list` component filters by all, active or completed,
+keeps the count, and swaps rows in place. `/api/todos` mirrors the old API with `completed_at` in
+the payload and an optional `completed` boolean on `PUT`. The delete column still renders only for
+authenticated users. Client tests render the real template as their fixture and mock `fetch` with
+real `TodoRow` output; the browser smoke test adds a todo, toggles it and filters without a page
+load, checking a window marker to prove no navigation happened.
+
+**`data-value` refuses a checkbox or a radio.** Both carry a string `value`, so they cleared the
+binder's "is this a form control" check and then bound the wrong thing: writing the signal back
+changed what the control submits, never what is checked. Checked state is the browser's to submit
+and the server's to own, so there is no group binding to add — `bind` throws and names
+`data-prop="checked:…"` and `data-on` instead.
+
+**The site is `noindex` until `ALLOW_INDEXING=true` opens it.** `indexingAllowed()` in
+`services/seo.ts` is the one switch: `withSecurityHeaders` puts `X-Robots-Tag: noindex, nofollow`
+on every response, the layouts render the matching meta tag and omit the site JSON-LD, and
+`robots.txt` drops its `Sitemap:` line. The header sits alongside the meta tag because the tag only
+covers HTML — an image, the sitemap itself, `llms.txt` and every JSON endpoint is indexable on its
+own and has nowhere to put one. Closed by default so a preview deploy, a staging host or a fork's
+first Railway URL can't be indexed because nobody remembered to block it; anything other than
+exactly `true` reads as closed, typos included. The per-page `noindex` prop becomes an opt-*out* on
+top of that default, so `/admin` and `/login` stay out of the index once the switch is on.
+
+Crawling stays allowed while indexing is off, which is deliberate: `noindex` is what keeps a page
+out of the index and a crawler has to *fetch* a page to read it, so a `Disallow: /` would block the
+fetch and strand the header and meta tag that do the work — while not keeping the site out on its
+own, since a URL linked from elsewhere is indexed unfetched as a bare result. A host that needs to
+be un-fetched rather than un-indexed wants HTTP auth, not `robots.txt`.
+
+**`src/client/style.css` is a manifest and nothing else.** `@import` is hoisted above every other
+rule in a file, so the base rules that used to sit below the imports actually landed *after* them
+and silently won ties against the pages and components they appeared to precede. They move to
+`src/client/base.css`, imported first, then components, then pages — the order on screen is now the
+order in the cascade. `boundaries.test.ts` fails the suite if a rule goes back into the entry.
+
+### Breaking changes
+
+- **A fork that is already in Google must set `ALLOW_INDEXING=true` on production.** Indexing is
+  now closed by default, so merging this and deploying without the variable de-indexes a live site:
+  crawlers fetch, read the `noindex`, and drop the pages. Setting the variable brings them back on
+  the next crawl, so the mistake is recoverable — it costs the re-crawl, not the rankings — but set
+  it with the deploy and skip that. Everywhere else — previews, staging, review apps — wants the
+  new default and needs no change. `runbooks/SEO.md` §1b has the reasoning.
+- **A fork with its own rules in `src/client/style.css` has to move them.** The entry is now a
+  manifest of `@import` lines and nothing else, and `src/client/boundaries.test.ts` fails the suite
+  on anything else in it. Move global rules to the new `src/client/base.css` (which holds what used
+  to sit below the imports) and page or component rules to their own file. A fork that only *added
+  imports* to `style.css` has nothing to do beyond resolving the merge — note the groups are now
+  ordered base → components → pages, so a page import belongs at the bottom rather than the top.
+- **The `project` table is dropped and `todo` created in its place.** Migration `009` does not
+  copy rows; the demo resource is starter content. A fork that kept the `project` table for real
+  data must either remove migration `009` before merging (and then also keep its own copies of the
+  project service, controllers, templates and tests, which this release deletes) or migrate the
+  rows into `todo` in a migration of its own that runs before `009`.
+- **Every `project` file is renamed or deleted.** `services/project.ts` → `services/todo.ts`
+  (`Todo` gains `completed_at`, `updateTodo` takes an optional `completed`, `toggleTodo` is new).
+  `controllers/app/projects.tsx` → `controllers/app/todos.tsx` (with `toggle`),
+  `controllers/api/projects.ts` → `controllers/api/todos.ts` (`todosApi`),
+  `templates/projects.tsx` → `templates/todos.tsx`, and `components/todo-row.tsx` is new. Routes
+  move from `/projects` to `/todos` (plus `/todos/:id/toggle`) and from `/api/projects` to
+  `/api/todos`; the nav label is **Todos**; the sitemap and `llms.txt` follow. `createMockProject`
+  is `createMockTodo`; `cleanupTestData` truncates `todo`; `seedTestData` inserts todos, one
+  completed. Grep a fork for `project` before merging.
+- **A fork with its own Preact islands has to bring Preact back or rewrite them.** The bundle no
+  longer marks `preact` external and the import map that resolved it is gone from `layouts.tsx`.
+  Either restore the `--external` flags, the import map, and `https://esm.sh` in `script-src`
+  (`package.json`, `src/server/components/layouts.tsx`, `src/server/utils/security-headers.ts`),
+  or rewrite the island as a component against `src/client/reactive/`. `todo-list.ts` is the
+  worked example; the `writing-tests` skill's client reference has the test pattern.
+- **`data-component` now also mounts components.** It was a CSS hook on `<body>` and the nav; both
+  still work unchanged, because a root whose name has no registered component is skipped. But
+  `data-text`, `data-show` and the other binding attributes are read on every element under a
+  registered root, so a fork using those attribute names for something else should rename them.
+- **`X-Fragment` and `X-CSRF-Token` are now defined in `src/shared/protocol.ts`.**
+  `CSRF_HEADER_NAME` and `CSRF_FIELD_NAME` in `services/csrf.ts` are re-exports with the same
+  values; a fork that imports them is unaffected. A fork with its own `src/shared/` directory or
+  `@shared/*` path alias has a conflict to resolve in `tsconfig.json`.
+
 ## 3.5.0
 
 `railway.json` is deleted. Railway [deprecated Config as Code](https://docs.railway.com/config-as-code):

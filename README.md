@@ -118,9 +118,10 @@ parallel with a database per worker.
 
 ### Frontend
 
-- **Preact JSX as a template engine** — server-rendered to a string, no hydration, no client-side framework runtime on the page by default. One JSX runtime across server and client, so there's no second React toolchain to reason about
+- **Preact JSX as a template engine** — server-rendered to a string, no hydration, and no framework runtime on the page. Preact is a build-time detail of the server; nothing in the browser imports it
 - **Bun CSS bundler** with `@import` resolution, CSS nesting, and minification — no external CSS tooling needed
-- **Opt-in interactivity** — sprinkle in any client-side framework per page (ships with a Preact island example loaded via CDN import map)
+- **Reactive components that bind to the server's markup** — `src/client/reactive/` is a few hundred lines: signals, computeds and effects, plus `data-*` bindings (`data-text`, `data-show`, `data-value`, `data-on`…) that name a component's state by name, never by expression. No virtual DOM, nothing rendered twice, no `'unsafe-eval'` in the CSP, and the binding names in a template are typechecked against the component
+- **Progressive enhancement over plain forms** — every mutation on the todo page is a `<form>` that works without JavaScript. With it, `server.submit(form)` posts the same form with the CSRF token as a header and asks for a fragment; the controller answers with the server-rendered row instead of a redirect, and a stale token is refreshed and retried once. The classic todo list is the worked example — add, toggle, delete and filter, no page loads
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
 - **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
 - **Accessibility baseline** — semantic landmarks, labelled form controls, a keyboard focus ring, reduced-motion support, announced flash messages, and captioned data tables out of the box — see [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md)
@@ -133,9 +134,9 @@ parallel with a database per worker.
 
 The "designed for AI agents" tagline is the reason Billet exists, so here's what that means in practice.
 
-### CLAUDE.md and skills — the agent's guide
+### CLAUDE.md, rules and skills — the agent's guide
 
-The repo ships a deliberately short [`CLAUDE.md`](CLAUDE.md) plus a set of skills in `.claude/skills/`. `CLAUDE.md` covers only what an agent can't learn by reading the repo — the gotchas: two JSX runtimes with no hydration, why service tests mock the database module before importing, why `bun test` isn't the test command, where security headers actually come from. Everything procedural lives in skills that load on demand:
+The repo ships a [`CLAUDE.md`](CLAUDE.md) that holds only what an agent can't learn by reading the repo, plus path-scoped rules in `.claude/rules/` and a set of skills in `.claude/skills/`. `CLAUDE.md` is the gotchas: JSX with no hydration, why service tests mock the database module before importing, why `bun test` isn't the test command, where security headers actually come from. Guidance that only matters in one part of the tree lives in path-scoped rules under `.claude/rules/`, loaded when those files are opened, and everything procedural lives in skills that load on demand:
 
 | Skill | Loads when |
 |---|---|
@@ -248,10 +249,12 @@ Visit [http://localhost:3000](http://localhost:3000) — migrations run automati
 ```
 src/
 ├── client/                     # Browser-side code
-│   ├── main.ts                 # Entry point — routes to page controllers
+│   ├── main.ts                 # Entry point — registers pages and components
 │   ├── page-lifecycle.ts       # Page init/cleanup system
-│   ├── style.css               # Global styles (CSS entry point)
-│   ├── components/             # Shared CSS (nav, layout)
+│   ├── reactive/               # Signals, components, bind() and the form submit helper
+│   ├── style.css               # CSS entry point — @import manifest, no rules of its own
+│   ├── base.css                # Tokens, element defaults, shared utilities
+│   ├── components/             # Shared components + CSS (nav, layout, todo list)
 │   └── pages/                  # Page-specific JS + CSS (co-located)
 │
 ├── server/                     # Server-side code
@@ -275,15 +278,18 @@ src/
 │       ├── seed.ts             # Development seed data
 │       └── migrations/         # Numbered migration files
 │
-└── types/                      # Global TypeScript declarations
+└── shared/                     # The seam both sides import: data-* vocabulary, header names, shared copy
 
 scripts/
 ├── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
+├── qa-session.ts               # Mints a QA session cookie so an agent never borrows a human's
 ├── benchmark.ts                # Times the suite, checks and build; saves/compares records
+├── browser-smoke.test.ts       # Real-browser smoke test — `bun run test:browser`, not in CI's sweep
 └── workspace.ts                # Per-workspace port + dev/test databases (provision/destroy)
 
 .claude/
 ├── settings.json               # Hooks shared with every agent on the repo
+├── rules/                      # Path-scoped instructions, loaded when matching files are opened
 ├── hooks/
 │   └── no-shared-stash.ts      # Denies `git stash`, points at `bun run wip`
 └── skills/                     # Progressive-disclosure guides for agents
@@ -299,8 +305,8 @@ conventions below are what a new endpoint should follow, and
 [`.claude/skills/adding-a-feature/references/api-endpoint.md`](.claude/skills/adding-a-feature/references/api-endpoint.md)
 is the checklist for adding one.
 
-> **These endpoints are unauthenticated**, like the `/projects` page they mirror — the demo lets
-> guests create projects. Anything exposing real data needs `requireAuth` from
+> **These endpoints are unauthenticated**, like the `/todos` page they mirror — the demo lets
+> guests create and toggle todos. Anything exposing real data needs `requireAuth` from
 > `src/server/middleware/auth.ts` (or a token check for machine callers) before it ships.
 
 ### Conventions
@@ -323,14 +329,14 @@ is the checklist for adding one.
 
 | Method | Path | Returns |
 |---|---|---|
-| `GET` | `/api/projects` | `{ data: Project[], pagination: { total, limit, offset } }` |
-| `POST` | `/api/projects` | `201` + `{ data: Project }`, with a `Location` header |
-| `GET` | `/api/projects/:id` | `{ data: Project }` |
-| `PUT` | `/api/projects/:id` | `{ data: Project }` |
-| `DELETE` | `/api/projects/:id` | `204`, no body |
+| `GET` | `/api/todos` | `{ data: Todo[], pagination: { total, limit, offset } }` |
+| `POST` | `/api/todos` | `201` + `{ data: Todo }`, with a `Location` header |
+| `GET` | `/api/todos/:id` | `{ data: Todo }` |
+| `PUT` | `/api/todos/:id` | `{ data: Todo }` — `title` required, `completed` optional boolean |
+| `DELETE` | `/api/todos/:id` | `204`, no body |
 | `GET` | `/api/stats` | `{ data: VisitorStats }` |
 
-`GET /api/projects` accepts `?limit=` (1–100, default 25) and `?offset=` (default 0). Values
+`GET /api/todos` accepts `?limit=` (1–100, default 25) and `?offset=` (default 0). Values
 outside those bounds are **rejected with a 400 rather than clamped** — a client silently handed
 100 rows when it asked for 5000 has no way to tell it received a page.
 
@@ -338,12 +344,12 @@ outside those bounds are **rejected with a 400 rather than clamped** — a clien
 (`invalid_id`) and never reaches the database.
 
 ```bash
-curl -X POST http://localhost:3000/api/projects \
+curl -X POST http://localhost:3000/api/todos \
   -H 'Content-Type: application/json' \
-  -d '{"title":"My project"}'
+  -d '{"title":"Buy milk"}'
 # 201 Created
-# Location: /api/projects/7
-# {"data":{"id":7,"title":"My project","created_by":null}}
+# Location: /api/todos/7
+# {"data":{"id":7,"title":"Buy milk","completed_at":null,"created_by":null}}
 ```
 
 ### Status codes
@@ -426,6 +432,7 @@ These live in the dashboard rather than in a file on purpose. Railway has [depre
 | `CRYPTO_PEPPER` | Yes | Secret key for session tokens — run `bun run generate:pepper` to get one (see below) |
 | `APP_URL` | Yes | Your app's public URL — you'll get this from Railway after your first deploy (e.g. `https://my-app.up.railway.app`) |
 | `SITE_URL` | No | Canonical origin for canonicals, Open Graph tags, the sitemap, and JSON-LD. Defaults to `APP_URL`'s origin — set it only when the canonical domain differs from the app domain |
+| `ALLOW_INDEXING` | No | Set to `true` to let search engines index the site. Unset, every response and page says `noindex` and `robots.txt` drops its `Sitemap:` line, so a preview or staging host can't be indexed by accident. Set it on production only |
 | `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
 | `AUTH_MODE` | No | `magic-link` (default) or `password`. Mutually exclusive; any other value stops the server at boot |
 | `CAPTCHA_ENABLED` | No | Set to `true` to add a proof-of-work captcha to the login form. Off by default; `/login` is unchanged when unset |
@@ -436,7 +443,7 @@ These live in the dashboard rather than in a file on purpose. Railway has [depre
 
 > **Email deliverability:** When sending real mail via Resend, follow [runbooks/EMAIL.md](runbooks/EMAIL.md) to set up SPF, DKIM, and DMARC — without it, magic links and password-reset mail land in spam.
 
-> **SEO:** Nothing to configure — canonicals, Open Graph tags, the sitemap, `robots.txt`, and JSON-LD all follow `APP_URL`'s origin, so pointing that at your production domain points them too. Set `SITE_URL` only if your canonical domain differs from your app domain (marketing site on the apex, app on a subdomain) — see [runbooks/SEO.md](runbooks/SEO.md) for that plus the sitemap, indexing policy, and verification steps.
+> **SEO:** Canonicals, Open Graph tags, the sitemap, `robots.txt`, and JSON-LD all follow `APP_URL`'s origin, so pointing that at your production domain points them too. Set `SITE_URL` only if your canonical domain differs from your app domain (marketing site on the apex, app on a subdomain). One thing you **must** set on production: `ALLOW_INDEXING=true`. Without it every response and page says `noindex` and `robots.txt` drops its Sitemap line, so a preview or staging host can't be indexed by accident — set it on production only. See [runbooks/SEO.md](runbooks/SEO.md) for both, plus the sitemap, indexing policy, and verification steps.
 
 > **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
 

@@ -24,13 +24,13 @@ These are handled in the framework layer and apply to every page automatically:
 | Navigation semantics | `nav.tsx` | `aria-label="Main navigation"` + `aria-current="page"` |
 | Native interactive elements | throughout | Real `<button>` / `<a>` / `<form>` — never `<div onclick>` |
 | Labelled form controls | `form-field.tsx`, templates | Every input has an associated `<label>` (see §3) |
-| Keyboard focus ring | `style.css` | Global `:focus-visible { outline }` — visible, keyboard-only |
-| Reduced motion | `style.css`, `home.ts` | `prefers-reduced-motion` shrinks transitions and stops the hero animation looping |
+| Keyboard focus ring | `base.css` | Global `:focus-visible { outline }` — visible, keyboard-only |
+| Reduced motion | `base.css`, `home.ts` | `prefers-reduced-motion` shrinks transitions and stops the hero animation looping |
 | Announced flash messages | `flash.tsx` | `role="alert"` for errors, `role="status"` for success |
 | Data tables | `data-table.tsx`, templates | `<caption>` + `scope="col"` header cells |
 | Accessible authentication | magic-link login | No password puzzle or CAPTCHA; `autocomplete="email"`; paste allowed |
-| Mobile inputs | `style.css` | Inputs are `font-size: 16px` so iOS Safari doesn't zoom on focus |
-| Screen-reader-only text | `.sr-only` utility | `style.css` — visually hidden, still announced |
+| Mobile inputs | `base.css` | Inputs are `font-size: 16px` so iOS Safari doesn't zoom on focus |
+| Screen-reader-only text | `.sr-only` utility | `base.css` — visually hidden, still announced |
 
 Icon-only SVGs (e.g. the hero) carry `aria-hidden="true"` and sit next to real
 text, so there are no unnamed links or buttons.
@@ -68,8 +68,10 @@ Keep the baseline intact by following these when you add pages:
 - **Forms** — never rely on a placeholder as a label (it vanishes on input and
   is invisible to voice control). Wrap fields in `FormField` for a visible
   label, or add a `.sr-only` `<label htmlFor>` for compact/inline inputs (see
-  the create form in `projects.tsx` and the search island in
-  `project-search.tsx`).
+  the add form in `todos.tsx`). A control that shows state rather than text —
+  the done/not-done toggle in `todo-row.tsx` — carries `aria-pressed` and an
+  `aria-label` naming the item, because a bare ✓ says nothing to a screen
+  reader.
 - **Tables** — use the `DataTable` component, pass a `caption`, and give every
   header cell `scope="col"` (or `scope="row"`). Pass `captionVisible` if you
   want the caption shown rather than screen-reader-only.

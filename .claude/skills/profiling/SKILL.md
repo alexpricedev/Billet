@@ -42,14 +42,11 @@ of overhead.
 ```bash
 bun build ./src/client/main.ts ./src/client/captcha.ts \
   --outdir /tmp/bundle-analysis --minify \
-  --external preact --external preact/hooks \
-  --external preact/jsx-dev-runtime --external preact/jsx-runtime \
   --metafile-md=/tmp/bundle-analysis/meta.md
 ```
 
 The module graph and per-module byte counts, as Markdown. Mirror the exact
-flags from `build:client` in `package.json` (externals change the numbers) and
-build to a scratch dir — never to `dist/assets`, which the dev server serves.
+flags from `build:client` in `package.json` and build to a scratch dir — never to `dist/assets`, which the dev server serves.
 
 ## Ground rules
 

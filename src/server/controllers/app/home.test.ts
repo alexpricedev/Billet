@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { createBunRequest } from "../../test-utils/bun-request";
 import { testDatabase } from "../../test-utils/database";
-import { cleanupTestData } from "../../test-utils/helpers";
+import { cleanupTestData, withIndexingAllowed } from "../../test-utils/helpers";
 
 const connection = testDatabase();
 
@@ -35,6 +35,33 @@ describe("Home Controller", () => {
       expect(response.headers.get("content-type")).toBe("text/html");
       expect(html).toContain('data-page="home"');
       expect(html).toContain("<main>");
+    });
+
+    // A public page carries no noindex of its own, so what it renders is the
+    // site-wide switch. Both directions, because the default being closed is
+    // the whole point and the open path is what a production host gets.
+    test("stays out of the index until indexing is switched on", async () => {
+      const request = createBunRequest("http://localhost:3000/", {
+        method: "GET",
+      });
+      const html = await (await home.index(request)).text();
+
+      expect(html).toContain('name="robots" content="noindex, nofollow"');
+      // Structured data follows the tag: no point describing a page to a
+      // crawler you are telling to ignore it.
+      expect(html).not.toContain("application/ld+json");
+    });
+
+    test("is indexable with structured data once indexing is on", async () => {
+      const request = createBunRequest("http://localhost:3000/", {
+        method: "GET",
+      });
+      const html = await withIndexingAllowed(async () =>
+        (await home.index(request)).text(),
+      );
+
+      expect(html).not.toContain('name="robots"');
+      expect(html).toContain("application/ld+json");
     });
   });
 });

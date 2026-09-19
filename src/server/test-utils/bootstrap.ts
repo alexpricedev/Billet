@@ -27,6 +27,8 @@ export async function bootstrap() {
     await db`DROP TABLE IF EXISTS user_tokens CASCADE`;
     await db`DROP TABLE IF EXISTS sessions CASCADE`;
     await db`DROP TABLE IF EXISTS users CASCADE`;
+    await db`DROP TABLE IF EXISTS todo CASCADE`;
+    await db`DROP TABLE IF EXISTS project CASCADE`;
     await db`DROP TABLE IF EXISTS example CASCADE`;
     await db`DROP TABLE IF EXISTS migrations CASCADE`;
 

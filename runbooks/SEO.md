@@ -2,14 +2,17 @@
 
 Billet ships first-class SEO defaults: server-rendered metadata, a canonical
 URL on every page, `robots.txt`, an XML sitemap, site-level JSON-LD, an explicit
-indexing policy per page, and trailing-slash canonicalisation. This runbook
-covers the one required config step, how to extend each piece as you add pages,
-and how to verify it in production.
+indexing policy per page, and trailing-slash canonicalisation. Indexing itself
+is closed by default and opened with one variable. This runbook covers the two
+required config steps, how to extend each piece as you add pages, and how to
+verify it in production.
 
 Everything here is server-side — crawlers and AI agents get the full picture in
 the initial HTML response, no client JS required.
 
-## 1. The canonical site URL (nothing to edit)
+## 1. Required configuration
+
+### 1a. The canonical site URL (nothing to edit)
 
 All absolute URLs — canonicals, Open Graph tags, the sitemap, `robots.txt`'s
 `Sitemap:` line, and JSON-LD — are built from `siteUrl()` in
@@ -42,6 +45,42 @@ product identity, not deployment config. They feed the JSON-LD, the web app
 manifest, and the default `<meta name="description">`. Update them to match your
 product.
 
+### 1b. Opening the site to search engines (`ALLOW_INDEXING`)
+
+**The site is `noindex` until you say otherwise.** `indexingAllowed()` in
+[`src/server/services/seo.ts`](../src/server/services/seo.ts) is true only when
+the `ALLOW_INDEXING` environment variable is exactly `true`. Until it is, everything the
+site says to a crawler says `noindex`:
+
+- every response carries `X-Robots-Tag: noindex, nofollow` (`withSecurityHeaders`
+  in [`utils/security-headers.ts`](../src/server/utils/security-headers.ts)) —
+  the header, not just the meta tag, because an image, the sitemap itself,
+  `llms.txt` and every JSON endpoint is indexable on its own and has nowhere to
+  put a `<meta>`,
+- every page renders `<meta name="robots" content="noindex, nofollow">` and
+  omits the site JSON-LD (§4, §6),
+- `/robots.txt` drops its `Sitemap:` line (§5).
+
+**Crawling stays allowed, and that is not an oversight.** `noindex` is what
+keeps a page out of the index, and a crawler has to *fetch* a page to read it.
+A `Disallow: /` would block the fetch and strand the header and meta tag that do
+the actual work — and would not keep the site out of the index on its own, since
+a URL linked from anywhere else gets indexed unfetched, as a bare result with no
+title. Blocking the crawl is how a site ends up stuck in Google, not how it stays
+out. If you need a host genuinely un-fetched rather than un-indexed, that is HTTP
+auth in front of it; `robots.txt` is advisory and does not protect anything.
+
+Set `ALLOW_INDEXING=true` on the production host, and only there. A preview
+deploy, a staging box or a fork's first Railway URL stays out of the index by
+virtue of nobody having configured it, which is the failure mode you want.
+Anything other than exactly `true` reads as closed, typos included — the value
+is read per request, so a platform restart flips it either way.
+
+**On a host that is already in Google, set it before or with the deploy that
+first ships this.** Otherwise the site de-indexes: crawlers fetch, read the
+`noindex`, and drop the pages. That is recoverable — set the variable and they
+come back on the next crawl — but it costs however long the re-crawl takes.
+
 ## 2. Per-page metadata
 
 Every page renders through `Layout` (or `BaseLayout` for chrome-less pages) in
@@ -52,7 +91,7 @@ page passes its own metadata as props:
 |---|---|---|
 | `title` | `<title>` + `og:title` + `twitter:title` | Unique per page; keep under ~60 chars |
 | `description` | `<meta name="description">` + OG/Twitter | Unique per page; ~150 chars. Falls back to `SITE_DESCRIPTION` |
-| `canonicalPath` | `<link rel="canonical">` + `og:url` | Path only (e.g. `/stack`); resolved against the canonical origin (§1) |
+| `canonicalPath` | `<link rel="canonical">` + `og:url` | Path only (e.g. `/stack`); resolved against the canonical origin (§1a) |
 | `noindex` | `<meta name="robots" content="noindex, nofollow">` | See §4 |
 
 Rule: **every page sets `title`, `description`, and `canonicalPath`.** The shared
@@ -82,9 +121,16 @@ the `noindex` prop:
 <Layout title="Admin" canonicalPath="/admin" noindex name="admin" ...>
 ```
 
-Currently applied to `/admin` (private) and `/login` (thin/private). When
-`noindex` is set, the page also **omits the site JSON-LD** — you don't want
-structured data on pages you're telling crawlers to ignore.
+Two things decide whether a page says `noindex`: the site-wide switch (§1b) and
+the page's own `noindex` prop. The prop is an opt-*out* layered on a default that
+already keeps the page out, so a page that passes it stays `noindex` after
+`ALLOW_INDEXING=true` opens the rest of the site up. `blocksIndexing` in
+[`layouts.tsx`](../src/server/components/layouts.tsx) is the whole of that rule.
+
+Currently applied to `/admin` (private) and `/login` (thin/private). A page that
+is `noindex` — by its own prop or by the site-wide default — also **omits the
+site JSON-LD**: you don't want structured data on pages you're telling crawlers
+to ignore.
 
 Also add the path to `ROBOTS_DISALLOW` in
 [`src/server/services/seo.ts`](../src/server/services/seo.ts) (§5) if you want to
@@ -98,9 +144,11 @@ path you also `noindex` unless it's already de-indexed.
 `/robots.txt` is **generated**, not a static file: `buildRobotsTxt()` in
 [`src/server/services/seo.ts`](../src/server/services/seo.ts) builds the body and
 [`controllers/app/robots-txt.ts`](../src/server/controllers/app/robots-txt.ts)
-serves it. It:
+serves it. The body is the same whether or not `ALLOW_INDEXING` is set, minus
+the `Sitemap:` line while indexing is off (§1b) — there is nothing to advertise
+on a host that isn't indexable, and `noindex` does the keeping-out. It:
 
-- allows all user-agents by default,
+- allows all user-agents,
 - disallows the private surfaces listed in `ROBOTS_DISALLOW` — `/admin`,
   `/account`, `/api/`, `/auth/`, `/team`, `/invites/`,
 - repeats the same rules for each crawler in `AI_CRAWLERS` (GPTBot, ClaudeBot,
@@ -109,7 +157,7 @@ serves it. It:
 - declares `Content-Signal: search=yes, ai-input=yes, ai-train=yes`,
 - points crawlers at the sitemap.
 
-The `Sitemap:` line is an absolute URL built from the canonical origin (§1), so
+The `Sitemap:` line is an absolute URL built from the canonical origin (§1a), so
 it follows your production domain automatically — nothing to edit. To disallow a
 new path, add it to `ROBOTS_DISALLOW`.
 
@@ -139,16 +187,24 @@ a JSON-LD block. Validate with the Rich Results Test (§8).
 
 ## 8. Verification checklist
 
-After deploying (replace the host with your production domain):
+After deploying (replace the host with your production domain). Everything below
+assumes `ALLOW_INDEXING=true` is set on that host — check that first, because
+without it the `robots` and indexing-policy steps are *supposed* to fail:
 
+- **Indexing switch** — `curl -sI https://example.com/` has **no**
+  `X-Robots-Tag` header. If it answers `noindex, nofollow`, `ALLOW_INDEXING` is
+  unset on the host and nothing else in this list will read as expected.
 - **Sitemap** — `curl -sI https://example.com/sitemap.xml` returns `200` with
   `Content-Type: application/xml`; the body lists only canonical public URLs.
-- **robots** — `curl -s https://example.com/robots.txt` shows the disallow rules
-  and the absolute `Sitemap:` line.
+- **robots** — `curl -s https://example.com/robots.txt` shows `Allow: /`, the
+  disallow rules and the absolute `Sitemap:` line. A missing `Sitemap:` line
+  means `ALLOW_INDEXING` is unset.
 - **Redirect** — `curl -sI https://example.com/stack/` returns `308` with a
   `Location` of the slash-free path.
 - **Indexing policy** — view-source on a public page shows no `noindex`; on
   `/admin` and `/login` it shows `<meta name="robots" content="noindex, nofollow">`.
+  A `noindex` on *every* page is the site-wide default, not a per-page bug — see
+  the indexing-switch step above.
 - **Structured data** — run a public URL through the
   [Rich Results Test](https://search.google.com/test/rich-results); the
   `WebSite`/`Organization` graph parses with no errors.
