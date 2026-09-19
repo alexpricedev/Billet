@@ -100,6 +100,15 @@ const CONTENT_SIGNAL = "Content-Signal: search=yes, ai-input=yes, ai-train=yes";
 // Builds the /robots.txt body. Billet is built for AI coding agents, so the
 // posture is deliberately open: search engines and the major AI crawlers are
 // all allowed, with only private surfaces disallowed.
+//
+// Crawling stays allowed even when indexing is switched off, which looks
+// backwards and isn't. `noindex` is the thing that keeps a page out of the
+// index, and a crawler has to *fetch* a page to read it — a `Disallow: /`
+// would block the fetch and so disable the `X-Robots-Tag` and the meta tag
+// that do the actual work. It would also not prevent indexing on its own: a
+// URL that is linked from somewhere else gets indexed unfetched, as a bare
+// result with no title. So the closed posture differs by one line, the
+// `Sitemap:`, and leaves the rest to `noindex`.
 export const buildRobotsTxt = (): string => {
   const group = (agents: readonly string[]): string =>
     [
@@ -109,31 +118,25 @@ export const buildRobotsTxt = (): string => {
       CONTENT_SIGNAL,
     ].join("\n");
 
-  // No named groups and no Sitemap line when indexing is closed: in robots.txt
-  // a named user-agent group *replaces* the wildcard for that agent, so listing
-  // the AI crawlers again would hand each one an exemption from the blanket
-  // rule. A crawler being told to stay out also has no business being handed
-  // the list of everything there is.
-  if (!indexingAllowed()) {
-    return [
-      "# Indexing is switched off (ALLOW_INDEXING is not `true`), so nothing",
-      "# here is crawlable. See runbooks/SEO.md §1b.",
-      "",
-      "User-agent: *",
-      "Disallow: /",
-      "",
-    ].join("\n");
-  }
+  const open = indexingAllowed();
 
   return [
-    "# Billet is built for AI coding agents, so search engines and AI crawlers",
-    "# are welcome. Only private surfaces are disallowed.",
+    ...(open
+      ? [
+          "# Billet is built for AI coding agents, so search engines and AI crawlers",
+          "# are welcome. Only private surfaces are disallowed.",
+        ]
+      : [
+          "# Indexing is switched off (ALLOW_INDEXING is not `true`). Crawling is",
+          "# still allowed on purpose: every page and every response says",
+          "# noindex, and a crawler has to fetch a page to be told that.",
+          "# See runbooks/SEO.md §1b.",
+        ]),
     "",
     group(["*"]),
     "",
     group(AI_CRAWLERS),
-    "",
-    `Sitemap: ${absolute("/sitemap.xml")}`,
+    ...(open ? ["", `Sitemap: ${absolute("/sitemap.xml")}`] : []),
     "",
   ].join("\n");
 };

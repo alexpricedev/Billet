@@ -104,15 +104,20 @@ and the server's to own, so there is no group binding to add — `bind` throws a
 `data-prop="checked:…"` and `data-on` instead.
 
 **The site is `noindex` until `ALLOW_INDEXING=true` opens it.** `indexingAllowed()` in
-`services/seo.ts` is the one switch, and three layers read it: `robots.txt` is a blanket
-`Disallow: /` with no `Sitemap:` line and no named AI-crawler groups, `withSecurityHeaders` puts
-`X-Robots-Tag: noindex, nofollow` on every response, and both layouts render the matching meta tag
-and omit the site JSON-LD. The header sits alongside the meta tag because the tag only covers HTML
-— an image, the sitemap itself, `llms.txt` and every JSON endpoint is indexable on its own and has
-nowhere to put one. Closed by default so a preview deploy, a staging host or a fork's first Railway
-URL can't be crawled because nobody remembered to block it; anything other than exactly `true`
-reads as closed, typos included. The per-page `noindex` prop becomes an opt-*out* on top of that
-default, so `/admin` and `/login` stay out of the index once the switch is on.
+`services/seo.ts` is the one switch: `withSecurityHeaders` puts `X-Robots-Tag: noindex, nofollow`
+on every response, the layouts render the matching meta tag and omit the site JSON-LD, and
+`robots.txt` drops its `Sitemap:` line. The header sits alongside the meta tag because the tag only
+covers HTML — an image, the sitemap itself, `llms.txt` and every JSON endpoint is indexable on its
+own and has nowhere to put one. Closed by default so a preview deploy, a staging host or a fork's
+first Railway URL can't be indexed because nobody remembered to block it; anything other than
+exactly `true` reads as closed, typos included. The per-page `noindex` prop becomes an opt-*out* on
+top of that default, so `/admin` and `/login` stay out of the index once the switch is on.
+
+Crawling stays allowed while indexing is off, which is deliberate: `noindex` is what keeps a page
+out of the index and a crawler has to *fetch* a page to read it, so a `Disallow: /` would block the
+fetch and strand the header and meta tag that do the work — while not keeping the site out on its
+own, since a URL linked from elsewhere is indexed unfetched as a bare result. A host that needs to
+be un-fetched rather than un-indexed wants HTTP auth, not `robots.txt`.
 
 **`src/client/style.css` is a manifest and nothing else.** `@import` is hoisted above every other
 rule in a file, so the base rules that used to sit below the imports actually landed *after* them
@@ -122,14 +127,12 @@ order in the cascade. `boundaries.test.ts` fails the suite if a rule goes back i
 
 ### Breaking changes
 
-- **A fork that is already in Google must set `ALLOW_INDEXING=true` on production, with the
-  deploy rather than after it.** Indexing is now closed by default, so merging this and deploying
-  without the variable takes a live site out of search. Worse, it does so badly: `robots.txt`'s
-  `Disallow: /` blocks the crawl that would let Google *see* the `noindex`, and already-indexed
-  URLs freeze in the index as title-only results rather than dropping cleanly. Set the variable on
-  the production host first. Everywhere else — previews, staging, review apps — wants the new
-  default and needs no change. `runbooks/SEO.md` §1b has the reasoning and the de-indexing
-  procedure if you ever do want a live host removed.
+- **A fork that is already in Google must set `ALLOW_INDEXING=true` on production.** Indexing is
+  now closed by default, so merging this and deploying without the variable de-indexes a live site:
+  crawlers fetch, read the `noindex`, and drop the pages. Setting the variable brings them back on
+  the next crawl, so the mistake is recoverable — it costs the re-crawl, not the rankings — but set
+  it with the deploy and skip that. Everywhere else — previews, staging, review apps — wants the
+  new default and needs no change. `runbooks/SEO.md` §1b has the reasoning.
 - **The `project` table is dropped and `todo` created in its place.** Migration `009` does not
   copy rows; the demo resource is starter content. A fork that kept the `project` table for real
   data must either remove migration `009` before merging (and then also keep its own copies of the

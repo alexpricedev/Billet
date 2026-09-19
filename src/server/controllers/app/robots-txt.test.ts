@@ -16,17 +16,19 @@ describe("robots.txt Controller", () => {
 
   // The default matters more than the opt-in: a host nobody remembered to
   // configure — a preview, a staging box, a fork's first deploy — must not be
-  // crawlable because of what was left unset.
-  test("shuts every crawler out unless indexing is switched on", async () => {
+  // indexed because of what was left unset.
+  test("drops the sitemap but keeps crawling open while indexing is off", async () => {
     const body = await robotsTxt.index().text();
 
-    expect(body).toContain("User-agent: *");
-    expect(body).toContain("Disallow: /\n");
-    expect(body).not.toContain("Allow: /");
+    // No Sitemap line: nothing to advertise on a host that isn't indexable.
     expect(body).not.toContain("Sitemap:");
-    // A named group replaces the wildcard for that agent, so naming the AI
-    // crawlers here would exempt each one from the blanket rule.
-    expect(body).not.toContain("User-agent: GPTBot");
+    // Crawling itself stays allowed, because `noindex` is what keeps the site
+    // out of the index and a crawler has to fetch a page to read it. A
+    // `Disallow: /` here would block the fetch and strand the noindex — and
+    // would not prevent indexing on its own, since a linked-to URL gets
+    // indexed unfetched.
+    expect(body).toContain("Allow: /");
+    expect(body).not.toContain("Disallow: /\n");
   });
 
   test("serves plain text with the correct content type", async () => {

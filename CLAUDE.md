@@ -238,9 +238,11 @@ third-party script needs the CSP entry, an SRI `integrity` hash, and ideally a `
 
 `X-Robots-Tag: noindex, nofollow` is one of those headers, and it is on **by default**:
 `indexingAllowed()` (`services/seo.ts`) is true only when `ALLOW_INDEXING=true`, so an
-unconfigured host — a preview, a fork's first deploy, your test run — is closed to crawlers at
-three layers at once (the header, `robots.txt`'s blanket `Disallow: /`, and the meta tag in
-`layouts.tsx`). Every page rendering `noindex` in a test is the default, not a bug. A test about a
+unconfigured host — a preview, a fork's first deploy, your test run — says `noindex` in the header
+and in the meta tag `layouts.tsx` renders. `robots.txt` keeps crawling *allowed* either way and
+only drops its `Sitemap:` line: a crawler has to fetch a page to be told `noindex`, so blocking the
+fetch would strand the layers that do the work. Every page rendering `noindex` in a test is the
+default, not a bug. A test about a
 page's *own* `noindex` prop must open the switch first — `withIndexingAllowed` in
 `test-utils/helpers.ts` — or it passes on the default and would keep passing after the prop it
 exists to protect was deleted. `runbooks/SEO.md` §1b has the rest, including why the variable has

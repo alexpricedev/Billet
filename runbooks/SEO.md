@@ -49,18 +49,26 @@ product.
 
 **The site is `noindex` until you say otherwise.** `indexingAllowed()` in
 [`src/server/services/seo.ts`](../src/server/services/seo.ts) is true only when
-the `ALLOW_INDEXING` environment variable is exactly `true`. Until it is, three
-layers keep crawlers out at once:
+the `ALLOW_INDEXING` environment variable is exactly `true`. Until it is, everything the
+site says to a crawler says `noindex`:
 
-- `/robots.txt` is a blanket `Disallow: /` with no `Sitemap:` line and no named
-  AI-crawler groups (§5),
 - every response carries `X-Robots-Tag: noindex, nofollow` (`withSecurityHeaders`
   in [`utils/security-headers.ts`](../src/server/utils/security-headers.ts)) —
   the header, not just the meta tag, because an image, the sitemap itself,
   `llms.txt` and every JSON endpoint is indexable on its own and has nowhere to
   put a `<meta>`,
 - every page renders `<meta name="robots" content="noindex, nofollow">` and
-  omits the site JSON-LD (§4, §6).
+  omits the site JSON-LD (§4, §6),
+- `/robots.txt` drops its `Sitemap:` line (§5).
+
+**Crawling stays allowed, and that is not an oversight.** `noindex` is what
+keeps a page out of the index, and a crawler has to *fetch* a page to read it.
+A `Disallow: /` would block the fetch and strand the header and meta tag that do
+the actual work — and would not keep the site out of the index on its own, since
+a URL linked from anywhere else gets indexed unfetched, as a bare result with no
+title. Blocking the crawl is how a site ends up stuck in Google, not how it stays
+out. If you need a host genuinely un-fetched rather than un-indexed, that is HTTP
+auth in front of it; `robots.txt` is advisory and does not protect anything.
 
 Set `ALLOW_INDEXING=true` on the production host, and only there. A preview
 deploy, a staging box or a fork's first Railway URL stays out of the index by
@@ -68,12 +76,10 @@ virtue of nobody having configured it, which is the failure mode you want.
 Anything other than exactly `true` reads as closed, typos included — the value
 is read per request, so a platform restart flips it either way.
 
-**Set it on the production host before or with the deploy that first ships this,
-not after.** On a host whose URLs are already in Google, `Disallow: /` blocks the
-crawl that would let Google *see* the `noindex` — the same trap §4 describes per
-page. An already-indexed site doesn't drop out of search cleanly this way; its
-URLs freeze as title-only results. To de-index a live host, leave crawling
-allowed, serve the `noindex`, and use a Search Console removal.
+**On a host that is already in Google, set it before or with the deploy that
+first ships this.** Otherwise the site de-indexes: crawlers fetch, read the
+`noindex`, and drop the pages. That is recoverable — set the variable and they
+come back on the next crawl — but it costs however long the re-crawl takes.
 
 ## 2. Per-page metadata
 
@@ -138,16 +144,9 @@ path you also `noindex` unless it's already de-indexed.
 `/robots.txt` is **generated**, not a static file: `buildRobotsTxt()` in
 [`src/server/services/seo.ts`](../src/server/services/seo.ts) builds the body and
 [`controllers/app/robots-txt.ts`](../src/server/controllers/app/robots-txt.ts)
-serves it. It serves one of two bodies, chosen by `ALLOW_INDEXING` (§1b).
-
-Without `ALLOW_INDEXING=true` — the default, and what a preview or staging host
-gets — it is a blanket `Disallow: /` and nothing else. No `Sitemap:` line: a
-crawler told to stay out has no business being handed the list of everything
-there is. No named AI-crawler groups either, because a named group *replaces*
-the wildcard for that agent and would hand each one an exemption from the
-blanket rule.
-
-With `ALLOW_INDEXING=true` it:
+serves it. The body is the same whether or not `ALLOW_INDEXING` is set, minus
+the `Sitemap:` line while indexing is off (§1b) — there is nothing to advertise
+on a host that isn't indexable, and `noindex` does the keeping-out. It:
 
 - allows all user-agents,
 - disallows the private surfaces listed in `ROBOTS_DISALLOW` — `/admin`,
@@ -198,8 +197,8 @@ without it the `robots` and indexing-policy steps are *supposed* to fail:
 - **Sitemap** — `curl -sI https://example.com/sitemap.xml` returns `200` with
   `Content-Type: application/xml`; the body lists only canonical public URLs.
 - **robots** — `curl -s https://example.com/robots.txt` shows `Allow: /`, the
-  disallow rules and the absolute `Sitemap:` line. A bare `Disallow: /` means
-  `ALLOW_INDEXING` is unset.
+  disallow rules and the absolute `Sitemap:` line. A missing `Sitemap:` line
+  means `ALLOW_INDEXING` is unset.
 - **Redirect** — `curl -sI https://example.com/stack/` returns `308` with a
   `Location` of the slash-free path.
 - **Indexing policy** — view-source on a public page shows no `noindex`; on
