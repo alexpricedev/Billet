@@ -236,6 +236,16 @@ The CSP script allowlist is `'self' 'unsafe-inline' https://unpkg.com`. Any new
 third-party script needs the CSP entry, an SRI `integrity` hash, and ideally a `preconnect` in
 `layouts.tsx` — otherwise it is silently blocked in the browser but passes every test.
 
+`X-Robots-Tag: noindex, nofollow` is one of those headers, and it is on **by default**:
+`indexingAllowed()` (`services/seo.ts`) is true only when `ALLOW_INDEXING=true`, so an
+unconfigured host — a preview, a fork's first deploy, your test run — is closed to crawlers at
+three layers at once (the header, `robots.txt`'s blanket `Disallow: /`, and the meta tag in
+`layouts.tsx`). Every page rendering `noindex` in a test is the default, not a bug. A test about a
+page's *own* `noindex` prop must open the switch first — `withIndexingAllowed` in
+`test-utils/helpers.ts` — or it passes on the default and would keep passing after the prop it
+exists to protect was deleted. `runbooks/SEO.md` §1b has the rest, including why the variable has
+to be set with the deploy rather than after it.
+
 ### An uncaught throw in an API controller becomes an *HTML* 500
 
 `handleGuarded` catches everything and answers with `render500()` — the styled HTML error page —

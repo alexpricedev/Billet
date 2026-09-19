@@ -441,7 +441,7 @@ These live in the dashboard rather than in a file on purpose. Railway has [depre
 
 > **Email deliverability:** When sending real mail via Resend, follow [runbooks/EMAIL.md](runbooks/EMAIL.md) to set up SPF, DKIM, and DMARC — without it, magic links and password-reset mail land in spam.
 
-> **SEO:** Nothing to configure — canonicals, Open Graph tags, the sitemap, `robots.txt`, and JSON-LD all follow `APP_URL`'s origin, so pointing that at your production domain points them too. Set `SITE_URL` only if your canonical domain differs from your app domain (marketing site on the apex, app on a subdomain) — see [runbooks/SEO.md](runbooks/SEO.md) for that plus the sitemap, indexing policy, and verification steps.
+> **SEO:** Canonicals, Open Graph tags, the sitemap, `robots.txt`, and JSON-LD all follow `APP_URL`'s origin, so pointing that at your production domain points them too. Set `SITE_URL` only if your canonical domain differs from your app domain (marketing site on the apex, app on a subdomain). One thing you **must** set on production: `ALLOW_INDEXING=true`. Without it `robots.txt` is `Disallow: /` and every response and page says `noindex`, so a preview or staging host can't be crawled by accident — set it on production only, and with the deploy rather than after it. See [runbooks/SEO.md](runbooks/SEO.md) for both, plus the sitemap, indexing policy, and verification steps.
 
 > **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
 

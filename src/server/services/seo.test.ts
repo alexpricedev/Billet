@@ -26,6 +26,7 @@ const restore = (key: string, value: string | undefined): void => {
 afterEach(() => {
   restore("APP_URL", APP_URL);
   restore("SITE_URL", SITE_URL);
+  delete process.env.ALLOW_INDEXING;
 });
 
 describe("siteUrl", () => {
@@ -108,6 +109,7 @@ describe("generated artefacts follow the resolved origin", () => {
   test("robots.txt points at the sitemap under it", () => {
     process.env.APP_URL = "https://example.com";
     delete process.env.SITE_URL;
+    process.env.ALLOW_INDEXING = "true";
 
     expect(buildRobotsTxt()).toContain(
       "Sitemap: https://example.com/sitemap.xml",

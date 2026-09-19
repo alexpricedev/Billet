@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 import { getAssetUrl } from "../services/assets";
 import {
   absolute,
+  indexingAllowed,
   SITE_DESCRIPTION,
   SITE_NAME,
   siteStructuredData,
@@ -19,6 +20,14 @@ const THEME_COLOR = "#0a0a0b";
 
 const canonicalUrl = (path?: string): string =>
   path ? absolute(path) : siteUrl();
+
+/* The site is noindex unless `ALLOW_INDEXING=true` says otherwise, so the
+   `noindex` prop is a page opting *out* on top of a default that already keeps
+   it out — a page that passes it (/login, /admin, an error page) stays noindex
+   after the switch opens the rest of the site up. See `indexingAllowed` in
+   services/seo.ts. */
+const blocksIndexing = (noindex?: boolean): boolean =>
+  noindex === true || !indexingAllowed();
 
 interface HeadMetaProps {
   title: string;
@@ -44,7 +53,9 @@ function HeadMeta({
       />
       <title>{title}</title>
       <meta name="description" content={description} />
-      {noindex && <meta name="robots" content="noindex, nofollow" />}
+      {blocksIndexing(noindex) && (
+        <meta name="robots" content="noindex, nofollow" />
+      )}
       <meta name="color-scheme" content="dark" />
       <meta name="theme-color" content={THEME_COLOR} />
       <link rel="canonical" href={canonicalUrl(canonicalPath)} />
@@ -121,7 +132,7 @@ export function Layout({
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={absolute("/og-image.png")} />
-        {!noindex && (
+        {!blocksIndexing(noindex) && (
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: siteStructuredData() }}

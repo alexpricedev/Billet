@@ -1,6 +1,6 @@
 import type { BunRequest } from "bun";
 import { log } from "../services/logger";
-import { SITE_NAME } from "../services/seo";
+import { indexingAllowed, SITE_NAME } from "../services/seo";
 import { withCompression } from "./compression";
 import { render500 } from "./errors";
 import { maintenanceResponse } from "./maintenance";
@@ -95,6 +95,9 @@ export const SECURITY_HEADERS: Record<string, string> = {
     : {}),
 };
 
+const ROBOTS_TAG = "X-Robots-Tag";
+const BLOCK_INDEXING = "noindex, nofollow";
+
 // Merge the security headers onto an existing response without clobbering
 // headers a route already set (Content-Type, Cache-Control, Location, or an
 // intentional per-route override such as a relaxed CSP).
@@ -115,6 +118,15 @@ export const withSecurityHeaders = (res: Response): Response => {
   // without each having to remember to set it.
   if (res.headers.has("Location") && !res.headers.has("X-Redirect-By")) {
     res.headers.set("X-Redirect-By", SITE_NAME);
+  }
+  // Keeping the site out of the search engines is done here as well as in the
+  // `<meta name="robots">` tag, because the meta tag only covers HTML: an
+  // image, the sitemap itself, `llms.txt` and every JSON endpoint are indexable
+  // on their own and have nowhere to put a meta tag. One header on every
+  // response is the only version of this with no gaps. A route that sets its
+  // own tag keeps it.
+  if (!indexingAllowed() && !res.headers.has(ROBOTS_TAG)) {
+    res.headers.set(ROBOTS_TAG, BLOCK_INDEXING);
   }
   return res;
 };

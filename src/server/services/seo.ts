@@ -24,6 +24,24 @@ export const siteUrl = (): string => {
   return configured ? new URL(configured).origin : appOrigin();
 };
 
+/**
+ * Whether search engines may index the site.
+ *
+ * Closed by default: the site stays out of Google unless `ALLOW_INDEXING=true`
+ * is set explicitly, so a preview deploy, a staging host or a fork's first
+ * Railway URL can't be crawled because nobody remembered to block it. Opening
+ * indexing is one deliberate variable in one place, and every layer that speaks
+ * to a crawler — robots.txt, the `X-Robots-Tag` on every response, the
+ * `<meta name="robots">` in `layouts.tsx` — reads this rather than deciding for
+ * itself.
+ *
+ * Anything other than exactly `true` reads as closed, including a typo: the
+ * failure mode of a misspelt value should be a site that isn't indexed, not one
+ * that is. Read per call for the reason `siteUrl()` gives above.
+ */
+export const indexingAllowed = (): boolean =>
+  process.env.ALLOW_INDEXING === "true";
+
 export const SITE_NAME = "Billet";
 export const SITE_DESCRIPTION =
   "Guardrails for your AI coding agents — a full-stack TypeScript starter on Bun";
@@ -90,6 +108,22 @@ export const buildRobotsTxt = (): string => {
       ...ROBOTS_DISALLOW.map((path) => `Disallow: ${path}`),
       CONTENT_SIGNAL,
     ].join("\n");
+
+  // No named groups and no Sitemap line when indexing is closed: in robots.txt
+  // a named user-agent group *replaces* the wildcard for that agent, so listing
+  // the AI crawlers again would hand each one an exemption from the blanket
+  // rule. A crawler being told to stay out also has no business being handed
+  // the list of everything there is.
+  if (!indexingAllowed()) {
+    return [
+      "# Indexing is switched off (ALLOW_INDEXING is not `true`), so nothing",
+      "# here is crawlable. See runbooks/SEO.md §1b.",
+      "",
+      "User-agent: *",
+      "Disallow: /",
+      "",
+    ].join("\n");
+  }
 
   return [
     "# Billet is built for AI coding agents, so search engines and AI crawlers",

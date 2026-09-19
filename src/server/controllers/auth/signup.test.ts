@@ -3,7 +3,7 @@ import { clearRateLimitLog } from "../../middleware/rate-limit";
 import { clearUsedChallenges, HONEYPOT_FIELD } from "../../services/captcha";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { testDatabase } from "../../test-utils/database";
-import { cleanupTestData } from "../../test-utils/helpers";
+import { cleanupTestData, withIndexingAllowed } from "../../test-utils/helpers";
 
 const connection = testDatabase();
 
@@ -67,8 +67,13 @@ describe("Signup Controller", () => {
       expect(html).not.toContain('name="password"');
     });
 
+    // Under the indexing switch, because the page's own noindex is what this
+    // is about — with the site-wide default closed every page carries the tag
+    // and the assertion would survive the prop being deleted.
     test("is noindex and links back to sign-in", async () => {
-      const html = await (await signup.index(get())).text();
+      const html = await withIndexingAllowed(async () =>
+        (await signup.index(get())).text(),
+      );
 
       expect(html).toContain('name="robots" content="noindex, nofollow"');
       expect(html).toContain('href="/login"');
