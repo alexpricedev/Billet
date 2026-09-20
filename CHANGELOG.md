@@ -29,11 +29,36 @@ actions; `mount` wires them to `data-text`, `data-show`, `data-value`, `data-cla
 for markup inserted later. The attributes carry names, never expressions, so nothing on the page
 evaluates a string and `'unsafe-eval'` stays out of the CSP.
 
+**`ui.perElement` binds one name to a list of elements.** Directive values are names, and a name
+has to be written before the data exists — so a row of filter chips built from a query, or a set
+of sortable column headers, has no name to give each one. `ui.perElement((el) => …)` is read once
+per bound element and handed that element, inside that element's own effect, so it tracks signals
+the way a computed does and works anywhere a readable does. It is a wrapper object rather than a
+bare function because an action is a bare function too: nothing at runtime could tell them apart,
+and `data-text` naming an action would call it instead of throwing.
+
+**`data-show` sets an inline `display` as well as `hidden`.** The `hidden` attribute works through
+the user-agent rule `[hidden] { display: none }`, which loses to any author `display:` on the same
+element — so `.panel { display: flex }` left the panel open however the signal was set, silently,
+and no test could see it. Hiding now also writes `style="display: none"`, which no stylesheet can
+outrank; showing restores whatever inline display the element arrived with. Assert visibility with
+`isShown` / `isHidden` from `src/client/test-utils/visibility.ts` rather than reading `.hidden`,
+and note that a client test still cannot evaluate a stylesheet at all: anything gated by a CSS
+rule rather than a binding needs a browser.
+
 **Components import the layer as two namespaces.** `import * as ui from "@client/reactive"` (a
 barrel over `signal.ts` and `component.ts`) and `import * as server from "@client/reactive/request"`,
 so a component body reads as its own logic with the framework calls prefixed — `ui.signal`,
 `ui.bind`, `server.submit`, `server.parse`. The request module is kept out of the `ui` barrel on
 purpose: every enhanced form in a codebase is a `server.` call, one grep away.
+
+**Two rules the layer needed and didn't have, now in `.claude/rules/client.md`.** A component's
+signals belong to its instance and there is no store, so a nested component tells an outer one
+that something changed with a bubbling `CustomEvent` and a listener registered in an effect —
+never by hoisting state into a module. And a failed enhanced post falls back to `form.submit()`
+only when the form holds nothing the user typed; when it holds a draft, the error is shown in
+place beside the field and the form is left alone, because reloading in response to a recoverable
+failure destroys the work it was meant to protect.
 
 **`src/shared/` is the seam both sides import.** `attributes.ts` is the `data-*` vocabulary with a
 typed `bindings<T>()` builder, so a template's binding names are checked against the component's
@@ -61,7 +86,9 @@ accordingly, with no behaviour change on the plain-post path.
 **Client code has three tiers, and a test enforces the fence.** `src/client/boundaries.test.ts`
 fails the suite on `fetch`, markup building, `JSON.parse`, routing or storage in client code
 outside `reactive/request.ts`; on runtime imports across the server/client line; on DOM or `node:`
-in `src/shared/`; and on `main.js` growing past a byte budget. CLAUDE.md states the tiers and the
+in `src/shared/`; and on `main.js` growing past a 16 KB byte budget — headroom for roughly four
+more components, sized from the 1–2 KB an application component actually costs, so the number
+moving means something rather than arriving three components in. CLAUDE.md states the tiers and the
 question to ask before writing client code; how the layer, the fragment protocol and `formAction`
 work moves to path-scoped rules in `.claude/rules/`, loaded when the matching files are opened, in
 line with Anthropic's guidance to keep CLAUDE.md short; the PR template asks which tier a change is.
