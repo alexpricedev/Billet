@@ -44,6 +44,7 @@ try to fetch the layout's stylesheet and bundle), register the component, and `u
 ```tsx
 import { renderToString } from "preact-render-to-string";
 import * as ui from "@client/reactive";
+import { isHidden } from "@client/test-utils/visibility";
 import { Todos } from "@server/templates/todos";
 import { todoList } from "./todo-list";
 
@@ -55,8 +56,21 @@ ui.registerComponent(todoList);
 const unmount = ui.mount();
 
 filterButton("Active").click();
-expect(doneRow.hidden).toBe(true); // effects run synchronously — nothing to await
+expect(isHidden(doneRow)).toBe(true); // effects run synchronously — nothing to await
 ```
+
+Assert visibility through `isShown` / `isHidden` from `src/client/test-utils/visibility.ts`, never
+by reading `.hidden`. `data-show` sets both `hidden` and an inline `display`, because the `hidden`
+attribute alone loses to any author `display:` rule — and a test that checks only one of the two
+passes while the element is plainly visible on the page. That is not hypothetical: it is how the
+bug that put the inline display there went unnoticed.
+
+The wider limit is worth knowing before you write an assertion about appearance. These fixtures
+lift `<main>` into happy-dom *without* the layout's stylesheet, deliberately, so nothing here can
+evaluate a CSS rule. `data-show` is testable because both halves of it are DOM state. Anything
+gated by a rule instead of a binding — the `data-mounted` hook that hides JS-only controls until a
+component mounts, an `.active` class's styling, layout, specificity against `base.css` — is
+invisible to `bun run test` and belongs in `scripts/browser-smoke.test.ts`.
 
 Because the fixture is the real template, a renamed id or a moved element fails here rather than in
 the browser, and there is no hand-copied HTML to keep in step. Call the disposer `ui.mount()` returns
