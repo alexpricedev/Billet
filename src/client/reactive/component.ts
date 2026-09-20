@@ -21,15 +21,11 @@ import {
   type ComponentDefinition,
   type ComponentFactory,
   MOUNTED_ATTR,
+  PER_ELEMENT,
+  type PerElement,
   parsePairs,
 } from "@shared/attributes";
-import {
-  effect,
-  isReadable,
-  isSignal,
-  type Readable,
-  runScope,
-} from "./signal";
+import { effect, isReadable, isSignal, runScope } from "./signal";
 
 const registry = new Map<string, ComponentDefinition<string, Bindings>>();
 
@@ -53,6 +49,33 @@ export function registerComponent(
   definition: ComponentDefinition<string, Bindings>,
 ): void {
   registry.set(definition.name, definition);
+}
+
+/**
+ * A readable that is evaluated once per bound element. Use it when the elements
+ * carrying a directive are a list the server built from data — filter chips,
+ * sortable column headers — so there is no binding name to give each one:
+ *
+ *   isSelected: ui.perElement((el) => el.dataset.team === team.value)
+ *
+ * and in the template, one name for all of them:
+ *
+ *   <button {...list.class({ active: "isSelected" })} data-team={team}>
+ *
+ * `read` runs inside that element's own effect, so signals it reads are
+ * tracked the way a computed's are. It is not cached across elements — each
+ * bound element gets its own effect and its own call.
+ */
+export function perElement<T>(read: (el: HTMLElement) => T): PerElement<T> {
+  return { [PER_ELEMENT]: read };
+}
+
+function isPerElement(value: unknown): value is PerElement {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    PER_ELEMENT in (value as Record<symbol, unknown>)
+  );
 }
 
 /**
@@ -136,14 +159,18 @@ function ownedElements(el: HTMLElement): HTMLElement[] {
 function bindElements(instance: Instance, elements: HTMLElement[]): void {
   const { name, bindings } = instance;
 
-  const readable = (attr: string, key: string): Readable<unknown> => {
+  // Both kinds of readable collapse to "how do I read this for this element":
+  // a signal or computed ignores the element, a perElement is handed it.
+  const source = (
+    attr: string,
+    key: string,
+  ): ((el: HTMLElement) => unknown) => {
     const binding = bindings[key];
-    if (!isReadable(binding)) {
-      throw new Error(
-        `[${name}] ${attr}="${key}" must name a signal or computed the component returned`,
-      );
-    }
-    return binding;
+    if (isReadable(binding)) return () => binding.value;
+    if (isPerElement(binding)) return (el) => binding[PER_ELEMENT](el);
+    throw new Error(
+      `[${name}] ${attr}="${key}" must name a signal, computed or perElement the component returned`,
+    );
   };
   const action = (attr: string, key: string): Action => {
     const binding = bindings[key];
@@ -158,18 +185,28 @@ function bindElements(instance: Instance, elements: HTMLElement[]): void {
   for (const el of elements) {
     const text = el.getAttribute(ATTR.text);
     if (text !== null) {
-      const source = readable(ATTR.text, text);
+      const read = source(ATTR.text, text);
       effect(() => {
-        const value = source.value;
+        const value = read(el);
         el.textContent = value == null ? "" : String(value);
       });
     }
 
     const show = el.getAttribute(ATTR.show);
     if (show !== null) {
-      const source = readable(ATTR.show, show);
+      const read = source(ATTR.show, show);
+      // `hidden` alone is not enough. It works through the user-agent rule
+      // `[hidden] { display: none }`, which loses to *any* author `display:` on
+      // the same element — so `.panel { display: flex }` leaves the panel open
+      // however the signal is set, with no error anywhere. Hiding therefore
+      // also writes an inline `display`, which no stylesheet can outrank, and
+      // showing puts back whatever inline display the element arrived with
+      // (usually none, which is what `""` restores).
+      const inlineDisplay = el.style.display;
       effect(() => {
-        el.hidden = !source.value;
+        const visible = Boolean(read(el));
+        el.hidden = !visible;
+        el.style.display = visible ? inlineDisplay : "none";
       });
     }
 
@@ -205,9 +242,9 @@ function bindElements(instance: Instance, elements: HTMLElement[]): void {
     const classes = el.getAttribute(ATTR.class);
     if (classes !== null) {
       for (const [className, key] of parsePairs(classes)) {
-        const source = readable(ATTR.class, key);
+        const read = source(ATTR.class, key);
         effect(() => {
-          el.classList.toggle(className, Boolean(source.value));
+          el.classList.toggle(className, Boolean(read(el)));
         });
       }
     }
@@ -215,9 +252,9 @@ function bindElements(instance: Instance, elements: HTMLElement[]): void {
     const attrs = el.getAttribute(ATTR.attr);
     if (attrs !== null) {
       for (const [attrName, key] of parsePairs(attrs)) {
-        const source = readable(ATTR.attr, key);
+        const read = source(ATTR.attr, key);
         effect(() => {
-          const next = source.value;
+          const next = read(el);
           if (next == null) el.removeAttribute(attrName);
           else el.setAttribute(attrName, String(next));
         });
@@ -227,9 +264,9 @@ function bindElements(instance: Instance, elements: HTMLElement[]): void {
     const props = el.getAttribute(ATTR.prop);
     if (props !== null) {
       for (const [propName, key] of parsePairs(props)) {
-        const source = readable(ATTR.prop, key);
+        const read = source(ATTR.prop, key);
         effect(() => {
-          (el as unknown as Record<string, unknown>)[propName] = source.value;
+          (el as unknown as Record<string, unknown>)[propName] = read(el);
         });
       }
     }

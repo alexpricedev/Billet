@@ -15,6 +15,7 @@ export {
   bind,
   defineComponent,
   mount,
+  perElement,
   registerComponent,
 } from "./component";
 export {

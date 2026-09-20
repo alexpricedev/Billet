@@ -257,6 +257,22 @@ describe("browser smoke", () => {
       (ok) => ok === true,
     );
     expect(shown).toBe(true);
+
+    // The assertions above are DOM state, which a component test can make too.
+    // This is the one a component test cannot: a real stylesheet is loaded, so
+    // `display` is the resolved value and a rule that outranked `hidden` would
+    // show up here. It is why `data-show` writes an inline display as well.
+    await view.click(".todo-filters button:nth-of-type(2)");
+    const collapsed = await until(
+      () =>
+        view.evaluate<string>(
+          `getComputedStyle(document.querySelector('${rowSelector}')).display`,
+        ),
+      (value) => value === "none",
+    );
+    expect(collapsed).toBe("none");
+    await view.click(".todo-filters button:nth-of-type(1)");
+
     expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
   });
 

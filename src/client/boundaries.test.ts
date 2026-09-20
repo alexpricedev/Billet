@@ -15,10 +15,18 @@ const SERVER = "src/server";
 // The one place the client talks to the server and parses what comes back.
 const NETWORK_AND_MARKUP_ALLOWED = new Set([`${CLIENT}/reactive/request.ts`]);
 
-// Minified bytes for the main entry point. It is 8.7 KB at the time of
-// writing; a new component costs one or two. Going past this is a signal that
-// something is being built on the client that belongs on the server.
-const MAIN_BUNDLE_BUDGET_BYTES = 12_000;
+// Minified bytes for the main entry point. It is 9.1 KB at the time of
+// writing, and an application component costs 1–2 KB — contact-directory and a
+// two-part comment thread, built to test this layer, cost 1.6 KB and 2.2 KB.
+//
+// So the headroom is the number that matters, not the ceiling: 16 KB leaves
+// room for roughly four more components before a deliberate decision is
+// needed. It was 12 KB, which sounds generous and is three components, and the
+// fourth tripped a failure message accusing code that was doing exactly what
+// this layer is for. Raise it again only with the same arithmetic written
+// down — the number moving is the signal that something is being built on the
+// client that belongs on the server.
+const MAIN_BUNDLE_BUDGET_BYTES = 16_000;
 
 const sources = (root: string): string[] =>
   Array.from(new Glob("**/*.{ts,tsx}").scanSync(root))

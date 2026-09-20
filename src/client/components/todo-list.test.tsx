@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import * as ui from "@client/reactive";
+import { isHidden, isShown } from "@client/test-utils/visibility";
 import { TodoRow } from "@server/components/todo-row";
 import type { Todo } from "@server/services/todo";
 import { Todos } from "@server/templates/todos";
@@ -115,7 +116,7 @@ describe("todo list", () => {
     expect(root?.hasAttribute("data-mounted")).toBe(true);
     expect(count()).toBe("2 items left");
     expect(rows().every((row) => !row.hidden)).toBe(true);
-    expect(emptyRow()?.hidden).toBe(true);
+    expect(isHidden(emptyRow())).toBe(true);
   });
 
   test("filters by completion and reflects the active filter", () => {
@@ -140,10 +141,10 @@ describe("todo list", () => {
 
     filterButton("Completed").click();
     expect(visibleTitles()).toEqual([]);
-    expect(emptyRow()?.hidden).toBe(false);
+    expect(isShown(emptyRow())).toBe(true);
 
     filterButton("All").click();
-    expect(emptyRow()?.hidden).toBe(true);
+    expect(isHidden(emptyRow())).toBe(true);
   });
 
   test("adds a todo in place from the server's row and re-arms the form", async () => {

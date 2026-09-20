@@ -5,6 +5,7 @@ import {
   bindings,
   type ComponentDefinition,
   formatPairs,
+  type PerElement,
   parsePairs,
 } from "./attributes";
 
@@ -42,6 +43,7 @@ describe("bindings()", () => {
     {
       query: Signal<string>;
       isOpen: Readable<boolean>;
+      isSelected: PerElement<boolean>;
       toggle: () => void;
     }
   >;
@@ -70,5 +72,36 @@ describe("bindings()", () => {
     expect(demo.on({ click: "toggle", keydown: "toggle" })).toEqual({
       [ATTR.on]: "click:toggle keydown:toggle",
     });
+  });
+
+  // A perElement is read like any other readable, so it belongs wherever a
+  // signal or computed does — and nowhere an action does. These are compile
+  // -time assertions as much as runtime ones: the @ts-expect-error lines fail
+  // `bun run typecheck` if the key types ever stop discriminating.
+  test("a perElement is accepted wherever a readable is", () => {
+    expect(demo.text("isSelected")).toEqual({ [ATTR.text]: "isSelected" });
+    expect(demo.show("isSelected")).toEqual({ [ATTR.show]: "isSelected" });
+    expect(demo.class({ active: "isSelected" })).toEqual({
+      [ATTR.class]: "active:isSelected",
+    });
+    expect(demo.attr({ "aria-pressed": "isSelected" })).toEqual({
+      [ATTR.attr]: "aria-pressed:isSelected",
+    });
+    expect(demo.prop({ disabled: "isSelected" })).toEqual({
+      [ATTR.prop]: "disabled:isSelected",
+    });
+  });
+
+  test("the three roles stay separate in the type", () => {
+    // An action is not a readable.
+    // @ts-expect-error
+    demo.text("toggle");
+    // A perElement is not an action.
+    // @ts-expect-error
+    demo.on({ click: "isSelected" });
+    // `value` writes back, so it needs a string signal, not a perElement.
+    // @ts-expect-error
+    demo.value("isSelected");
+    expect(demo.value("query")).toEqual({ [ATTR.value]: "query" });
   });
 });

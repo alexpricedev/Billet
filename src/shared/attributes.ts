@@ -16,7 +16,24 @@
 import type { Readable, Signal } from "@client/reactive/signal";
 
 export type Action = (event: Event) => void;
-export type Bindings = Record<string, Readable<unknown> | Action>;
+
+// A readable whose value depends on *which* element is bound to it. The
+// directive values are names, so a list the server built from data has no name
+// per item to give `data-class` or `data-attr` — one binding has to answer for
+// every chip in a filter row or every sortable column header. This is that
+// binding: `ui.perElement(el => ...)` is read once per element, inside that
+// element's own effect, so whatever signals it reads are tracked as usual.
+//
+// It is a wrapper object rather than a bare function because an `Action` is a
+// bare function too, and nothing at runtime could tell the two apart — a
+// `data-text` naming an action would quietly call it instead of throwing.
+export const PER_ELEMENT: unique symbol = Symbol("perElement");
+
+export interface PerElement<T = unknown> {
+  readonly [PER_ELEMENT]: (el: HTMLElement) => T;
+}
+
+export type Bindings = Record<string, Readable<unknown> | Action | PerElement>;
 export type ComponentFactory<B extends Bindings> = (root: HTMLElement) => B;
 
 export interface ComponentDefinition<N extends string, B extends Bindings> {
@@ -62,10 +79,11 @@ export function formatPairs(map: Record<string, string>): string {
 type BindingsOf<C> = C extends ComponentDefinition<string, infer B> ? B : never;
 
 // The keys of a bindings type by what they hold, so `text` only accepts a
-// readable and `on` only accepts an action. `value` is narrower still — it
-// writes back, so it needs a string signal, not a computed.
+// readable and `on` only accepts an action. A `PerElement` counts as readable:
+// it is read the same way, just once per bound element. `value` is narrower
+// still — it writes back, so it needs a string signal, not a computed.
 type ReadableKey<B> = {
-  [K in keyof B]: B[K] extends Readable<unknown> ? K : never;
+  [K in keyof B]: B[K] extends Readable<unknown> | PerElement ? K : never;
 }[keyof B] &
   string;
 type WritableKey<B> = {
@@ -100,7 +118,7 @@ export function bindings<C extends ComponentDefinition<string, Bindings>>(
   type B = BindingsOf<C>;
   return {
     root: { [ATTR.component]: name } as Record<string, string>,
-    /** Set the element's text content from a readable. */
+    /** Set the element's text content from a readable or a perElement. */
     text: (key: ReadableKey<B>) => ({ [ATTR.text]: key }),
     /** Hide the element (`hidden`) unless the readable is truthy. */
     show: (key: ReadableKey<B>) => ({ [ATTR.show]: key }),

@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { MOUNTED_ATTR } from "@shared/attributes";
-import { bind, defineComponent, mount, registerComponent } from "./component";
+import {
+  bind,
+  defineComponent,
+  mount,
+  perElement,
+  registerComponent,
+} from "./component";
 import { computed, signal } from "./signal";
 
 // A component exercising every binding. Registered once; the registry is
@@ -280,7 +286,7 @@ describe("mount errors", () => {
       <div data-component="counter"><span data-text="missing"></span></div>
     `;
     expect(() => mount()).toThrow(
-      '[counter] data-text="missing" must name a signal or computed',
+      '[counter] data-text="missing" must name a signal, computed or perElement',
     );
   });
 
@@ -318,5 +324,159 @@ describe("mount errors", () => {
       <div data-component="counter"><input type="radio" data-value="label" /></div>
     `;
     expect(() => mount()).toThrow(/data-value="label" cannot bind a radio/);
+  });
+});
+
+describe("data-show and the display property", () => {
+  test("hides with an inline display, which no stylesheet can outrank", () => {
+    document.body.innerHTML = `
+      <div data-component="counter">
+        <p id="hint" data-show="isPositive">Something</p>
+      </div>
+    `;
+    mount();
+
+    // `hidden` alone would leave a `.hint { display: flex }` rule winning, so
+    // the directive writes the inline property too.
+    const hint = byId("hint");
+    expect(hint.hidden).toBe(true);
+    expect(hint.style.display).toBe("none");
+  });
+
+  test("restores the inline display the element arrived with", () => {
+    document.body.innerHTML = `
+      <div id="root" data-component="counter">
+        <span id="count" data-text="count"></span>
+        <p id="plain" data-show="isPositive">Plain</p>
+        <p id="styled" data-show="isPositive" style="display: grid">Styled</p>
+        <button id="up" data-on="click:increment">+</button>
+      </div>
+    `;
+    mount();
+
+    const plain = byId("plain");
+    const styled = byId("styled");
+    expect(plain.style.display).toBe("none");
+    expect(styled.style.display).toBe("none");
+
+    byId<HTMLButtonElement>("up").click();
+    expect(plain.hidden).toBe(false);
+    // Back to no inline display at all, so the stylesheet decides again.
+    expect(plain.style.display).toBe("");
+    expect(styled.hidden).toBe(false);
+    expect(styled.style.display).toBe("grid");
+  });
+});
+
+describe("perElement", () => {
+  const chips = defineComponent("chips", () => {
+    const team = signal("");
+    return {
+      // One binding for a row of elements the server built from data: there is
+      // no name per chip to give data-class, so the chip says which it is.
+      isSelected: perElement((el) => (el.dataset.chip ?? "") === team.value),
+      selectedLabel: perElement((el) =>
+        (el.dataset.chip ?? "") === team.value ? "selected" : "",
+      ),
+      select: (event: Event) => {
+        const el = event.currentTarget as HTMLElement;
+        team.set(el.dataset.chip ?? "");
+      },
+    };
+  });
+  registerComponent(chips);
+
+  const fixture = `
+    <div data-component="chips">
+      <button id="all" data-chip="" data-on="click:select"
+              data-class="active:isSelected" data-attr="aria-pressed:isSelected"></button>
+      <button id="design" data-chip="Design" data-on="click:select"
+              data-class="active:isSelected" data-attr="aria-pressed:isSelected"></button>
+      <button id="growth" data-chip="Growth" data-on="click:select"
+              data-class="active:isSelected" data-attr="aria-pressed:isSelected"></button>
+      <span id="label" data-chip="Design" data-text="selectedLabel"></span>
+    </div>
+  `;
+
+  test("is read once per bound element, with that element", () => {
+    document.body.innerHTML = fixture;
+    mount();
+
+    expect(byId("all").classList.contains("active")).toBe(true);
+    expect(byId("design").classList.contains("active")).toBe(false);
+    expect(byId("all").getAttribute("aria-pressed")).toBe("true");
+    expect(byId("growth").getAttribute("aria-pressed")).toBe("false");
+  });
+
+  test("every bound element follows the signal it read", () => {
+    document.body.innerHTML = fixture;
+    mount();
+
+    byId<HTMLButtonElement>("design").click();
+    expect(byId("design").classList.contains("active")).toBe(true);
+    expect(byId("all").classList.contains("active")).toBe(false);
+    expect(byId("design").getAttribute("aria-pressed")).toBe("true");
+    expect(byId("label").textContent).toBe("selected");
+
+    byId<HTMLButtonElement>("growth").click();
+    expect(byId("growth").classList.contains("active")).toBe(true);
+    expect(byId("design").classList.contains("active")).toBe(false);
+    expect(byId("label").textContent).toBe("");
+  });
+
+  test("works for show and prop as well as class, attr and text", () => {
+    const gated = defineComponent("gated", () => {
+      const open = signal(false);
+      return {
+        matches: perElement(
+          (el) => (el.dataset.when === "open") === open.value,
+        ),
+        toggle: () => open.set(!open.value),
+      };
+    });
+    registerComponent(gated);
+
+    document.body.innerHTML = `
+      <div data-component="gated">
+        <p id="shut" data-when="shut" data-show="matches"></p>
+        <p id="opened" data-when="open" data-show="matches"></p>
+        <button id="flip" data-when="open" data-on="click:toggle"
+                data-prop="disabled:matches"></button>
+      </div>
+    `;
+    mount();
+
+    expect(byId("shut").hidden).toBe(false);
+    expect(byId("shut").style.display).toBe("");
+    expect(byId("opened").hidden).toBe(true);
+    expect(byId("opened").style.display).toBe("none");
+    expect(byId<HTMLButtonElement>("flip").disabled).toBe(false);
+
+    byId<HTMLButtonElement>("flip").click();
+    expect(byId("shut").hidden).toBe(true);
+    expect(byId("shut").style.display).toBe("none");
+    expect(byId("opened").hidden).toBe(false);
+    expect(byId("opened").style.display).toBe("");
+    expect(byId<HTMLButtonElement>("flip").disabled).toBe(true);
+  });
+
+  test("an action named where a readable belongs still throws", () => {
+    // The reason perElement is a wrapper and not a bare function: both are
+    // callable, so nothing at runtime could tell an action apart from one.
+    document.body.innerHTML = `
+      <div data-component="chips"><span data-text="select"></span></div>
+    `;
+    expect(() => mount()).toThrow(
+      '[chips] data-text="select" must name a signal, computed or perElement',
+    );
+  });
+
+  test("a perElement named where an action belongs still throws", () => {
+    document.body.innerHTML = `
+      <div data-component="chips"><button data-on="click:isSelected"></button></div>
+    `;
+    expect(() => mount()).toThrow(
+      '[chips] data-on="isSelected" must name an action',
+    );
   });
 });
