@@ -13,3 +13,7 @@ available_in = "local"
 command = "bun run dev"
 default = true
 icon = "play"
+
+[tasks.Test]
+command = "bun run test"
+icon = "test-tube"

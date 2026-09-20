@@ -48,7 +48,7 @@
       }
     },
     {
-      "includes": ["src/client/style.css", "src/client/pages/home.css"],
+      "includes": ["src/client/base.css", "src/client/pages/home.css"],
       "linter": {
         "rules": {
           "complexity": {

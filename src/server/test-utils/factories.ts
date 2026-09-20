@@ -1,11 +1,10 @@
 import type { VisitorStats } from "../services/analytics";
-import type { Project } from "../services/project";
+import type { Todo } from "../services/todo";
 
-export const createMockProject = (
-  overrides: Partial<Project> = {},
-): Project => ({
+export const createMockTodo = (overrides: Partial<Todo> = {}): Todo => ({
   id: 1,
-  title: "Test Project",
+  title: "Test Todo",
+  completed_at: null,
   created_by: null,
   ...overrides,
 });

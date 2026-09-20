@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { clearRateLimitLog } from "../../middleware/rate-limit";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { testDatabase } from "../../test-utils/database";
-import { cleanupTestData } from "../../test-utils/helpers";
+import { cleanupTestData, withIndexingAllowed } from "../../test-utils/helpers";
 
 const connection = testDatabase();
 
@@ -162,7 +162,10 @@ describe("Account Controller", () => {
       if (!signUp.success) return;
 
       const sessionId = await createAuthenticatedSession(signUp.user.id);
-      const html = await (await account.index(getAccount(sessionId))).text();
+      // Indexing opened so the noindex asserted below is the page's own.
+      const html = await withIndexingAllowed(async () =>
+        (await account.index(getAccount(sessionId))).text(),
+      );
 
       expect(html).toContain('name="robots" content="noindex, nofollow"');
     });

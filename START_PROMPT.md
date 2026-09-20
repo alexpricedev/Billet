@@ -60,7 +60,7 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 | `src/server/templates/login.tsx` | Page title |
 | `src/server/templates/home.tsx` | Page title |
 | `src/server/templates/forms.tsx` | Page title |
-| `src/server/templates/projects.tsx` | Page title |
+| `src/server/templates/todos.tsx` | Page title |
 | `src/server/components/layouts.tsx` | Logo text in `<span>Billet</span>` |
 | `src/server/services/seo.ts` | `SITE_NAME` and `SITE_DESCRIPTION` → project name and description |
 
@@ -70,7 +70,7 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 > whether a fix you need is already here. Renaming or deleting it makes every future upgrade a
 > source diff.
 
-> **Note:** the canonical origin — used for `<link rel="canonical">`, Open Graph tags, the XML sitemap, `robots.txt`'s `Sitemap:` line, and JSON-LD across every page — is not a constant to rename. `siteUrl()` in `src/server/services/seo.ts` derives it from `APP_URL`, so pointing that env var at your production domain points all of them. The optional `SITE_URL` env var overrides it for the case where your canonical domain differs from your app domain — see [runbooks/SEO.md](runbooks/SEO.md) §1.
+> **Note:** the canonical origin — used for `<link rel="canonical">`, Open Graph tags, the XML sitemap, `robots.txt`'s `Sitemap:` line, and JSON-LD across every page — is not a constant to rename. `siteUrl()` in `src/server/services/seo.ts` derives it from `APP_URL`, so pointing that env var at your production domain points all of them. The optional `SITE_URL` env var overrides it for the case where your canonical domain differs from your app domain — see [runbooks/SEO.md](runbooks/SEO.md) §1a. One thing you do have to set when you go live: `ALLOW_INDEXING=true` on the production host. Until it is set, every response and page says `noindex` — deliberately, so the URL you get from your first deploy can't be indexed before the site is ready. See [runbooks/SEO.md](runbooks/SEO.md) §1b.
 
 > **Note:** `SITE_NAME` also feeds the web app manifest (`/site.webmanifest` — the installed-app name/short name, built by `buildWebManifest()` in `seo.ts`) and the `X-Redirect-By` response header stamped on every redirect. Both are generated from that one constant, so renaming `SITE_NAME` renames them automatically — "Billet" never gets stuck in the installed-app name or redirect attribution. The manifest still references the icon files in `public/` (`android-chrome-192x192.png`, `android-chrome-512x512.png`, favicons, `apple-touch-icon.png`); swap those for your own artwork, and for a crisp Android adaptive icon provide a safe-zone-padded maskable variant (the 512px icon is reused as the maskable one by default).
 

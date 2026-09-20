@@ -47,7 +47,7 @@ describe("Nav", () => {
   });
 
   test("marks the current page on its link", () => {
-    const html = renderToString(<Nav page="projects" user={null} />);
+    const html = renderToString(<Nav page="todos" user={null} />);
 
     expect(html).toContain('aria-current="page"');
   });

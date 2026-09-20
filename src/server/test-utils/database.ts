@@ -24,10 +24,15 @@
  */
 
 import { SQL } from "bun";
+import { guardPool } from "../utils/sql-guard";
 
 export const testDatabase = (): SQL => {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required for tests");
   }
-  return new SQL(process.env.DATABASE_URL, { max: 3, idleTimeout: 5 });
+  // Guarded like the real pool, so a parameter Bun would mangle throws in a
+  // test rather than passing here and failing against production data.
+  return guardPool(
+    new SQL(process.env.DATABASE_URL, { max: 3, idleTimeout: 5 }),
+  );
 };

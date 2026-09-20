@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 import { getAssetUrl } from "../services/assets";
 import {
   absolute,
+  indexingAllowed,
   SITE_DESCRIPTION,
   SITE_NAME,
   siteStructuredData,
@@ -19,6 +20,14 @@ const THEME_COLOR = "#0a0a0b";
 
 const canonicalUrl = (path?: string): string =>
   path ? absolute(path) : siteUrl();
+
+/* The site is noindex unless `ALLOW_INDEXING=true` says otherwise, so the
+   `noindex` prop is a page opting *out* on top of a default that already keeps
+   it out — a page that passes it (/login, /admin, an error page) stays noindex
+   after the switch opens the rest of the site up. See `indexingAllowed` in
+   services/seo.ts. */
+const blocksIndexing = (noindex?: boolean): boolean =>
+  noindex === true || !indexingAllowed();
 
 interface HeadMetaProps {
   title: string;
@@ -44,7 +53,9 @@ function HeadMeta({
       />
       <title>{title}</title>
       <meta name="description" content={description} />
-      {noindex && <meta name="robots" content="noindex, nofollow" />}
+      {blocksIndexing(noindex) && (
+        <meta name="robots" content="noindex, nofollow" />
+      )}
       <meta name="color-scheme" content="dark" />
       <meta name="theme-color" content={THEME_COLOR} />
       <link rel="canonical" href={canonicalUrl(canonicalPath)} />
@@ -102,17 +113,15 @@ export function Layout({
           canonicalPath={canonicalPath}
           noindex={noindex}
         />
-        {/* Preact (via the importmap below) loads from esm.sh and Lottie from
-            unpkg. Preconnect opens the TLS connection while the HTML parses so
-            the first cross-origin fetch doesn't pay the handshake; dns-prefetch
-            is the cheaper fallback for browsers that ignore preconnect. */}
-        <link rel="preconnect" href="https://esm.sh" crossOrigin="anonymous" />
+        {/* Lottie loads from unpkg. Preconnect opens the TLS connection while
+            the HTML parses so the cross-origin fetch doesn't pay the handshake;
+            dns-prefetch is the cheaper fallback for browsers that ignore
+            preconnect. */}
         <link
           rel="preconnect"
           href="https://unpkg.com"
           crossOrigin="anonymous"
         />
-        <link rel="dns-prefetch" href="https://esm.sh" />
         <link rel="dns-prefetch" href="https://unpkg.com" />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
@@ -123,27 +132,12 @@ export function Layout({
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={absolute("/og-image.png")} />
-        {!noindex && (
+        {!blocksIndexing(noindex) && (
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: siteStructuredData() }}
           />
         )}
-        <script
-          type="importmap"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              imports: {
-                preact: "https://esm.sh/preact@10.29.8",
-                "preact/hooks": "https://esm.sh/preact@10.29.8/hooks",
-                "preact/jsx-dev-runtime":
-                  "https://esm.sh/preact@10.29.8/jsx-dev-runtime",
-                "preact/jsx-runtime":
-                  "https://esm.sh/preact@10.29.8/jsx-runtime",
-              },
-            }),
-          }}
-        />
       </head>
       {/* data-banner drives the body offset for the fixed banner. Set from the
           same condition the component renders on, so the padding can't outlive
@@ -197,7 +191,7 @@ interface ErrorLayoutProps {
 }
 
 // Layout for error and maintenance pages (404, 500, 503). Deliberately ships NO
-// client JavaScript — no importmap, Lottie, or main bundle — so the page renders
+// client JavaScript — no Lottie, no main bundle — so the page renders
 // instantly and stays legible even when the app is degraded or offline, the
 // spec's resilience baseline for error and 503 responses. Reuses the same
 // header/footer chrome as `Layout` for continuity, and is always noindex so

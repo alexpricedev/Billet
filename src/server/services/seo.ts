@@ -24,13 +24,31 @@ export const siteUrl = (): string => {
   return configured ? new URL(configured).origin : appOrigin();
 };
 
+/**
+ * Whether search engines may index the site.
+ *
+ * Closed by default: the site stays out of Google unless `ALLOW_INDEXING=true`
+ * is set explicitly, so a preview deploy, a staging host or a fork's first
+ * Railway URL can't be crawled because nobody remembered to block it. Opening
+ * indexing is one deliberate variable in one place, and every layer that speaks
+ * to a crawler — robots.txt, the `X-Robots-Tag` on every response, the
+ * `<meta name="robots">` in `layouts.tsx` — reads this rather than deciding for
+ * itself.
+ *
+ * Anything other than exactly `true` reads as closed, including a typo: the
+ * failure mode of a misspelt value should be a site that isn't indexed, not one
+ * that is. Read per call for the reason `siteUrl()` gives above.
+ */
+export const indexingAllowed = (): boolean =>
+  process.env.ALLOW_INDEXING === "true";
+
 export const SITE_NAME = "Billet";
 export const SITE_DESCRIPTION =
   "Guardrails for your AI coding agents — a full-stack TypeScript starter on Bun";
 
 // Public, indexable routes included in the sitemap. Private or noindex routes
 // (/login, /admin), API endpoints, and auth callbacks are intentionally omitted.
-export const SITEMAP_PATHS = ["/", "/stack", "/forms", "/projects"] as const;
+export const SITEMAP_PATHS = ["/", "/stack", "/forms", "/todos"] as const;
 
 // Absolute URL for a site-relative path. Exported so llms-txt.ts resolves against
 // the same origin rather than keeping its own copy of this line.
@@ -82,6 +100,15 @@ const CONTENT_SIGNAL = "Content-Signal: search=yes, ai-input=yes, ai-train=yes";
 // Builds the /robots.txt body. Billet is built for AI coding agents, so the
 // posture is deliberately open: search engines and the major AI crawlers are
 // all allowed, with only private surfaces disallowed.
+//
+// Crawling stays allowed even when indexing is switched off, which looks
+// backwards and isn't. `noindex` is the thing that keeps a page out of the
+// index, and a crawler has to *fetch* a page to read it — a `Disallow: /`
+// would block the fetch and so disable the `X-Robots-Tag` and the meta tag
+// that do the actual work. It would also not prevent indexing on its own: a
+// URL that is linked from somewhere else gets indexed unfetched, as a bare
+// result with no title. So the closed posture differs by one line, the
+// `Sitemap:`, and leaves the rest to `noindex`.
 export const buildRobotsTxt = (): string => {
   const group = (agents: readonly string[]): string =>
     [
@@ -91,15 +118,25 @@ export const buildRobotsTxt = (): string => {
       CONTENT_SIGNAL,
     ].join("\n");
 
+  const open = indexingAllowed();
+
   return [
-    "# Billet is built for AI coding agents, so search engines and AI crawlers",
-    "# are welcome. Only private surfaces are disallowed.",
+    ...(open
+      ? [
+          "# Billet is built for AI coding agents, so search engines and AI crawlers",
+          "# are welcome. Only private surfaces are disallowed.",
+        ]
+      : [
+          "# Indexing is switched off (ALLOW_INDEXING is not `true`). Crawling is",
+          "# still allowed on purpose: every page and every response says",
+          "# noindex, and a crawler has to fetch a page to be told that.",
+          "# See runbooks/SEO.md §1b.",
+        ]),
     "",
     group(["*"]),
     "",
     group(AI_CRAWLERS),
-    "",
-    `Sitemap: ${absolute("/sitemap.xml")}`,
+    ...(open ? ["", `Sitemap: ${absolute("/sitemap.xml")}`] : []),
     "",
   ].join("\n");
 };

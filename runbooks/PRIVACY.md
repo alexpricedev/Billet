@@ -66,7 +66,9 @@ node_modules/@alexpricedev/billet-cookie-consent/README.md
 bun add @alexpricedev/billet-cookie-consent
 ```
 
-**Step 1 — import the CSS once** in [`src/client/style.css`](../src/client/style.css):
+**Step 1 — import the CSS once** in [`src/client/style.css`](../src/client/style.css), with the
+component imports (the file is a manifest of `@import` lines and nothing else, ordered base →
+components → pages, because `@import` is hoisted and that order is the cascade):
 
 ```css
 @import "@alexpricedev/billet-cookie-consent/styles.css";
@@ -97,7 +99,7 @@ document.addEventListener("cc:consent-granted", (e) => {
 });
 
 // "Manage cookies" trigger — data attribute, never inline onclick, so it fits
-// Billet's server-JSX + islands model.
+// Billet's server-JSX + data-attribute binding model.
 for (const el of document.querySelectorAll<HTMLElement>("[data-cc-open-prefs]")) {
   el.addEventListener("click", () => CookieConsent.current()?.show());
 }
@@ -202,10 +204,6 @@ you add one:
 - **Gate non-essential scripts behind consent** (§3, Step 4).
 - **Re-audit periodically** — list every contacted domain in DevTools' network
   panel and justify each one.
-
-> Framework maintainer note: the esm.sh Preact modules loaded via the inline
-> importmap in `layouts.tsx` carry no SRI (importmaps can't express `integrity`).
-> Self-host Preact or pin to an immutable versioned URL if you want them covered.
 
 ## 7. Data minimisation & logging
 

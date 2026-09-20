@@ -14,7 +14,7 @@ import {
 } from "../../services/email";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { testDatabase } from "../../test-utils/database";
-import { cleanupTestData } from "../../test-utils/helpers";
+import { cleanupTestData, withIndexingAllowed } from "../../test-utils/helpers";
 import { computeHMAC } from "../../utils/crypto";
 
 // Solve a challenge the way the client would, for the captcha-enabled tests.
@@ -123,7 +123,10 @@ describe("Password Reset Controller", () => {
 
   describe("GET /forgot-password", () => {
     test("renders the request form", async () => {
-      const html = await (await passwordReset.index(getForgot())).text();
+      // Indexing opened so the noindex asserted below is the page's own.
+      const html = await withIndexingAllowed(async () =>
+        (await passwordReset.index(getForgot())).text(),
+      );
 
       expect(html).toContain("Reset your password");
       expect(html).toContain('name="email"');
