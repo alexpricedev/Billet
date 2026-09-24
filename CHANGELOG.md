@@ -7,6 +7,27 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 4.1.0
+
+A dependency window and nothing else. Every bump is a patch or minor release of something already
+here, `bun run check` and the suite are green on them, and no file under `src/` changed — so a fork
+merging this has nothing to do beyond reinstalling. It is a minor rather than a patch because the
+pinned Biome floor moved, and a fork's own code sits on that floor.
+
+### Changed
+
+- **Biome `2.5.13` → `2.5.14`**, pinned exactly as before, so `bun run lint` runs this version and
+  not whatever a fork happens to have installed. No rule changes reached this tree — `biome check
+  src` reports no fixes and `src/` is untouched — but a fork carrying its own lint-clean code gets
+  the new version's checks on the next `bun install`.
+- **`@happy-dom/global-registrator` `^20.14.3` → `^20.14.5`.** The registrator is what
+  `src/client/test-utils/setup.ts` preloads for the DOM globals; `happy-dom` itself stays at
+  `^20.14.3` in `package.json` and resolves to `20.14.5` through the caret, so the two halves of
+  the DOM stay on one version.
+- **`@types/node` `^26.5.1` → `^26.6.1`** and **Resend `^6.28.0` → `^6.28.1`**. Resend's client is
+  excluded from typechecking in `tsconfig.json`, so `bun run check` does not cover that one — it is
+  a patch release of the provider used only when `EMAIL_PROVIDER=resend`.
+
 ## 4.0.0
 
 Preact leaves the browser, the demo resource becomes a todo list, and the two meet in the middle:
