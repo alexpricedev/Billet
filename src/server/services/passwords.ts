@@ -13,8 +13,10 @@ import { deleteUserSessions } from "./sessions";
 // NIST SP 800-63B: length is the only requirement worth enforcing. Composition
 // rules ("one number, one symbol") push users toward predictable mutations of a
 // short password, so there are none here. The cap exists only so a huge body
-// can't be handed to argon2.
-export const MIN_PASSWORD_LENGTH = 8;
+// can't be handed to argon2. The floor is 12 rather than NIST's 8 because Cyber
+// Essentials A5.5 expects 12 where no additional brute-force protection is
+// relied on; it raises the minimum without adding a composition rule.
+export const MIN_PASSWORD_LENGTH = 12;
 export const MAX_PASSWORD_LENGTH = 128;
 
 // Whitespace is a legitimate part of a passphrase, so passwords are never

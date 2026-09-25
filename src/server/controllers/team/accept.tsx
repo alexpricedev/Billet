@@ -8,7 +8,13 @@ import { captchaEnabled, issueChallenge } from "../../services/captcha";
 import { createCsrfToken } from "../../services/csrf";
 import { acceptInvite, peekInvite } from "../../services/invites";
 import { log } from "../../services/logger";
-import { setInitialPassword, userHasPassword } from "../../services/passwords";
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  setInitialPassword,
+  userHasPassword,
+  validatePassword,
+} from "../../services/passwords";
 import { setSessionCookie } from "../../services/sessions";
 import { teamsEnabled } from "../../services/teams-mode";
 import type { AcceptInviteState } from "../../templates/accept-invite";
@@ -144,11 +150,11 @@ export const invite = {
       ? readPassword(guard.formData, "password")
       : "";
 
-    if (needsPassword && (password.length < 8 || password.length > 128)) {
+    if (needsPassword && validatePassword(password) !== null) {
       return retryWithToken(
         req,
         token,
-        "Password must be between 8 and 128 characters.",
+        `Password must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters.`,
       );
     }
 

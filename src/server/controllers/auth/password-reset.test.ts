@@ -492,7 +492,7 @@ describe("Password Reset Controller", () => {
       expect(response.headers.get("location")).toContain(
         `token=${reset.rawToken}`,
       );
-      expect(findSetCookie(bad, "flash_state")).toContain("between 8 and 128");
+      expect(findSetCookie(bad, "flash_state")).toContain("between 12 and 128");
 
       // The retry with a valid password still works.
       await passwordReset.update(

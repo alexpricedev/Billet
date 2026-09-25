@@ -113,8 +113,11 @@ no password is ever stored.
   out — recoverable. Peppered passwords would instead become permanently
   unverifiable, forcing a reset for every user. Argon2's own salt already defeats
   rainbow tables.
-- **Length-only policy**: 8–128 characters, no composition rules (NIST SP
-  800-63B). Values are never trimmed, so whitespace is part of the password.
+- **Length-only policy**: 12–128 characters, no composition rules (NIST SP
+  800-63B). The floor is 12 rather than NIST's 8 because Cyber Essentials A5.5
+  expects 12 where no additional brute-force protection is relied on; it raises
+  the minimum without adding a composition rule. Values are never trimmed, so
+  whitespace is part of the password.
 - **Passwords never enter flash state.** Failed forms preserve the email address
   and nothing else; the flash cookie is signed but client-readable.
 - **Timing-equalised sign-in.** An unknown address, and an account with no
