@@ -10,6 +10,8 @@ import { getEmailService } from "../../services/email";
 import { log } from "../../services/logger";
 import {
   createPasswordReset,
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
   type ResetPasswordResult,
   resetPassword,
 } from "../../services/passwords";
@@ -210,7 +212,7 @@ export const passwordReset = {
         ? retryWithToken(
             req,
             token,
-            "Password must be between 8 and 128 characters.",
+            `Password must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters.`,
           )
         : invalidToken(req);
     }

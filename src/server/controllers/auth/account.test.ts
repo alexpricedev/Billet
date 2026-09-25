@@ -255,7 +255,7 @@ describe("Account Controller", () => {
       await account.updatePassword(request);
 
       expect(findSetCookie(request, "flash_state")).toContain(
-        "between 8 and 128",
+        "between 12 and 128",
       );
     });
 

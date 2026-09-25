@@ -17,6 +17,7 @@ import {
   changePassword,
   createPasswordReset,
   MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
   resetPassword,
   setInitialPassword,
   signInWithPassword,
@@ -43,22 +44,24 @@ describe("Passwords Service with PostgreSQL", () => {
   });
 
   describe("validatePassword", () => {
-    test("accepts anything at least 8 characters", () => {
-      expect(validatePassword("12345678")).toBeNull();
+    test("accepts anything at least 12 characters", () => {
+      expect(validatePassword("a".repeat(MIN_PASSWORD_LENGTH))).toBeNull();
       expect(validatePassword("a".repeat(MAX_PASSWORD_LENGTH))).toBeNull();
     });
 
     test("rejects short and over-long values", () => {
-      expect(validatePassword("1234567")).toContain("at least 8");
-      expect(validatePassword("")).toContain("at least 8");
+      expect(validatePassword("a".repeat(MIN_PASSWORD_LENGTH - 1))).toContain(
+        "at least 12",
+      );
+      expect(validatePassword("")).toContain("at least 12");
       expect(validatePassword("a".repeat(MAX_PASSWORD_LENGTH + 1))).toContain(
         "128 characters or fewer",
       );
     });
 
     test("imposes no composition rules", () => {
-      expect(validatePassword("aaaaaaaa")).toBeNull();
-      expect(validatePassword("        ")).toBeNull();
+      expect(validatePassword("a".repeat(MIN_PASSWORD_LENGTH))).toBeNull();
+      expect(validatePassword(" ".repeat(MIN_PASSWORD_LENGTH))).toBeNull();
     });
   });
 

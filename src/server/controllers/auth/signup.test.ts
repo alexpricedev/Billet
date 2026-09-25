@@ -133,7 +133,7 @@ describe("Signup Controller", () => {
 
       expect(html).toContain('name="password"');
       expect(html).toContain('autocomplete="new-password"');
-      expect(html).toContain('minlength="8"');
+      expect(html).toContain('minlength="12"');
       expect(html).toContain("Create account");
     });
 
@@ -209,7 +209,7 @@ describe("Signup Controller", () => {
       await signup.create(request);
 
       expect(findSetCookie(request, "flash_state")).toContain(
-        "at least 8 characters",
+        "at least 12 characters",
       );
       expect(findSetCookie(request, "session_id")).toBeUndefined();
       expect(await db`SELECT id FROM users`).toHaveLength(0);

@@ -9,6 +9,8 @@ import { atLeast, getMembership } from "../../services/organizations";
 import {
   type ChangePasswordResult,
   changePassword,
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
   type SetPasswordResult,
   setInitialPassword,
   userHasPassword,
@@ -28,7 +30,7 @@ const { getFlash, setFlash } = stateHelpers<AccountState>();
 // and this submit. Reloading shows the change form instead.
 const PASSWORD_ERRORS = {
   "wrong-password": "That isn't your current password.",
-  "invalid-password": "Password must be between 8 and 128 characters.",
+  "invalid-password": `Password must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters.`,
   "already-set": "This account already has a password. Reload and try again.",
 } as const;
 
