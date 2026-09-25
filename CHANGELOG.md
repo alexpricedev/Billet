@@ -7,6 +7,48 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 4.2.0
+
+The password minimum moves from 8 to 12, and the rule stops being written down in four places.
+Cyber Essentials A5.5 expects a 12-character floor where no additional brute-force protection is
+relied on; length remains the only rule, so the NIST SP 800-63B stance above the constant — no
+composition rules, ever — is unchanged.
+
+**No migration, and no fork has code to change.** The rule applies only where a password is set or
+changed: signup, `/account`, the reset flow, and invite acceptance. Neither the login controller,
+the login template, nor `signInWithPassword` references length at all, so an existing account with
+an 8-character password still signs in after the merge. That is the property worth stating
+plainly, because the obvious fear about raising a minimum is locking out the users you already
+have.
+
+**The bounds now come from the constants everywhere.** Three controllers spelled
+`"Password must be between 8 and 128 characters."` as a literal rather than reading
+`MIN_PASSWORD_LENGTH` / `MAX_PASSWORD_LENGTH`, so the constant and the copy could drift apart with
+nothing failing — the templates interpolated, the error messages lied. `team/accept.tsx` was worse
+than copy: it re-implemented the rule as `password.length < 8 || password.length > 128`, a second
+definition that `validatePassword` could not reach. It now calls `validatePassword`, and all three
+messages interpolate, so the next time this floor moves it moves once.
+
+### Changed
+
+- **`MIN_PASSWORD_LENGTH` `8` → `12`** in `src/server/services/passwords.ts`, with the reasoning on
+  the existing comment. `MAX_PASSWORD_LENGTH` stays at 128, and `validatePassword` was already
+  interpolating both.
+- **`auth/account.tsx`, `auth/password-reset.tsx` and `team/accept.tsx`** import the two constants
+  and interpolate them into the invalid-password message instead of hardcoding the numbers.
+- **`team/accept.tsx` validates through `validatePassword`** rather than its own inline length
+  comparison. The wording a user sees is unchanged, and the check still runs before the invite
+  token is consumed, so a too-short password does not burn a single-use link.
+- **`SECURITY.md`** records the length-only policy as 12–128.
+
+### Note for forks
+
+Nothing under `src/` needs a fork's attention, but a fork carrying **its own** password tests will
+see them fail: assertions on `minlength="8"`, `"at least 8 characters"` or `"between 8 and 128"`
+are now wrong, and any fixture password of 8–11 characters that was expected to be *accepted* is
+now rejected. Deliberately-invalid fixtures stay invalid. This is a minor rather than a major
+because it is test copy, not application code — but it is the one thing that will go red.
+
 ## 4.1.0
 
 A dependency window and nothing else. Every bump is a patch or minor release of something already
