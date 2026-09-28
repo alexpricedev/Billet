@@ -59,9 +59,11 @@ import {
 } from "../../services/passwords";
 import {
   createAuthenticatedSession,
+  createGuestSession,
   getSessionContextFromDB,
 } from "../../services/sessions";
 import type { ForgotPasswordState } from "../../templates/forgot-password";
+import { authFormPost, staleCsrfToken } from "../../test-utils/auth-form";
 import { stateHelpers } from "../../utils/state";
 import { passwordReset } from "./password-reset";
 
@@ -76,15 +78,15 @@ const getForgot = (email?: string) =>
     { method: "GET" },
   );
 
-const postForgot = (fields: Record<string, string>) => {
+const postForgot = async (
+  fields: Record<string, string>,
+  options: Parameters<typeof authFormPost>[2] = {},
+) => {
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
     formData.append(key, value);
   }
-  return createBunRequest("http://localhost:3000/forgot-password", {
-    method: "POST",
-    body: formData,
-  });
+  return authFormPost("/forgot-password", formData, options);
 };
 
 const getReset = (token?: string) =>
@@ -93,15 +95,15 @@ const getReset = (token?: string) =>
     { method: "GET" },
   );
 
-const postReset = (fields: Record<string, string>) => {
+const postReset = async (
+  fields: Record<string, string>,
+  options: Parameters<typeof authFormPost>[2] = {},
+) => {
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
     formData.append(key, value);
   }
-  return createBunRequest("http://localhost:3000/reset-password", {
-    method: "POST",
-    body: formData,
-  });
+  return authFormPost("/reset-password", formData, options);
 };
 
 describe("Password Reset Controller", () => {
@@ -183,7 +185,7 @@ describe("Password Reset Controller", () => {
       expect(signUp.success).toBe(true);
       if (!signUp.success) return;
 
-      const request = postForgot({ email: "member@example.com" });
+      const request = await postForgot({ email: "member@example.com" });
       const response = await passwordReset.create(request);
 
       expect(response.status).toBe(303);
@@ -213,13 +215,11 @@ describe("Password Reset Controller", () => {
 
       // `new URL(req.url).host` is the client's Host header. A forged one must
       // not reach the email, or the link hands the token to the attacker.
-      const formData = new FormData();
-      formData.append("email", "host@example.com");
       await passwordReset.create(
-        createBunRequest("http://evil.example/forgot-password", {
-          method: "POST",
-          body: formData,
-        }),
+        await postForgot(
+          { email: "host@example.com" },
+          { url: "http://evil.example/forgot-password" },
+        ),
       );
 
       expect(sent).toHaveLength(1);
@@ -234,10 +234,12 @@ describe("Password Reset Controller", () => {
       const known = await signUpWithPassword("known@example.com", PASSWORD);
       expect(known.success).toBe(true);
 
-      const knownRequest = postForgot({ email: "known@example.com" });
+      const knownRequest = await postForgot({ email: "known@example.com" });
       await passwordReset.create(knownRequest);
 
-      const unknownRequest = postForgot({ email: "stranger@example.com" });
+      const unknownRequest = await postForgot({
+        email: "stranger@example.com",
+      });
       const response = await passwordReset.create(unknownRequest);
 
       // Same status and same flash: the form can't be used to test whether an
@@ -256,7 +258,7 @@ describe("Password Reset Controller", () => {
     });
 
     test("rejects an invalid email", async () => {
-      const request = postForgot({ email: "not-an-email" });
+      const request = await postForgot({ email: "not-an-email" });
       await passwordReset.create(request);
 
       expect(findSetCookie(request, "flash_state")).toContain(
@@ -265,7 +267,7 @@ describe("Password Reset Controller", () => {
     });
 
     test("preserves the typed email on a rejected submission", async () => {
-      const request = postForgot({ email: "retype.example.com" });
+      const request = await postForgot({ email: "retype.example.com" });
       await passwordReset.create(request);
 
       // The template renders it back as the field's defaultValue, so nobody
@@ -280,7 +282,7 @@ describe("Password Reset Controller", () => {
       expect(signUp.success).toBe(true);
       if (!signUp.success) return;
 
-      const request = postForgot({
+      const request = await postForgot({
         email: "bait@example.com",
         [HONEYPOT_FIELD]: "http://spam.example",
       });
@@ -297,12 +299,17 @@ describe("Password Reset Controller", () => {
 
     test("throttles requests per IP", async () => {
       for (let i = 0; i < 5; i++) {
-        await passwordReset.create(postForgot({ email: "flood@example.com" }));
+        await passwordReset.create(
+          await postForgot({ email: "flood@example.com" }),
+        );
       }
 
       expect(
-        (await passwordReset.create(postForgot({ email: "flood@example.com" })))
-          .status,
+        (
+          await passwordReset.create(
+            await postForgot({ email: "flood@example.com" }),
+          )
+        ).status,
       ).toBe(429);
     });
   });
@@ -347,7 +354,7 @@ describe("Password Reset Controller", () => {
       const reset = await createPasswordReset("reset@example.com");
       if (!reset) return;
 
-      const request = postReset({
+      const request = await postReset({
         token: reset.rawToken,
         password: NEW_PASSWORD,
       });
@@ -381,7 +388,7 @@ describe("Password Reset Controller", () => {
         if (!reset) return;
 
         const response = await passwordReset.update(
-          postReset({
+          await postReset({
             token: reset.rawToken,
             password: NEW_PASSWORD,
             [CAPTCHA_SOLUTION_FIELD]: solveChallenge(issueChallenge()),
@@ -410,7 +417,7 @@ describe("Password Reset Controller", () => {
       if (!reset) return;
 
       await passwordReset.update(
-        postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
+        await postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
       );
 
       expect(await getSessionContextFromDB(oldSessionId)).toBeNull();
@@ -425,7 +432,7 @@ describe("Password Reset Controller", () => {
       if (!reset) return;
 
       await passwordReset.update(
-        postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
+        await postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
       );
 
       const rows =
@@ -438,21 +445,21 @@ describe("Password Reset Controller", () => {
       expect(signUp.success).toBe(true);
       if (!signUp.success) return;
 
-      const noToken = postReset({ password: NEW_PASSWORD });
+      const noToken = await postReset({ password: NEW_PASSWORD });
       await passwordReset.update(noToken);
       expect(findSetCookie(noToken, "flash_state")).toContain("invalid-token");
 
-      const bogus = postReset({ token: "nope", password: NEW_PASSWORD });
+      const bogus = await postReset({ token: "nope", password: NEW_PASSWORD });
       await passwordReset.update(bogus);
       expect(findSetCookie(bogus, "flash_state")).toContain("invalid-token");
 
       const reset = await createPasswordReset("once@example.com");
       if (!reset) return;
       await passwordReset.update(
-        postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
+        await postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
       );
 
-      const replay = postReset({
+      const replay = await postReset({
         token: reset.rawToken,
         password: "yet-another-passphrase",
       });
@@ -468,7 +475,7 @@ describe("Password Reset Controller", () => {
       expect(signUp.success).toBe(true);
       if (!signUp.success) return;
 
-      const request = postReset({
+      const request = await postReset({
         token: signUp.verifyToken,
         password: NEW_PASSWORD,
       });
@@ -488,7 +495,7 @@ describe("Password Reset Controller", () => {
       const reset = await createPasswordReset("typo@example.com");
       if (!reset) return;
 
-      const bad = postReset({ token: reset.rawToken, password: "short" });
+      const bad = await postReset({ token: reset.rawToken, password: "short" });
       const response = await passwordReset.update(bad);
 
       expect(response.headers.get("location")).toContain(
@@ -498,7 +505,7 @@ describe("Password Reset Controller", () => {
 
       // The retry with a valid password still works.
       await passwordReset.update(
-        postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
+        await postReset({ token: reset.rawToken, password: NEW_PASSWORD }),
       );
       expect(
         (await signInWithPassword("typo@example.com", NEW_PASSWORD)).success,
@@ -522,7 +529,7 @@ describe("Password Reset Controller", () => {
         const reset = await createPasswordReset("stalecap@example.com");
         if (!reset) return;
 
-        const blocked = postReset({
+        const blocked = await postReset({
           token: reset.rawToken,
           password: NEW_PASSWORD,
           [CAPTCHA_SOLUTION_FIELD]: "not-a-real-solution",
@@ -538,7 +545,7 @@ describe("Password Reset Controller", () => {
 
         // The retry with a solved challenge still works.
         await passwordReset.update(
-          postReset({
+          await postReset({
             token: reset.rawToken,
             password: NEW_PASSWORD,
             [CAPTCHA_SOLUTION_FIELD]: solveChallenge(issueChallenge()),
@@ -555,7 +562,7 @@ describe("Password Reset Controller", () => {
     });
 
     test("still dead-ends when the guard fails with no token in the body", async () => {
-      const blocked = postReset({
+      const blocked = await postReset({
         password: NEW_PASSWORD,
         [HONEYPOT_FIELD]: "i-am-a-bot",
       });
@@ -573,7 +580,10 @@ describe("Password Reset Controller", () => {
       const rawToken = await createUserToken(signUp.user.id, "password_reset");
       await db`UPDATE user_tokens SET expires_at = NOW() - INTERVAL '1 minute' WHERE type = 'password_reset'`;
 
-      const request = postReset({ token: rawToken, password: NEW_PASSWORD });
+      const request = await postReset({
+        token: rawToken,
+        password: NEW_PASSWORD,
+      });
       await passwordReset.update(request);
 
       expect(findSetCookie(request, "flash_state")).toContain("invalid-token");
@@ -588,10 +598,133 @@ describe("Password Reset Controller", () => {
       expect(
         (
           await passwordReset.update(
-            postReset({ token: "anything", password: NEW_PASSWORD }),
+            await postReset({ token: "anything", password: NEW_PASSWORD }),
           )
         ).status,
       ).toBe(404);
+    });
+  });
+
+  describe("CSRF", () => {
+    // These assert that nothing was *sent*, so each needs its own capture —
+    // the service is a module-level singleton the other blocks also swap.
+    const captureEmails = (): EmailMessage[] => {
+      const sent: EmailMessage[] = [];
+      setEmailService(
+        new EmailService({
+          send: async (message) => {
+            sent.push(message);
+          },
+        }),
+      );
+      return sent;
+    };
+
+    test("both GETs render a token field and set the session cookie", async () => {
+      const forgot = getForgot();
+      expect(await (await passwordReset.index(forgot)).text()).toContain(
+        'name="_csrf"',
+      );
+      expect(findSetCookie(forgot, "session_id")).toBeDefined();
+
+      const reset = getReset("some-token");
+      expect(await (await passwordReset.edit(reset)).text()).toContain(
+        'name="_csrf"',
+      );
+      expect(findSetCookie(reset, "session_id")).toBeDefined();
+    });
+
+    test("/forgot-password refuses a post with no token and sends nothing", async () => {
+      await signUpWithPassword("notoken@example.com", PASSWORD);
+      const sent = captureEmails();
+
+      const response = await passwordReset.create(
+        await postForgot({ email: "notoken@example.com" }, { csrf: false }),
+      );
+
+      expect(response.status).toBe(403);
+      expect(sent).toHaveLength(0);
+    });
+
+    test("/forgot-password refuses a post from another origin", async () => {
+      await signUpWithPassword("crossorigin@example.com", PASSWORD);
+      const sent = captureEmails();
+
+      const response = await passwordReset.create(
+        await postForgot(
+          { email: "crossorigin@example.com" },
+          { origin: "https://evil.example" },
+        ),
+      );
+
+      expect(response.status).toBe(403);
+      expect(sent).toHaveLength(0);
+    });
+
+    test("/forgot-password recovers from a stale but authentic token", async () => {
+      const sessionId = await createGuestSession();
+      const sent = captureEmails();
+
+      const request = await postForgot(
+        { email: "staletab@example.com" },
+        {
+          sessionId,
+          csrf: await staleCsrfToken(sessionId, "/forgot-password"),
+        },
+      );
+      const response = await passwordReset.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/forgot-password");
+      expect(findSetCookie(request, "flash_state")).toContain(
+        "validation-error",
+      );
+      expect(sent).toHaveLength(0);
+    });
+
+    test("/reset-password refuses a post with no token, leaving the password alone", async () => {
+      await signUpWithPassword("keep@example.com", PASSWORD);
+      const reset = await createPasswordReset("keep@example.com");
+      if (!reset) return;
+
+      const response = await passwordReset.update(
+        await postReset(
+          { token: reset.rawToken, password: NEW_PASSWORD },
+          { csrf: false },
+        ),
+      );
+
+      expect(response.status).toBe(403);
+      expect(
+        (await signInWithPassword("keep@example.com", PASSWORD)).success,
+      ).toBe(true);
+    });
+
+    // The reset token lives in the form body. A stale CSRF token must send the
+    // visitor back to the same link rather than cost them a whole new email.
+    test("/reset-password keeps the reset link across a stale token", async () => {
+      await signUpWithPassword("staleform@example.com", PASSWORD);
+      const reset = await createPasswordReset("staleform@example.com");
+      if (!reset) return;
+
+      const sessionId = await createGuestSession();
+      const request = await postReset(
+        { token: reset.rawToken, password: NEW_PASSWORD },
+        {
+          sessionId,
+          csrf: await staleCsrfToken(sessionId, "/reset-password"),
+        },
+      );
+      const response = await passwordReset.update(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe(
+        `/reset-password?token=${encodeURIComponent(reset.rawToken)}`,
+      );
+      // Not spent: the same link still works.
+      expect(
+        (await signInWithPassword("staleform@example.com", PASSWORD)).success,
+      ).toBe(true);
     });
   });
 

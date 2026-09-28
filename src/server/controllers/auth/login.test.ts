@@ -1,6 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { redirectIfAuthenticated } from "../../middleware/auth";
 import { clearRateLimitLog } from "../../middleware/rate-limit";
 import {
   clearUsedChallenges,
@@ -12,11 +11,6 @@ import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { testDatabase } from "../../test-utils/database";
 import { cleanupTestData } from "../../test-utils/helpers";
 import { stateHelpers } from "../../utils/state";
-
-// Snapshot the real function value now. `redirectIfAuthenticated` is a live
-// binding, so once a test mock.module()s the auth middleware the import itself
-// points at the stub — capturing it here keeps a handle on the genuine one.
-const realRedirectIfAuthenticated = redirectIfAuthenticated;
 
 // Solve a challenge the way the client would, for the captcha-enabled tests.
 const solveChallenge = (
@@ -59,6 +53,7 @@ import {
   createGuestSession,
   getSessionContextFromDB,
 } from "../../services/sessions";
+import { authFormPost, staleCsrfToken } from "../../test-utils/auth-form";
 import { login } from "./login";
 
 describe("Login Controller", () => {
@@ -185,43 +180,50 @@ describe("Login Controller", () => {
     });
 
     test("redirects authenticated user to home", async () => {
-      // Mock the redirectIfAuthenticated function to return a redirect response
-      const mockRedirectIfAuthenticated = mock(
-        () =>
-          new Response("", {
-            status: 303,
-            headers: { Location: "/" },
-          }),
-      );
-
-      // Temporarily mock the auth middleware
-      mock.module("../../middleware/auth", () => ({
-        redirectIfAuthenticated: mockRedirectIfAuthenticated,
-      }));
-
-      // Re-import login after mocking
-      const { login: mockedLogin } = await import("./login");
+      const user = await findOrCreateUser("already-in@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
 
       const request = createBunRequest("http://localhost:3000/login", {
         method: "GET",
-        headers: {
-          cookie: "session_id=valid-session-id",
-        },
+        headers: { cookie: `session_id=${sessionId}` },
       });
 
-      try {
-        const response = await mockedLogin.index(request);
+      const response = await login.index(request);
 
-        expect(response.status).toBe(303);
-        expect(response.headers.get("location")).toBe("/");
-        expect(mockRedirectIfAuthenticated).toHaveBeenCalled();
-      } finally {
-        // Restore the real middleware so this module mock doesn't leak into
-        // other test files when the whole suite runs in one process.
-        mock.module("../../middleware/auth", () => ({
-          redirectIfAuthenticated: realRedirectIfAuthenticated,
-        }));
-      }
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/");
+    });
+
+    // The token the form posts binds to this session, so the cookie has to go
+    // out with the page. Without it the browser posts a token against nothing.
+    test("renders a CSRF field and sets the guest session cookie", async () => {
+      const request = createBunRequest("http://localhost:3000/login", {
+        method: "GET",
+      });
+
+      const html = await (await login.index(request)).text();
+
+      expect(html).toContain('name="_csrf"');
+      expect(findSetCookie(request, "session_id")).toBeDefined();
+
+      const sessions = await db`SELECT session_type FROM sessions`;
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].session_type).toBe("guest");
+    });
+
+    // The old code called the middleware for its redirect and threw the
+    // context away — one orphan session row per anonymous page view.
+    test("reuses the session it was given rather than minting another", async () => {
+      const sessionId = await createGuestSession();
+
+      const request = createBunRequest("http://localhost:3000/login", {
+        method: "GET",
+        headers: { cookie: `session_id=${sessionId}` },
+      });
+
+      await login.index(request);
+
+      expect(await db`SELECT id_hash FROM sessions`).toHaveLength(1);
     });
   });
 
@@ -230,10 +232,7 @@ describe("Login Controller", () => {
       const formData = new FormData();
       formData.append("email", "test@example.com");
 
-      const request = createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        body: formData,
-      });
+      const request = await authFormPost("/login", formData);
 
       const response = await login.create(request);
 
@@ -262,10 +261,7 @@ describe("Login Controller", () => {
       const formData = new FormData();
       formData.append("email", "Test@Example.COM");
 
-      const request = createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        body: formData,
-      });
+      const request = await authFormPost("/login", formData);
 
       await login.create(request);
 
@@ -279,10 +275,7 @@ describe("Login Controller", () => {
       const formData = new FormData();
       formData.append("email", "not-an-email");
 
-      const request = createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        body: formData,
-      });
+      const request = await authFormPost("/login", formData);
 
       const response = await login.create(request);
 
@@ -298,10 +291,7 @@ describe("Login Controller", () => {
     test("redirects with error for missing email", async () => {
       const formData = new FormData();
 
-      const request = createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        body: formData,
-      });
+      const request = await authFormPost("/login", formData);
 
       const response = await login.create(request);
 
@@ -325,10 +315,7 @@ describe("Login Controller", () => {
       const formData = new FormData();
       formData.append("email", "existing@example.com");
 
-      const request = createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        body: formData,
-      });
+      const request = await authFormPost("/login", formData);
 
       await login.create(request);
 
@@ -347,16 +334,90 @@ describe("Login Controller", () => {
     });
   });
 
+  // A forged POST /login signs the victim into the *attacker's* account, and
+  // they carry on working in it. These four cases are the guard against that.
+  describe("POST /login CSRF", () => {
+    test("refuses a post with no token, creating nothing", async () => {
+      const formData = new FormData();
+      formData.append("email", "notoken@example.com");
+
+      const response = await login.create(
+        await authFormPost("/login", formData, { csrf: false }),
+      );
+
+      expect(response.status).toBe(403);
+      expect(
+        await db`SELECT id FROM users WHERE email = 'notoken@example.com'`,
+      ).toHaveLength(0);
+    });
+
+    test("refuses a forged token", async () => {
+      const formData = new FormData();
+      formData.append("email", "forged@example.com");
+
+      const response = await login.create(
+        await authFormPost("/login", formData, { csrf: "nonce.notarealtoken" }),
+      );
+
+      expect(response.status).toBe(403);
+      expect(
+        await db`SELECT id FROM users WHERE email = 'forged@example.com'`,
+      ).toHaveLength(0);
+    });
+
+    // The cross-origin check runs before the token is even looked at, which is
+    // the point: a valid token stolen from the page must not travel.
+    test("refuses a post from another origin", async () => {
+      const formData = new FormData();
+      formData.append("email", "crossorigin@example.com");
+
+      const response = await login.create(
+        await authFormPost("/login", formData, {
+          origin: "https://evil.example",
+        }),
+      );
+
+      expect(response.status).toBe(403);
+      expect(
+        await db`SELECT id FROM users WHERE email = 'crossorigin@example.com'`,
+      ).toHaveLength(0);
+    });
+
+    // An old tab, not an attack: the address survives and the redirect lands
+    // on a page that mints a fresh token. The link is still not sent.
+    test("recovers from a stale but authentic token", async () => {
+      const sessionId = await createGuestSession();
+      const formData = new FormData();
+      formData.append("email", "staletab@example.com");
+
+      const request = await authFormPost("/login", formData, {
+        sessionId,
+        csrf: await staleCsrfToken(sessionId, "/login"),
+      });
+      const response = await login.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/login");
+
+      const flash = findSetCookie(request, "flash_state");
+      expect(flash).toContain("validation-error");
+      expect(decodeURIComponent(flash as string)).toContain(
+        "staletab@example.com",
+      );
+
+      expect(
+        await db`SELECT id FROM users WHERE email = 'staletab@example.com'`,
+      ).toHaveLength(0);
+    });
+  });
+
   describe("POST /login bot defense", () => {
     test("silently discards a submission with the honeypot filled", async () => {
       const formData = new FormData();
       formData.append("email", "bot@example.com");
       formData.append(HONEYPOT_FIELD, "http://spam.example");
 
-      const request = createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        body: formData,
-      });
+      const request = await authFormPost("/login", formData);
 
       const response = await login.create(request);
 
@@ -372,15 +433,10 @@ describe("Login Controller", () => {
     });
 
     test("returns 429 once the per-IP rate limit is exceeded", async () => {
-      const send = () => {
+      const send = async () => {
         const formData = new FormData();
         formData.append("email", "flood@example.com");
-        return login.create(
-          createBunRequest("http://localhost:3000/login", {
-            method: "POST",
-            body: formData,
-          }),
-        );
+        return login.create(await authFormPost("/login", formData));
       };
 
       // Limit is 5 per window; the 6th request is throttled.
@@ -412,10 +468,7 @@ describe("Login Controller", () => {
         formData.append("email", "human@example.com");
         // No captcha_solution field.
 
-        const request = createBunRequest("http://localhost:3000/login", {
-          method: "POST",
-          body: formData,
-        });
+        const request = await authFormPost("/login", formData);
 
         const response = await login.create(request);
 
@@ -434,10 +487,7 @@ describe("Login Controller", () => {
         formData.append("email", "human@example.com");
         formData.append("captcha_solution", solveChallenge(issueChallenge()));
 
-        const request = createBunRequest("http://localhost:3000/login", {
-          method: "POST",
-          body: formData,
-        });
+        const request = await authFormPost("/login", formData);
 
         const response = await login.create(request);
 
@@ -465,15 +515,15 @@ describe("Login Controller", () => {
       else process.env.AUTH_MODE = originalMode;
     });
 
-    const post = (fields: Record<string, string>) => {
+    const post = async (
+      fields: Record<string, string>,
+      options: Parameters<typeof authFormPost>[2] = {},
+    ) => {
       const formData = new FormData();
       for (const [key, value] of Object.entries(fields)) {
         formData.append(key, value);
       }
-      return createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        body: formData,
-      });
+      return authFormPost("/login", formData, options);
     };
 
     test("GET renders a password field and a reset link", async () => {
@@ -493,7 +543,10 @@ describe("Login Controller", () => {
       const signUp = await signUpWithPassword("member@example.com", PASSWORD);
       expect(signUp.success).toBe(true);
 
-      const request = post({ email: "member@example.com", password: PASSWORD });
+      const request = await post({
+        email: "member@example.com",
+        password: PASSWORD,
+      });
       const response = await login.create(request);
 
       expect(response.status).toBe(303);
@@ -507,7 +560,7 @@ describe("Login Controller", () => {
       if (!signUp.success) return;
 
       await login.create(
-        post({ email: "notoken@example.com", password: PASSWORD }),
+        await post({ email: "notoken@example.com", password: PASSWORD }),
       );
 
       const tokens = await db`
@@ -520,13 +573,13 @@ describe("Login Controller", () => {
     test("gives the same message for a wrong password and an unknown account", async () => {
       await signUpWithPassword("known@example.com", PASSWORD);
 
-      const wrongPassword = post({
+      const wrongPassword = await post({
         email: "known@example.com",
         password: "definitely-not-it",
       });
       await login.create(wrongPassword);
 
-      const unknownAccount = post({
+      const unknownAccount = await post({
         email: "stranger@example.com",
         password: PASSWORD,
       });
@@ -544,7 +597,7 @@ describe("Login Controller", () => {
     test("points a magic-link account with no password at the reset flow", async () => {
       await findOrCreateUser("linkonly@example.com");
 
-      const request = post({
+      const request = await post({
         email: "linkonly@example.com",
         password: PASSWORD,
       });
@@ -564,7 +617,7 @@ describe("Login Controller", () => {
     test("renders the no-password message with a link to set one", async () => {
       await findOrCreateUser("linkonly@example.com");
 
-      const post_ = post({
+      const post_ = await post({
         email: "linkonly@example.com",
         password: PASSWORD,
       });
@@ -607,7 +660,7 @@ describe("Login Controller", () => {
     test("keeps the generic message for a wrong password on a real account", async () => {
       await signUpWithPassword("hasone@example.com", PASSWORD);
 
-      const request = post({
+      const request = await post({
         email: "hasone@example.com",
         password: "definitely-not-it",
       });
@@ -623,7 +676,7 @@ describe("Login Controller", () => {
     });
 
     test("preserves the typed email but never the password", async () => {
-      const request = post({
+      const request = await post({
         email: "retype@example.com",
         password: "wrong-password-here",
       });
@@ -639,16 +692,10 @@ describe("Login Controller", () => {
       expect(signUp.success).toBe(true);
 
       const guestSessionId = await createGuestSession();
-      const request = createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        headers: { cookie: `session_id=${guestSessionId}` },
-        body: (() => {
-          const formData = new FormData();
-          formData.append("email", "fixation@example.com");
-          formData.append("password", PASSWORD);
-          return formData;
-        })(),
-      });
+      const request = await post(
+        { email: "fixation@example.com", password: PASSWORD },
+        { sessionId: guestSessionId },
+      );
 
       await login.create(request);
 
@@ -666,16 +713,10 @@ describe("Login Controller", () => {
       if (!signUp.success) return;
 
       const oldSessionId = await createAuthenticatedSession(signUp.user.id);
-      const request = createBunRequest("http://localhost:3000/login", {
-        method: "POST",
-        headers: { cookie: `session_id=${oldSessionId}` },
-        body: (() => {
-          const formData = new FormData();
-          formData.append("email", "again@example.com");
-          formData.append("password", PASSWORD);
-          return formData;
-        })(),
-      });
+      const request = await post(
+        { email: "again@example.com", password: PASSWORD },
+        { sessionId: oldSessionId },
+      );
 
       await login.create(request);
 
@@ -687,7 +728,7 @@ describe("Login Controller", () => {
     // transient-failure message instead of claiming a magic link was sent to an
     // app that doesn't have them.
     test("feigns a transient failure rather than a magic link on the honeypot", async () => {
-      const trapped = post({
+      const trapped = await post({
         email: "bot@example.com",
         password: PASSWORD,
         [HONEYPOT_FIELD]: "http://spam.example",
@@ -702,7 +743,7 @@ describe("Login Controller", () => {
     });
 
     test("still enforces the honeypot and the rate limit", async () => {
-      const trapped = post({
+      const trapped = await post({
         email: "bot@example.com",
         password: PASSWORD,
         [HONEYPOT_FIELD]: "http://spam.example",
@@ -711,12 +752,14 @@ describe("Login Controller", () => {
       expect(findSetCookie(trapped, "session_id")).toBeUndefined();
 
       for (let i = 0; i < 5; i++) {
-        await login.create(post({ email: "flood@example.com", password: "x" }));
+        await login.create(
+          await post({ email: "flood@example.com", password: "x" }),
+        );
       }
       expect(
         (
           await login.create(
-            post({ email: "flood@example.com", password: "x" }),
+            await post({ email: "flood@example.com", password: "x" }),
           )
         ).status,
       ).toBe(429);

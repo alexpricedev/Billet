@@ -17,11 +17,7 @@ import {
   createGuestSession,
 } from "../services/sessions";
 import { createBunRequest } from "../test-utils/bun-request";
-import {
-  getSessionContext,
-  redirectIfAuthenticated,
-  requireAuth,
-} from "./auth";
+import { getSessionContext, guestPageContext, requireAuth } from "./auth";
 
 describe("Auth Middleware", () => {
   beforeEach(async () => {
@@ -207,7 +203,7 @@ describe("Auth Middleware", () => {
     });
   });
 
-  describe("redirectIfAuthenticated", () => {
+  describe("guestPageContext", () => {
     test("returns redirect response for authenticated user", async () => {
       const user = await findOrCreateUser("authredirect@example.com");
       const sessionId = await createAuthenticatedSession(user.id);
@@ -216,32 +212,33 @@ describe("Auth Middleware", () => {
         headers: { cookie: `session_id=${sessionId}` },
       });
 
-      const result = await redirectIfAuthenticated(request);
+      const result = await guestPageContext(request);
 
-      expect(result).not.toBeNull();
-      expect(result?.status).toBe(303);
-      expect(result?.headers.get("location")).toBe("/");
+      expect("redirect" in result).toBe(true);
+      if (!("redirect" in result)) return;
+      expect(result.redirect.status).toBe(303);
+      expect(result.redirect.headers.get("location")).toBe("/");
     });
 
-    test("returns null for unauthenticated user", async () => {
+    test("returns a context for an unauthenticated visitor", async () => {
       const request = createBunRequest("http://localhost:3000/login");
 
-      const result = await redirectIfAuthenticated(request);
-      expect(result).toBeNull();
+      const result = await guestPageContext(request);
+      expect("ctx" in result && result.ctx.isAuthenticated).toBe(false);
     });
 
-    test("returns null for guest session", async () => {
+    test("returns a context for a guest session", async () => {
       const sessionId = await createGuestSession();
 
       const request = createBunRequest("http://localhost:3000/login", {
         headers: { cookie: `session_id=${sessionId}` },
       });
 
-      const result = await redirectIfAuthenticated(request);
-      expect(result).toBeNull();
+      const result = await guestPageContext(request);
+      expect("ctx" in result && result.ctx.sessionId).toBe(sessionId);
     });
 
-    test("returns null for expired session", async () => {
+    test("returns a context for an expired session", async () => {
       const user = await findOrCreateUser("expiredredirect@example.com");
       const sessionId = await createAuthenticatedSession(user.id);
 
@@ -258,17 +255,31 @@ describe("Auth Middleware", () => {
         headers: { cookie: `session_id=${sessionId}` },
       });
 
-      const result = await redirectIfAuthenticated(request);
-      expect(result).toBeNull();
+      const result = await guestPageContext(request);
+      expect("ctx" in result && result.ctx.isAuthenticated).toBe(false);
     });
 
-    test("returns null for invalid session", async () => {
+    test("returns a context for an invalid session", async () => {
       const request = createBunRequest("http://localhost:3000/login", {
         headers: { cookie: "session_id=invalid-session-id" },
       });
 
-      const result = await redirectIfAuthenticated(request);
-      expect(result).toBeNull();
+      const result = await guestPageContext(request);
+      expect("ctx" in result && result.ctx.isAuthenticated).toBe(false);
+    });
+
+    // The context is what the signed-out auth pages bind their CSRF token to.
+    // Dropping it meant a session row per request, no cookie, and no token.
+    test("hands back a fresh guest session the caller can set a cookie for", async () => {
+      const request = createBunRequest("http://localhost:3000/login");
+
+      const result = await guestPageContext(request);
+
+      expect("ctx" in result).toBe(true);
+      if (!("ctx" in result)) return;
+      expect(result.ctx.sessionId).toBeTruthy();
+      expect(result.ctx.requiresSetCookie).toBe(true);
+      expect(result.ctx.isGuest).toBe(true);
     });
   });
 
@@ -282,8 +293,8 @@ describe("Auth Middleware", () => {
       expect(authResult?.headers.get("location")).toBe("/login");
 
       request = createBunRequest("http://localhost:3000/login");
-      let redirectResult = await redirectIfAuthenticated(request);
-      expect(redirectResult).toBeNull();
+      let guestResult = await guestPageContext(request);
+      expect("ctx" in guestResult).toBe(true);
 
       const user = await findOrCreateUser(email);
       const sessionId = await createAuthenticatedSession(user.id);
@@ -297,9 +308,12 @@ describe("Auth Middleware", () => {
       request = createBunRequest("http://localhost:3000/login", {
         headers: { cookie: `session_id=${sessionId}` },
       });
-      redirectResult = await redirectIfAuthenticated(request);
-      expect(redirectResult?.status).toBe(303);
-      expect(redirectResult?.headers.get("location")).toBe("/");
+      guestResult = await guestPageContext(request);
+      expect("redirect" in guestResult).toBe(true);
+      if ("redirect" in guestResult) {
+        expect(guestResult.redirect.status).toBe(303);
+        expect(guestResult.redirect.headers.get("location")).toBe("/");
+      }
 
       const context = await getSessionContext(request);
       expect(context.isAuthenticated).toBe(true);

@@ -17,21 +17,21 @@ import { findOrCreateUser } from "../../services/auth";
 import { db } from "../../services/database";
 import { createGuestSession } from "../../services/sessions";
 import type { SignupState } from "../../templates/signup";
+import { authFormPost, staleCsrfToken } from "../../test-utils/auth-form";
 import { stateHelpers } from "../../utils/state";
 import { signup } from "./signup";
 
 const PASSWORD = "correct-horse-battery";
 
-const post = (fields: Record<string, string>, cookie?: string) => {
+const post = async (
+  fields: Record<string, string>,
+  options: Parameters<typeof authFormPost>[2] = {},
+) => {
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
     formData.append(key, value);
   }
-  return createBunRequest("http://localhost:3000/signup", {
-    method: "POST",
-    ...(cookie ? { headers: { cookie } } : {}),
-    body: formData,
-  });
+  return authFormPost("/signup", formData, options);
 };
 
 const get = () =>
@@ -82,7 +82,7 @@ describe("Signup Controller", () => {
     });
 
     test("creates the user and a magic link token", async () => {
-      const request = post({ email: "joiner@example.com" });
+      const request = await post({ email: "joiner@example.com" });
       const response = await signup.create(request);
 
       expect(response.status).toBe(303);
@@ -101,14 +101,14 @@ describe("Signup Controller", () => {
     });
 
     test("does not sign the user in before they click the link", async () => {
-      const request = post({ email: "notyet@example.com" });
+      const request = await post({ email: "notyet@example.com" });
       await signup.create(request);
 
       expect(findSetCookie(request, "session_id")).toBeUndefined();
     });
 
     test("rejects an invalid email", async () => {
-      const request = post({ email: "nope" });
+      const request = await post({ email: "nope" });
       await signup.create(request);
 
       expect(findSetCookie(request, "flash_state")).toContain(
@@ -142,7 +142,7 @@ describe("Signup Controller", () => {
     // Claiming a link was sent would strand a human who tripped the honeypot at
     // a sign-in for an account that was never created.
     test("feigns a transient failure rather than a sent link on the honeypot", async () => {
-      const trapped = post({
+      const trapped = await post({
         email: "bot@example.com",
         password: PASSWORD,
         [HONEYPOT_FIELD]: "http://spam.example",
@@ -158,15 +158,18 @@ describe("Signup Controller", () => {
     });
 
     test("creates the account and signs the user straight in", async () => {
-      const request = post({ email: "fresh@example.com", password: PASSWORD });
+      const request = await post({
+        email: "fresh@example.com",
+        password: PASSWORD,
+      });
       const response = await signup.create(request);
 
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe("/");
       expect(findSetCookie(request, "session_id")).toBeDefined();
 
-      // No cookie arrived, so nothing needed replacing — the sign-in must not
-      // have created a throwaway guest session on the way.
+      // The guest session the form was posted from is replaced, not added to:
+      // signing up must not leave a spare session behind.
       expect(await db`SELECT id_hash FROM sessions`).toHaveLength(1);
 
       const users =
@@ -179,7 +182,7 @@ describe("Signup Controller", () => {
 
     test("issues an email_verification token, not a magic link", async () => {
       await signup.create(
-        post({ email: "token@example.com", password: PASSWORD }),
+        await post({ email: "token@example.com", password: PASSWORD }),
       );
 
       const users =
@@ -194,9 +197,9 @@ describe("Signup Controller", () => {
 
     test("replaces a guest session rather than reusing it", async () => {
       const guestSessionId = await createGuestSession();
-      const request = post(
+      const request = await post(
         { email: "guest@example.com", password: PASSWORD },
-        `session_id=${guestSessionId}`,
+        { sessionId: guestSessionId },
       );
 
       await signup.create(request);
@@ -207,7 +210,10 @@ describe("Signup Controller", () => {
     });
 
     test("rejects a too-short password without creating anything", async () => {
-      const request = post({ email: "weak@example.com", password: "short" });
+      const request = await post({
+        email: "weak@example.com",
+        password: "short",
+      });
       await signup.create(request);
 
       expect(findSetCookie(request, "flash_state")).toContain(
@@ -220,7 +226,10 @@ describe("Signup Controller", () => {
     test("tells the visitor when the address is already registered", async () => {
       await findOrCreateUser("taken@example.com");
 
-      const request = post({ email: "taken@example.com", password: PASSWORD });
+      const request = await post({
+        email: "taken@example.com",
+        password: PASSWORD,
+      });
       await signup.create(request);
 
       expect(
@@ -230,7 +239,10 @@ describe("Signup Controller", () => {
     });
 
     test("preserves the typed email but never the password", async () => {
-      const request = post({ email: "retype@example.com", password: "short" });
+      const request = await post({
+        email: "retype@example.com",
+        password: "short",
+      });
       await signup.create(request);
 
       const flash = decodeURIComponent(
@@ -241,9 +253,69 @@ describe("Signup Controller", () => {
     });
   });
 
+  describe("CSRF", () => {
+    test("GET renders a token field and sets the guest session cookie", async () => {
+      const request = get();
+      const html = await (await signup.index(request)).text();
+
+      expect(html).toContain('name="_csrf"');
+      expect(findSetCookie(request, "session_id")).toBeDefined();
+    });
+
+    test("refuses a post with no token, creating nothing", async () => {
+      const response = await signup.create(
+        await post({ email: "notoken@example.com" }, { csrf: false }),
+      );
+
+      expect(response.status).toBe(403);
+      expect(await db`SELECT id FROM users`).toHaveLength(0);
+    });
+
+    test("refuses a forged token", async () => {
+      const response = await signup.create(
+        await post(
+          { email: "forged@example.com" },
+          { csrf: "nonce.notarealtoken" },
+        ),
+      );
+
+      expect(response.status).toBe(403);
+      expect(await db`SELECT id FROM users`).toHaveLength(0);
+    });
+
+    test("refuses a post from another origin", async () => {
+      const response = await signup.create(
+        await post(
+          { email: "crossorigin@example.com" },
+          { origin: "https://evil.example" },
+        ),
+      );
+
+      expect(response.status).toBe(403);
+      expect(await db`SELECT id FROM users`).toHaveLength(0);
+    });
+
+    test("recovers from a stale but authentic token", async () => {
+      const sessionId = await createGuestSession();
+      const request = await post(
+        { email: "staletab@example.com" },
+        { sessionId, csrf: await staleCsrfToken(sessionId, "/signup") },
+      );
+
+      const response = await signup.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/signup");
+      expect(findSetCookie(request, "flash_state")).toContain(
+        "validation-error",
+      );
+      expect(await db`SELECT id FROM users`).toHaveLength(0);
+    });
+  });
+
   describe("bot defense", () => {
     test("feigns success and creates nothing when the honeypot is filled", async () => {
-      const request = post({
+      const request = await post({
         email: "bot@example.com",
         [HONEYPOT_FIELD]: "http://spam.example",
       });
@@ -257,11 +329,12 @@ describe("Signup Controller", () => {
 
     test("returns 429 once the per-IP rate limit is exceeded", async () => {
       for (let i = 0; i < 5; i++) {
-        await signup.create(post({ email: "flood@example.com" }));
+        await signup.create(await post({ email: "flood@example.com" }));
       }
 
       expect(
-        (await signup.create(post({ email: "flood@example.com" }))).status,
+        (await signup.create(await post({ email: "flood@example.com" })))
+          .status,
       ).toBe(429);
     });
   });

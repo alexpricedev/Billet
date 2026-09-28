@@ -14,7 +14,6 @@ mock.module("../../services/database", () => ({
 
 import { findOrCreateUser } from "../../services/auth";
 import { clearUsedChallenges, issueChallenge } from "../../services/captcha";
-import { createCsrfToken } from "../../services/csrf";
 import { db } from "../../services/database";
 import { createInvite, peekInvite } from "../../services/invites";
 import {
@@ -23,6 +22,7 @@ import {
 } from "../../services/organizations";
 import { signUpWithPassword, userHasPassword } from "../../services/passwords";
 import { createAuthenticatedSession } from "../../services/sessions";
+import { authFormPost } from "../../test-utils/auth-form";
 import { createBunRequest } from "../../test-utils/bun-request";
 import { invite } from "./accept";
 
@@ -96,18 +96,14 @@ const getAccept = (token: string, cookie?: string) =>
     cookie ? { headers: { cookie } } : {},
   );
 
-const postAccept = (fields: Record<string, string>, cookie?: string) => {
+const postAccept = async (
+  fields: Record<string, string>,
+  options: Parameters<typeof authFormPost>[2] = {},
+) => {
   const body = new FormData();
   for (const [key, value] of Object.entries(fields)) body.append(key, value);
 
-  return createBunRequest("http://localhost:3000/invites/accept", {
-    method: "POST",
-    headers: {
-      Origin: "http://localhost:3000",
-      ...(cookie ? { Cookie: cookie } : {}),
-    },
-    body,
-  });
+  return authFormPost("/invites/accept", body, options);
 };
 
 /**
@@ -115,10 +111,10 @@ const postAccept = (fields: Record<string, string>, cookie?: string) => {
  * it never reaches the Response object these tests hold, so asserting on
  * `response.headers` would silently pass for "no cookie set" either way.
  */
-const cookiesSetOn = (req: ReturnType<typeof postAccept>): string[] =>
+const cookiesSetOn = (req: Awaited<ReturnType<typeof postAccept>>): string[] =>
   (req.cookies as unknown as { getSetCookies: () => string[] }).getSetCookies();
 
-const signedInBy = (req: ReturnType<typeof postAccept>): boolean =>
+const signedInBy = (req: Awaited<ReturnType<typeof postAccept>>): boolean =>
   cookiesSetOn(req).some((cookie) => cookie.startsWith("session_id="));
 
 describe("Invite acceptance", () => {
@@ -128,7 +124,8 @@ describe("Invite acceptance", () => {
 
     expect((await invite.index(getAccept(seeded.rawToken))).status).toBe(404);
     expect(
-      (await invite.create(postAccept({ token: seeded.rawToken }))).status,
+      (await invite.create(await postAccept({ token: seeded.rawToken })))
+        .status,
     ).toBe(404);
   });
 
@@ -182,7 +179,7 @@ describe("Invite acceptance", () => {
   describe("magic-link mode", () => {
     test("joins the org and signs the invitee in", async () => {
       const seeded = await seedInvite();
-      const request = postAccept({ token: seeded.rawToken });
+      const request = await postAccept({ token: seeded.rawToken });
 
       const response = await invite.create(request);
 
@@ -197,7 +194,7 @@ describe("Invite acceptance", () => {
     test("verifies the address, since the token reached their mailbox", async () => {
       const seeded = await seedInvite();
 
-      await invite.create(postAccept({ token: seeded.rawToken }));
+      await invite.create(await postAccept({ token: seeded.rawToken }));
 
       const rows = await db`
         SELECT email_verified_at FROM users WHERE email = 'invitee@example.com'
@@ -208,9 +205,9 @@ describe("Invite acceptance", () => {
     test("a spent token cannot be replayed", async () => {
       const seeded = await seedInvite();
 
-      await invite.create(postAccept({ token: seeded.rawToken }));
+      await invite.create(await postAccept({ token: seeded.rawToken }));
 
-      const request = postAccept({ token: seeded.rawToken });
+      const request = await postAccept({ token: seeded.rawToken });
       const replay = await invite.create(request);
 
       expect(replay.status).toBe(303);
@@ -226,13 +223,7 @@ describe("Invite acceptance", () => {
       // A signed-in POST has a session to bind a token to, so the CSRF check
       // applies — supply one, or this asserts the wrong refusal.
       const response = await invite.create(
-        postAccept(
-          {
-            token: seeded.rawToken,
-            _csrf: await createCsrfToken(sessionId, "POST", "/invites/accept"),
-          },
-          `session_id=${sessionId}`,
-        ),
+        await postAccept({ token: seeded.rawToken }, { sessionId }),
       );
 
       // Back to the link itself, where the GET explains the mismatch and
@@ -252,7 +243,7 @@ describe("Invite acceptance", () => {
 
     test("a new invitee sets a password and is signed in", async () => {
       const seeded = await seedInvite();
-      const request = postAccept({
+      const request = await postAccept({
         token: seeded.rawToken,
         password: "correct-horse",
       });
@@ -271,7 +262,7 @@ describe("Invite acceptance", () => {
     test("a short password is refused and does NOT spend the token", async () => {
       const seeded = await seedInvite();
 
-      const firstRequest = postAccept({
+      const firstRequest = await postAccept({
         token: seeded.rawToken,
         password: "short",
       });
@@ -282,7 +273,7 @@ describe("Invite acceptance", () => {
 
       // The retry with a good password still works — that's the point.
       const second = await invite.create(
-        postAccept({ token: seeded.rawToken, password: "correct-horse" }),
+        await postAccept({ token: seeded.rawToken, password: "correct-horse" }),
       );
       expect(second.headers.get("location")).toBe("/");
     });
@@ -295,7 +286,7 @@ describe("Invite acceptance", () => {
       );
       if (!signup.success) throw new Error("signup failed");
 
-      const request = postAccept({ token: seeded.rawToken });
+      const request = await postAccept({ token: seeded.rawToken });
       const response = await invite.create(request);
 
       // Mailbox control is grounds for a reset, never a sign-in — the same
@@ -360,7 +351,7 @@ describe("Invite acceptance", () => {
 
     test("a solved challenge accepts the invitation", async () => {
       const seeded = await seedInvite();
-      const request = postAccept({
+      const request = await postAccept({
         token: seeded.rawToken,
         captcha_solution: solveChallenge(issueChallenge()),
       });

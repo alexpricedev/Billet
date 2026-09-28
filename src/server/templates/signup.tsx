@@ -1,5 +1,6 @@
 import { AuthPage } from "../components/auth-page";
 import { CaptchaWidget } from "../components/captcha-widget";
+import { CsrfField } from "../components/csrf-field";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
@@ -15,6 +16,10 @@ export interface SignupState {
 
 export interface SignupProps {
   mode: AuthMode;
+  // Bound to this page's POST and to the guest session the GET set a cookie
+  // for. Null when no session could be made: the form still renders, and the
+  // post it produces fails the check, which is the right answer.
+  csrfToken?: string | null;
   state?: SignupState;
   challenge?: CaptchaChallenge | null;
   // Only true under the console email provider. Anywhere else the link really
@@ -24,6 +29,7 @@ export interface SignupProps {
 
 export const Signup = ({
   mode,
+  csrfToken,
   state,
   challenge,
   showConsoleHint,
@@ -63,6 +69,7 @@ export const Signup = ({
         </Flash>
       ) : (
         <form method="POST" action="/signup">
+          <CsrfField token={csrfToken} />
           {state?.state === "validation-error" && state.error && (
             <Flash type="error">
               <span>{state.error}</span>

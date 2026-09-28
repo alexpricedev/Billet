@@ -1,6 +1,5 @@
 import type { BunRequest } from "bun";
 import { getSessionContext } from "../../middleware/auth";
-import { checkCsrf } from "../../middleware/csrf";
 import { rateLimit } from "../../middleware/rate-limit";
 import { findUserByEmail, regenerateSession } from "../../services/auth";
 import { passwordAuthEnabled } from "../../services/auth-mode";
@@ -73,6 +72,13 @@ export const invite = {
       );
     }
 
+    // The CSRF token below binds to this session, guest included, so the
+    // cookie has to go out with the page or the post it protects arrives with
+    // no session to verify against.
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
+
     const needsPassword = await needsNewPassword(preview.email);
 
     // Gated on captchaEnabled() alone, never on needsPassword as well:
@@ -103,33 +109,27 @@ export const invite = {
 
     const ctx = await getSessionContext(req);
 
-    // A signed-in visitor has a session to bind a CSRF token to, so the check
-    // applies. A signed-out one is accepting from an emailed link with no
-    // prior session — guardAuthForm below is that path's defence, exactly as
-    // it is for /signup.
-    if (ctx.isAuthenticated) {
-      const csrf = await checkCsrf(req, {
-        method: "POST",
-        path: "/invites/accept",
-      });
-      if (!csrf.ok) return csrf.response;
-    }
-
-    // Rate limit, honeypot and captcha — this form can create an account, so it
-    // gets the same layered defence as the other unauthenticated auth forms.
+    // Rate limit, CSRF, honeypot and captcha — this form can create an
+    // account, so it gets the same layered defence as the other auth forms.
+    // The CSRF check covers signed-out visitors too: the GET gives them a
+    // guest session and a token bound to it.
     const guard = await guardAuthForm(req);
 
     if (!guard.ok) {
-      if (guard.reason === "rate-limited") return guard.response;
+      if (guard.reason === "rate-limited" || guard.reason === "csrf") {
+        return guard.response;
+      }
 
-      // A stale challenge must not cost someone their invite: nothing has been
-      // spent, so put them back on the same link.
+      // A stale challenge or a stale token must not cost someone their invite:
+      // nothing has been spent, so put them back on the same link.
       const attempted = guard.formData.get("token");
       return typeof attempted === "string" && attempted
         ? retryWithToken(
             req,
             attempted,
-            "Verification failed. Please try again.",
+            guard.reason === "csrf-expired"
+              ? "This page expired while it was open. Please try again."
+              : "Verification failed. Please try again.",
           )
         : deadEnd(req, "invalid-token");
     }

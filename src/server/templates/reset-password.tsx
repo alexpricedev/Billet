@@ -1,5 +1,6 @@
 import { AuthPage } from "../components/auth-page";
 import { CaptchaWidget } from "../components/captcha-widget";
+import { CsrfField } from "../components/csrf-field";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
@@ -13,12 +14,17 @@ export interface ResetPasswordState {
 
 export interface ResetPasswordProps {
   token: string;
+  // Bound to this page's POST and to the guest session the GET set a cookie
+  // for. Null when no session could be made: the form still renders, and the
+  // post it produces fails the check, which is the right answer.
+  csrfToken?: string | null;
   state?: ResetPasswordState;
   challenge?: CaptchaChallenge | null;
 }
 
 export const ResetPassword = ({
   token,
+  csrfToken,
   state,
   challenge,
 }: ResetPasswordProps) => (
@@ -45,6 +51,7 @@ export const ResetPassword = ({
       </Flash>
     ) : (
       <form method="POST" action="/reset-password">
+        <CsrfField token={csrfToken} />
         {state?.state === "validation-error" && state.error && (
           <Flash type="error">
             <span>{state.error}</span>

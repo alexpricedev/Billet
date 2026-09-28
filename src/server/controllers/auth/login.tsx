@@ -1,5 +1,5 @@
 import type { BunRequest } from "bun";
-import { redirectIfAuthenticated } from "../../middleware/auth";
+import { guestPageContext } from "../../middleware/auth";
 import {
   createMagicLink,
   MAGIC_LINK_EXPIRY_MINUTES,
@@ -17,6 +17,7 @@ import {
 import type { LoginState } from "../../templates/login";
 import { Login } from "../../templates/login";
 import { appUrl } from "../../utils/app-url";
+import { csrfTokens } from "../../utils/csrf-tokens";
 import { type FlashMessage, getFlashCookie } from "../../utils/flash";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
@@ -27,8 +28,16 @@ const { getFlash, setFlash } = stateHelpers<LoginState>();
 
 export const login = {
   async index(req: BunRequest): Promise<Response> {
-    const authRedirect = await redirectIfAuthenticated(req);
-    if (authRedirect) return authRedirect;
+    const page = await guestPageContext(req);
+    if ("redirect" in page) return page.redirect;
+
+    // The form posts a CSRF token, so the guest session it binds to has to
+    // reach the browser — minting one and dropping the cookie would render a
+    // token nothing could verify.
+    const { ctx } = page;
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
 
     const state = getFlash(req);
     const challenge = captchaEnabled() ? issueChallenge() : null;
@@ -52,6 +61,7 @@ export const login = {
     return render(
       <Login
         mode={authMode()}
+        csrfToken={await csrfTokens(ctx).for("/login")}
         state={resolved}
         challenge={challenge}
         message={message.text ? (message as FlashMessage) : undefined}
@@ -64,11 +74,25 @@ export const login = {
     const guard = await guardAuthForm(req);
 
     if (!guard.ok) {
-      if (guard.reason === "rate-limited") return guard.response;
+      if (guard.reason === "rate-limited" || guard.reason === "csrf") {
+        return guard.response;
+      }
 
       if (guard.reason === "honeypot") {
         log.warn("login", "honeypot tripped, dropping submission");
         setFlash(req, feignedFailure(guard.formData));
+        return redirect("/login");
+      }
+
+      // A stale token is an old tab, not an attack. The address survives so
+      // the retry costs a click; the redirect lands on a page that mints a
+      // fresh token.
+      if (guard.reason === "csrf-expired") {
+        setFlash(req, {
+          state: "validation-error",
+          error: "This page expired while it was open. Please try again.",
+          email: readEmail(guard.formData),
+        });
         return redirect("/login");
       }
 

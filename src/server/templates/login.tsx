@@ -1,5 +1,6 @@
 import { AuthPage } from "../components/auth-page";
 import { CaptchaWidget } from "../components/captcha-widget";
+import { CsrfField } from "../components/csrf-field";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
@@ -21,6 +22,10 @@ export interface LoginState {
 
 export interface LoginProps {
   mode: AuthMode;
+  // Bound to this page's POST and to the guest session the GET set a cookie
+  // for. Null when no session could be made: the form still renders, and the
+  // post it produces fails the check, which is the right answer.
+  csrfToken?: string | null;
   state?: LoginState;
   challenge?: CaptchaChallenge | null;
   // The cross-page "message" flash, not this page's own state: something
@@ -33,6 +38,7 @@ export interface LoginProps {
 
 export const Login = ({
   mode,
+  csrfToken,
   state,
   challenge,
   message,
@@ -83,6 +89,7 @@ export const Login = ({
         </Flash>
       ) : (
         <form method="POST" action="/login">
+          <CsrfField token={csrfToken} />
           {(state?.state === "validation-error" ||
             state?.state === "no-password") &&
             state.error && (

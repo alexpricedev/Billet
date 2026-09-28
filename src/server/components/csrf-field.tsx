@@ -1,7 +1,7 @@
 import type { JSX } from "preact";
 
 interface CsrfFieldProps {
-  token: string | null;
+  token: string | null | undefined;
 }
 
 /**
