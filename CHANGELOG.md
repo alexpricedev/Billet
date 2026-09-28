@@ -7,6 +7,99 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.0.0
+
+The signed-out auth forms are CSRF-checked. `/login`, `/signup`, `/forgot-password`,
+`/reset-password` and `/invites/accept` all ran the rate limit, the honeypot and the captcha and
+then took the post on trust, on the reasoning that there is no session to protect. There is: a
+forged `POST /login` signs the victim into the *attacker's* account and they carry on working in
+it — the same reasoning `/auth/callback` is CSRF-checked on (`runbooks/EMAIL.md` §5). A major
+version because the four signed-out templates now need a token the controller has to pass, and
+`redirectIfAuthenticated` is gone — see **Breaking changes**.
+
+**The check lives in `guardAuthForm`, between the rate limit and the body parse.** One place, so
+the five forms cannot drift apart. The position is load-bearing in both directions: `checkCsrf`
+clones the request to find the field, so a controller that reads the form first spends the body
+and 403s every request; and a post with no session cookie is refused before the clone, so a
+cookie-less flood still costs nothing.
+
+**Not having a session is no reason to skip the check — it is the reason to issue one.** The `GET`
+for each of these pages now sets the guest session cookie and mints a token against it. Minting a
+token without sending the cookie renders something nothing can verify, which is the bug this
+release actually fixes: `redirectIfAuthenticated` called `getSessionContext`, which creates a guest
+session as a side effect, and then threw the context away — a session row per anonymous page view,
+no cookie, no token. `guestPageContext` hands the context back instead. `/reset-password` and
+`/invites/accept` read the context directly rather than through it, because spending one of those
+links while already signed in is legitimate.
+
+**A stale token is an old tab, not an attack.** A token that verifies against the session secret
+but only in an older bucket proves possession, so the form is re-rendered behind a fresh token and
+the action is not performed. `/login`, `/signup` and `/forgot-password` come back with the typed
+address intact; `/reset-password` and `/invites/accept` come back to their own link, because the
+single-use token is in the form body and a stale CSRF token must not cost someone a new email.
+Only `expired-token` recovers — `invalid-origin` and `expired-session` stay hard 403s, and widening
+that gate would turn the app into a token vending machine for attacker-initiated posts.
+
+**A visitor with cookies blocked gets a form that renders and a post that is refused.** The
+templates draw the form whether or not a token was minted. Refusing to draw it would turn a
+session that could not be created into a blank page rather than a post that fails the check.
+
+### Breaking changes
+
+- **A fork that renders `Login`, `Signup`, `ForgotPassword` or `ResetPassword` from its own
+  controller breaks silently.** The new `csrfToken` prop is optional, so the call still typechecks,
+  still renders, and then 403s every submission with nothing in the logs but the refusal. Grep for
+  `<Login`, `<Signup`, `<ForgotPassword` and `<ResetPassword` before merging, and pass
+  `await csrfTokens(ctx).for("<the form's action>")` from `src/server/utils/csrf-tokens.ts` — the
+  token is bound to method *and* path, so it must name the path that form posts to. The shipped
+  controllers are the worked examples. This is the one change here that fails at runtime rather
+  than at `bun run typecheck`.
+- **`redirectIfAuthenticated` is removed from `src/server/middleware/auth.ts`.** `guestPageContext`
+  replaces it and returns `{ redirect } | { ctx }` rather than `Response | null`, so a caller reads
+  `if ("redirect" in page) return page.redirect` and then has the session context to set the guest
+  cookie from and mint a token against. A fork calling the old name fails typecheck, which is the
+  right kind of failure — the rename exists because the old signature could not hand back the
+  context the forms need.
+- **A fork's own tests that post to these five routes now get a 403.** Every post needs a session
+  cookie, an `Origin`, and a `_csrf` field bound to that session and path.
+  `src/server/test-utils/auth-form.ts` is the helper the shipped tests use: `authFormPost(path,
+  formData)` mints all three, with options to omit the token, forge it, change the origin, or reuse
+  a known session. Import it *below* the `mock.module("../../services/database", …)` call, like
+  every other service import in those files.
+- **`GET /reset-password` now mints a guest session and sets a cookie** where it previously created
+  nothing. A fork asserting on the absence of `Set-Cookie` there, or counting session rows across
+  that page, will see one more than it did.
+- **`migrations.applied_at` becomes `TIMESTAMPTZ`.** Every migration file already used it; this
+  table predates the convention and was the one naive timestamp left. `ensureMigrationsTable`
+  converts in place at boot, guarded so a database that is already correct does not take an
+  `ACCESS EXCLUSIVE` lock for nothing. `CREATE TABLE IF NOT EXISTS` cannot do it, which is why the
+  conversion is a second statement. Existing rows are reinterpreted in the server's `TimeZone`; a
+  fork running Postgres in anything but UTC should check the values afterwards.
+
+### Fixed
+
+- **The signed-out auth forms verify a CSRF token.** `/login`, `/signup`, `/forgot-password`,
+  `/reset-password` and `/invites/accept`, all through `guardAuthForm`
+  (`src/server/controllers/auth/form-guard.ts`). `runbooks/SECURITY.md` §3 has the rule, the
+  ordering constraint, and the recovery behaviour.
+- **`/invites/accept` no longer gates the check on `ctx.isAuthenticated`.** It ran `checkCsrf` for
+  a signed-in visitor and skipped it for everyone else, on the reasoning that a signed-out invitee
+  has no session to bind to. They do now: the `GET` gives them one.
+- **One orphan session row per anonymous page view, on every signed-out auth page.** The rows were
+  created, never cookied, and never used again.
+
+### Changed
+
+- **`FormGuardResult` gains `csrf` and `csrf-expired`.** The first carries the refusal `Response`
+  and is returned alongside `rate-limited`; the second carries the parsed body, like `honeypot` and
+  `captcha`, so the caller can put the visitor back where they were. `csrf-expired` is returned
+  ahead of the honeypot and the captcha because those are stale on that same page and their verdict
+  cannot change the outcome.
+- **`CsrfField` accepts `undefined`** as well as `string | null`, so an optional prop can be passed
+  straight through.
+- **`src/server/templates/auth-forms.test.tsx`** covers all four signed-out forms against both a
+  token and a null, which is what pins the "render the form either way" rule.
+
 ## 4.2.1
 
 The "check the server console for the link" hint now renders only under
