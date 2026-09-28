@@ -27,6 +27,8 @@ import {
   createAuthenticatedSession,
   getSessionContextFromDB,
 } from "../../services/sessions";
+import type { AccountState } from "../../templates/account";
+import { stateHelpers } from "../../utils/state";
 import { account } from "./account";
 
 const PASSWORD = "correct-horse-battery";
@@ -449,6 +451,45 @@ describe("Account Controller", () => {
 
       expect(html).toContain("Acme");
       expect(html).not.toContain("Manage team members");
+    });
+  });
+
+  describe("the console link hint", () => {
+    const ORIGINAL_PROVIDER = process.env.EMAIL_PROVIDER;
+
+    afterAll(() => {
+      if (ORIGINAL_PROVIDER === undefined) delete process.env.EMAIL_PROVIDER;
+      else process.env.EMAIL_PROVIDER = ORIGINAL_PROVIDER;
+    });
+
+    const sentPage = async () => {
+      const user = await findOrCreateUser("hint@example.com");
+      const request = getAccount(await createAuthenticatedSession(user.id));
+      stateHelpers<AccountState>().setFlash(request, {
+        state: "verification-sent",
+      });
+
+      return (await account.index(request)).text();
+    };
+
+    test("appears when mail goes to the console", async () => {
+      process.env.EMAIL_PROVIDER = "console";
+
+      const html = await sentPage();
+
+      expect(html).toContain("Confirmation link sent to");
+      expect(html).toContain("check the server console");
+    });
+
+    // Anywhere else the link really is in an inbox, and the hint points at a
+    // terminal the reader has no way to see.
+    test("is absent for a real provider", async () => {
+      process.env.EMAIL_PROVIDER = "resend";
+
+      const html = await sentPage();
+
+      expect(html).toContain("Confirmation link sent to");
+      expect(html).not.toContain("check the server console");
     });
   });
 });

@@ -14,9 +14,16 @@ export interface ForgotPasswordState {
 export interface ForgotPasswordProps {
   state?: ForgotPasswordState;
   challenge?: CaptchaChallenge | null;
+  // Only true under the console email provider. Anywhere else the link really
+  // is in an inbox, and the hint sends people to a terminal they can't see.
+  showConsoleHint?: boolean;
 }
 
-export const ForgotPassword = ({ state, challenge }: ForgotPasswordProps) => (
+export const ForgotPassword = ({
+  state,
+  challenge,
+  showConsoleHint,
+}: ForgotPasswordProps) => (
   <AuthPage
     title="Reset your password - Billet"
     description="Request a link to reset your Billet password."
@@ -40,7 +47,9 @@ export const ForgotPassword = ({ state, challenge }: ForgotPasswordProps) => (
           If an account exists for that address, we've sent a link to reset the
           password.
         </p>
-        <p>For testing: Check the server console for the link.</p>
+        {showConsoleHint && (
+          <p>For testing: Check the server console for the link.</p>
+        )}
       </Flash>
     ) : (
       <form method="POST" action="/forgot-password">

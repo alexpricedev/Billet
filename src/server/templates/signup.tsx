@@ -17,9 +17,17 @@ export interface SignupProps {
   mode: AuthMode;
   state?: SignupState;
   challenge?: CaptchaChallenge | null;
+  // Only true under the console email provider. Anywhere else the link really
+  // is in an inbox, and the hint sends people to a terminal they can't see.
+  showConsoleHint?: boolean;
 }
 
-export const Signup = ({ mode, state, challenge }: SignupProps) => {
+export const Signup = ({
+  mode,
+  state,
+  challenge,
+  showConsoleHint,
+}: SignupProps) => {
   const password = mode === "password";
 
   return (
@@ -49,7 +57,9 @@ export const Signup = ({ mode, state, challenge }: SignupProps) => {
         <Flash type="success">
           <p>Check your email!</p>
           <p>We've sent you a link to finish setting up your account.</p>
-          <p>For testing: Check the server console for the link.</p>
+          {showConsoleHint && (
+            <p>For testing: Check the server console for the link.</p>
+          )}
         </Flash>
       ) : (
         <form method="POST" action="/signup">

@@ -8,7 +8,7 @@ import {
 } from "../../services/auth";
 import { authMode, passwordAuthEnabled } from "../../services/auth-mode";
 import { captchaEnabled, issueChallenge } from "../../services/captcha";
-import { getEmailService } from "../../services/email";
+import { consoleEmailProvider, getEmailService } from "../../services/email";
 import { log } from "../../services/logger";
 import { signUpWithPassword, validatePassword } from "../../services/passwords";
 import {
@@ -40,7 +40,12 @@ export const signup = {
     const challenge = captchaEnabled() ? issueChallenge() : null;
 
     return render(
-      <Signup mode={authMode()} state={state} challenge={challenge} />,
+      <Signup
+        mode={authMode()}
+        state={state}
+        challenge={challenge}
+        showConsoleHint={consoleEmailProvider()}
+      />,
     );
   },
 

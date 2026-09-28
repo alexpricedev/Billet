@@ -16,6 +16,8 @@ mock.module("../../services/database", () => ({
 import { findOrCreateUser } from "../../services/auth";
 import { db } from "../../services/database";
 import { createGuestSession } from "../../services/sessions";
+import type { SignupState } from "../../templates/signup";
+import { stateHelpers } from "../../utils/state";
 import { signup } from "./signup";
 
 const PASSWORD = "correct-horse-battery";
@@ -261,6 +263,36 @@ describe("Signup Controller", () => {
       expect(
         (await signup.create(post({ email: "flood@example.com" }))).status,
       ).toBe(429);
+    });
+  });
+
+  describe("the console link hint", () => {
+    const ORIGINAL_PROVIDER = process.env.EMAIL_PROVIDER;
+
+    afterAll(() => {
+      if (ORIGINAL_PROVIDER === undefined) delete process.env.EMAIL_PROVIDER;
+      else process.env.EMAIL_PROVIDER = ORIGINAL_PROVIDER;
+    });
+
+    const sentPage = async () => {
+      const request = get();
+      stateHelpers<SignupState>().setFlash(request, { state: "email-sent" });
+
+      return (await signup.index(request)).text();
+    };
+
+    test("appears when mail goes to the console", async () => {
+      process.env.EMAIL_PROVIDER = "console";
+
+      expect(await sentPage()).toContain("Check the server console");
+    });
+
+    // Anywhere else the link really is in an inbox, and the hint points at a
+    // terminal the reader has no way to see.
+    test("is absent for a real provider", async () => {
+      process.env.EMAIL_PROVIDER = "resend";
+
+      expect(await sentPage()).not.toContain("Check the server console");
     });
   });
 });

@@ -7,7 +7,7 @@ import {
 } from "../../services/auth";
 import { authMode, passwordAuthEnabled } from "../../services/auth-mode";
 import { captchaEnabled, issueChallenge } from "../../services/captcha";
-import { getEmailService } from "../../services/email";
+import { consoleEmailProvider, getEmailService } from "../../services/email";
 import { log } from "../../services/logger";
 import { signInWithPassword } from "../../services/passwords";
 import {
@@ -55,7 +55,7 @@ export const login = {
         state={resolved}
         challenge={challenge}
         message={message.text ? (message as FlashMessage) : undefined}
-        showConsoleHint={process.env.EMAIL_PROVIDER === "console"}
+        showConsoleHint={consoleEmailProvider()}
       />,
     );
   },
