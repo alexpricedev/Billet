@@ -72,6 +72,18 @@ describe("robots.txt Controller", () => {
     );
   });
 
+  // Content-Signal follows ALLOW_INDEXING like every other crawler-facing
+  // statement. Consent left open on a host nobody configured is the failure
+  // this closes, so the negative assertion is the point of the test.
+  test("closes the Content-Signal posture while indexing is off", async () => {
+    const body = await robotsTxt.index().text();
+
+    expect(body).toContain(
+      "Content-Signal: search=no, ai-input=no, ai-train=no",
+    );
+    expect(body).not.toContain("ai-train=yes");
+  });
+
   test("points at the absolute sitemap URL under the site origin", async () => {
     allowIndexing();
     const body = await robotsTxt.index().text();
