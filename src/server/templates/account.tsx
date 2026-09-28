@@ -31,6 +31,9 @@ export interface AccountProps {
   csrfToken?: string;
   resendCsrfToken?: string;
   passwordCsrfToken?: string;
+  // Only true under the console email provider. Anywhere else the link really
+  // is in an inbox, and the hint sends people to a terminal they can't see.
+  showConsoleHint?: boolean;
 }
 
 const formatDate = (date: Date): string =>
@@ -49,6 +52,7 @@ export const Account = ({
   csrfToken,
   resendCsrfToken,
   passwordCsrfToken,
+  showConsoleHint,
 }: AccountProps) => (
   <Layout
     title="Account - Billet"
@@ -70,8 +74,8 @@ export const Account = ({
     {state?.state === "verification-sent" && (
       <Flash type="success">
         <span>
-          Confirmation link sent to {user.email}. For testing: check the server
-          console.
+          Confirmation link sent to {user.email}.
+          {showConsoleHint && " For testing: check the server console."}
         </span>
       </Flash>
     )}

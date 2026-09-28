@@ -282,3 +282,10 @@ export const getEmailService = (): EmailService => {
 export const setEmailService = (service: EmailService): void => {
   emailServiceInstance = service;
 };
+
+// True only under the console provider, which logs the whole message — link
+// included — to the terminal. It's a provider check rather than a NODE_ENV or
+// localhost one on purpose: a fork running the console provider on a staging
+// box still needs the hint, and a local run pointed at Resend must not show it.
+export const consoleEmailProvider = (): boolean =>
+  process.env.EMAIL_PROVIDER === "console";

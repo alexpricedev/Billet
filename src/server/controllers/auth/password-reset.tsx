@@ -6,7 +6,7 @@ import {
 } from "../../services/auth";
 import { passwordAuthEnabled } from "../../services/auth-mode";
 import { captchaEnabled, issueChallenge } from "../../services/captcha";
-import { getEmailService } from "../../services/email";
+import { consoleEmailProvider, getEmailService } from "../../services/email";
 import { log } from "../../services/logger";
 import {
   createPasswordReset,
@@ -64,6 +64,7 @@ export const passwordReset = {
       <ForgotPassword
         state={state}
         challenge={captchaEnabled() ? issueChallenge() : null}
+        showConsoleHint={consoleEmailProvider()}
       />,
     );
   },

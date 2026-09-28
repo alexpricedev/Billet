@@ -61,6 +61,8 @@ import {
   createAuthenticatedSession,
   getSessionContextFromDB,
 } from "../../services/sessions";
+import type { ForgotPasswordState } from "../../templates/forgot-password";
+import { stateHelpers } from "../../utils/state";
 import { passwordReset } from "./password-reset";
 
 const PASSWORD = "correct-horse-battery";
@@ -590,6 +592,38 @@ describe("Password Reset Controller", () => {
           )
         ).status,
       ).toBe(404);
+    });
+  });
+
+  describe("the console link hint", () => {
+    const ORIGINAL_PROVIDER = process.env.EMAIL_PROVIDER;
+
+    afterAll(() => {
+      if (ORIGINAL_PROVIDER === undefined) delete process.env.EMAIL_PROVIDER;
+      else process.env.EMAIL_PROVIDER = ORIGINAL_PROVIDER;
+    });
+
+    const sentPage = async () => {
+      const request = getForgot();
+      stateHelpers<ForgotPasswordState>().setFlash(request, {
+        state: "email-sent",
+      });
+
+      return (await passwordReset.index(request)).text();
+    };
+
+    test("appears when mail goes to the console", async () => {
+      process.env.EMAIL_PROVIDER = "console";
+
+      expect(await sentPage()).toContain("Check the server console");
+    });
+
+    // Anywhere else the link really is in an inbox, and the hint points at a
+    // terminal the reader has no way to see.
+    test("is absent for a real provider", async () => {
+      process.env.EMAIL_PROVIDER = "resend";
+
+      expect(await sentPage()).not.toContain("Check the server console");
     });
   });
 });

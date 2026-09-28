@@ -4,6 +4,7 @@ import { checkCsrf } from "../../middleware/csrf";
 import { rateLimit } from "../../middleware/rate-limit";
 import { authMode, passwordAuthEnabled } from "../../services/auth-mode";
 import { createCsrfToken } from "../../services/csrf";
+import { consoleEmailProvider } from "../../services/email";
 import { log } from "../../services/logger";
 import { atLeast, getMembership } from "../../services/organizations";
 import {
@@ -80,6 +81,7 @@ export const account = {
         csrfToken={csrfToken}
         resendCsrfToken={resendCsrfToken}
         passwordCsrfToken={passwordCsrfToken}
+        showConsoleHint={consoleEmailProvider()}
       />,
     );
   },
