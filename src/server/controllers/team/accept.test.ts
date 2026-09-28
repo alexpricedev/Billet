@@ -220,8 +220,8 @@ describe("Invite acceptance", () => {
       const other = await findOrCreateUser("someone@example.com");
       const sessionId = await createAuthenticatedSession(other.id);
 
-      // A signed-in POST has a session to bind a token to, so the CSRF check
-      // applies — supply one, or this asserts the wrong refusal.
+      // The refusal under test is the email mismatch, not CSRF — authFormPost
+      // binds a valid token to this session so the guard passes.
       const response = await invite.create(
         await postAccept({ token: seeded.rawToken }, { sessionId }),
       );

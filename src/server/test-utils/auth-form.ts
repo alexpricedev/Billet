@@ -80,6 +80,3 @@ export const staleCsrfToken = async (
     Date.now = realNow;
   }
 };
-
-/** The guest session a form page would have set a cookie for. */
-export { createGuestSession as guestSession };
