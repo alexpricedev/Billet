@@ -37,7 +37,7 @@ export async function bootstrap() {
       CREATE TABLE IF NOT EXISTS migrations (
         id VARCHAR(255) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       )
     `;
 
