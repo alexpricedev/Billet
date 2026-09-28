@@ -144,9 +144,11 @@ path you also `noindex` unless it's already de-indexed.
 `/robots.txt` is **generated**, not a static file: `buildRobotsTxt()` in
 [`src/server/services/seo.ts`](../src/server/services/seo.ts) builds the body and
 [`controllers/app/robots-txt.ts`](../src/server/controllers/app/robots-txt.ts)
-serves it. The body is the same whether or not `ALLOW_INDEXING` is set, minus
-the `Sitemap:` line while indexing is off (§1b) — there is nothing to advertise
-on a host that isn't indexable, and `noindex` does the keeping-out. It:
+serves it. Crawling stays allowed whether or not `ALLOW_INDEXING` is set (§1b) —
+a crawler has to fetch a page to be told `noindex`, so blocking the fetch would
+strand the layers that do the work. Two things follow the switch: the `Sitemap:`
+line, which is dropped while indexing is off because there is nothing to
+advertise on a host that isn't indexable, and the `Content-Signal` values. It:
 
 - allows all user-agents,
 - disallows the private surfaces listed in `ROBOTS_DISALLOW` — `/admin`,
@@ -154,8 +156,12 @@ on a host that isn't indexable, and `noindex` does the keeping-out. It:
 - repeats the same rules for each crawler in `AI_CRAWLERS` (GPTBot, ClaudeBot,
   PerplexityBot and friends), because in robots.txt a named user-agent group
   fully replaces the wildcard group for that agent,
-- declares `Content-Signal: search=yes, ai-input=yes, ai-train=yes`,
-- points crawlers at the sitemap.
+- declares `Content-Signal: search=yes, ai-input=yes, ai-train=yes` when indexing
+  is allowed, and `search=no, ai-input=no, ai-train=no` when it isn't — `search`
+  would otherwise contradict the `noindex` every response already carries, and
+  grounding and training consent fails closed for the reason §1b gives: an
+  unconfigured host shouldn't grant it because nobody set a variable,
+- points crawlers at the sitemap when indexing is allowed.
 
 The `Sitemap:` line is an absolute URL built from the canonical origin (§1a), so
 it follows your production domain automatically — nothing to edit. To disallow a

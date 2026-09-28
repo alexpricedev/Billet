@@ -94,8 +94,16 @@ const ROBOTS_DISALLOW = [
 ] as const;
 
 // Content-Signal (an emerging IETF AI Preferences / IAB Tech Lab proposal)
-// declares downstream-use consent explicitly for crawlers that honour it.
-const CONTENT_SIGNAL = "Content-Signal: search=yes, ai-input=yes, ai-train=yes";
+// declares downstream-use consent explicitly for crawlers that honour it. It
+// follows indexingAllowed() rather than standing on its own: `search=yes`
+// alongside a site-wide `noindex` is two answers to one question, and the other
+// two axes fail closed for the reason indexingAllowed() is closed by default —
+// a preview, a staging box or a fork's first deploy should not be granting
+// consent to ground or train on its content because nobody set a variable.
+const contentSignal = (open: boolean): string =>
+  open
+    ? "Content-Signal: search=yes, ai-input=yes, ai-train=yes"
+    : "Content-Signal: search=no, ai-input=no, ai-train=no";
 
 // Builds the /robots.txt body. Billet is built for AI coding agents, so the
 // posture is deliberately open: search engines and the major AI crawlers are
@@ -107,18 +115,20 @@ const CONTENT_SIGNAL = "Content-Signal: search=yes, ai-input=yes, ai-train=yes";
 // would block the fetch and so disable the `X-Robots-Tag` and the meta tag
 // that do the actual work. It would also not prevent indexing on its own: a
 // URL that is linked from somewhere else gets indexed unfetched, as a bare
-// result with no title. So the closed posture differs by one line, the
-// `Sitemap:`, and leaves the rest to `noindex`.
+// result with no title. So the closed posture differs by the `Sitemap:` line
+// and the Content-Signal values, and leaves the rest to `noindex`.
 export const buildRobotsTxt = (): string => {
+  // Read once, so every line of one body answers from the same state.
+  const open = indexingAllowed();
+  const signal = contentSignal(open);
+
   const group = (agents: readonly string[]): string =>
     [
       ...agents.map((agent) => `User-agent: ${agent}`),
       "Allow: /",
       ...ROBOTS_DISALLOW.map((path) => `Disallow: ${path}`),
-      CONTENT_SIGNAL,
+      signal,
     ].join("\n");
-
-  const open = indexingAllowed();
 
   return [
     ...(open
@@ -129,7 +139,8 @@ export const buildRobotsTxt = (): string => {
       : [
           "# Indexing is switched off (ALLOW_INDEXING is not `true`). Crawling is",
           "# still allowed on purpose: every page and every response says",
-          "# noindex, and a crawler has to fetch a page to be told that.",
+          "# noindex, and a crawler has to fetch a page to be told that. The",
+          "# Content-Signal below says no to search, grounding and training.",
           "# See runbooks/SEO.md §1b.",
         ]),
     "",
