@@ -7,6 +7,32 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 4.2.1
+
+The "check the server console for the link" hint now renders only under
+`EMAIL_PROVIDER=console`. Signup, forgot-password and the `/account` verification flash showed it
+to everyone; with a real provider configured the link is in an inbox and the hint pointed at a
+terminal the reader has no access to.
+
+**No migration, and no fork has code to change** unless it renders one of those three templates
+itself — `signup.tsx`, `forgot-password.tsx` and `account.tsx` each take a new
+`showConsoleHint` prop, and a fork calling them directly gets the hint hidden by default.
+
+### Fixed
+
+- **The console hint is gated on the provider, not on `NODE_ENV` or a localhost check.** A fork
+  running the console provider on a staging box still needs the hint; a local run pointed at
+  Resend must not show it. `login.tsx` was already fixed this way in 3.0 — the other three sites
+  were missed and now take the same prop.
+- **The `/account` flash is split.** It was one sentence, so the "sent to `<email>`" half now
+  always renders and only the hint clause drops.
+
+### Changed
+
+- **`consoleEmailProvider()` in `src/server/services/email.ts`** replaces the `process.env`
+  comparison the controllers each repeated. It reads `process.env` per call, like `authMode()`
+  and `teamsEnabled()`, so a test can flip the provider mid-file.
+
 ## 4.2.0
 
 The password minimum moves from 8 to 12, and the rule stops being written down in four places.
