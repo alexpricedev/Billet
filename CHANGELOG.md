@@ -7,6 +7,34 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.0.1
+
+`Content-Signal` in `/robots.txt` now follows `ALLOW_INDEXING` like every other statement Billet
+makes to a crawler. It was a module constant appended to every user-agent group unconditionally, so
+a host with indexing switched off — a preview, a staging box, a fork's first deploy, a test run —
+served `search=yes, ai-input=yes, ai-train=yes` while every response on it carried
+`X-Robots-Tag: noindex` and the meta tag said the same.
+
+**No migration, and no fork has code to change.** A fork that wants the open posture on an
+un-indexed host sets `ALLOW_INDEXING=true`, which is the switch that already governs the rest.
+
+### Fixed
+
+- **`search=yes` alongside a site-wide `noindex` was two answers to one question.** The closed
+  posture is now `search=no, ai-input=no, ai-train=no`, in the wildcard group and in each named
+  AI-crawler group. The open posture is unchanged.
+- **Grounding and training consent fails closed for the reason `indexingAllowed()` is closed by
+  default** (`runbooks/SEO.md` §1b): an unconfigured host should not be granting downstream-use
+  consent because nobody set a variable.
+- **Crawling stays allowed either way**, which is unchanged and still deliberate — a crawler has to
+  fetch a page to be told `noindex`, so a `Disallow: /` would strand the layers doing the work.
+
+### Changed
+
+- **`contentSignal(open)` in `src/server/services/seo.ts`** replaces the `CONTENT_SIGNAL` constant,
+  and `buildRobotsTxt` reads `indexingAllowed()` once so a single body cannot answer from two
+  states. `runbooks/SEO.md` §5 documented the line as unconditional and is corrected.
+
 ## 5.0.0
 
 The signed-out auth forms are CSRF-checked. `/login`, `/signup`, `/forgot-password`,
