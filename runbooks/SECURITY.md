@@ -120,6 +120,32 @@ nothing on the page evaluates a string. Frameworks that put expressions in
 attributes (Alpine, petite-vue, in-DOM Vue) need `'unsafe-eval'`; adding one
 means widening this policy.
 
+**The signed-out forms are CSRF-checked too, and need a cookie to be.**
+`/login`, `/signup`, `/forgot-password`, `/reset-password` and `/invites/accept`
+run `checkCsrf` inside `guardAuthForm`
+([`controllers/auth/form-guard.ts`](../src/server/controllers/auth/form-guard.ts)),
+between the rate limit and the body parse — `checkCsrf` clones the request to
+read the token, so a controller that reads the form first 403s every request.
+
+Not having a session is no reason to skip it: a forged `POST /login` signs the
+victim into the *attacker's* account, and they carry on working in it. This is
+the same reasoning as `/auth/callback` in [`EMAIL.md`](EMAIL.md) §5. So the `GET`
+for each of these pages sets the guest session cookie and mints a token against
+it — minting one without sending the cookie renders a token nothing can verify,
+which is the bug this replaced. `/login`, `/signup` and `/forgot-password` go
+through `guestPageContext`
+([`middleware/auth.ts`](../src/server/middleware/auth.ts)), which bounces a
+signed-in visitor and otherwise hands back the context to set the cookie from;
+`/reset-password` and `/invites/accept` read the context directly, because
+spending one of those links while already signed in is legitimate. A visitor
+with cookies blocked gets a form that renders and a post that is refused, which
+is the intended answer.
+
+Stale-token recovery on these forms returns the visitor to the form with what
+they typed; `/reset-password` and `/invites/accept` return to their own link,
+because the single-use token is in the form body and a stale CSRF token must not
+cost someone a new email.
+
 **Enhanced form posts and CSRF.** `server.submit` (`src/client/reactive/request.ts`)
 posts a form with its CSRF token promoted to the `X-CSRF-Token` header, which
 `checkCsrf` reads before the body, plus `X-Fragment: 1`. Origin validation

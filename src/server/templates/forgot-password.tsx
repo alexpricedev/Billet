@@ -1,5 +1,6 @@
 import { AuthPage } from "../components/auth-page";
 import { CaptchaWidget } from "../components/captcha-widget";
+import { CsrfField } from "../components/csrf-field";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
@@ -12,6 +13,10 @@ export interface ForgotPasswordState {
 }
 
 export interface ForgotPasswordProps {
+  // Bound to this page's POST and to the guest session the GET set a cookie
+  // for. Null when no session could be made: the form still renders, and the
+  // post it produces fails the check, which is the right answer.
+  csrfToken?: string | null;
   state?: ForgotPasswordState;
   challenge?: CaptchaChallenge | null;
   // Only true under the console email provider. Anywhere else the link really
@@ -20,6 +25,7 @@ export interface ForgotPasswordProps {
 }
 
 export const ForgotPassword = ({
+  csrfToken,
   state,
   challenge,
   showConsoleHint,
@@ -53,6 +59,7 @@ export const ForgotPassword = ({
       </Flash>
     ) : (
       <form method="POST" action="/forgot-password">
+        <CsrfField token={csrfToken} />
         {state?.state === "validation-error" && state.error && (
           <Flash type="error">
             <span>{state.error}</span>

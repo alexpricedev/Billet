@@ -17,8 +17,26 @@ export const ensureMigrationsTable = async (): Promise<void> => {
     CREATE TABLE IF NOT EXISTS migrations (
       id VARCHAR(255) PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
-      applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     )
+  `;
+
+  // Every migration file uses TIMESTAMPTZ; this table predates that and was
+  // the one place left declaring a naive timestamp. CREATE TABLE IF NOT EXISTS
+  // skips a database that already has it, so the conversion needs its own
+  // statement — guarded, so a boot on an already-correct database doesn't take
+  // an ACCESS EXCLUSIVE lock for nothing.
+  await db`
+    DO $$ BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'migrations'
+          AND column_name = 'applied_at'
+          AND data_type = 'timestamp without time zone'
+      ) THEN
+        ALTER TABLE migrations ALTER COLUMN applied_at TYPE TIMESTAMPTZ;
+      END IF;
+    END $$
   `;
 };
 

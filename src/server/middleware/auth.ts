@@ -77,17 +77,29 @@ export const requireAuth = async (
   return null;
 };
 
-export const redirectIfAuthenticated = async (
-  req: BunRequest,
-): Promise<Response | null> => {
+export type GuestPage = { redirect: Response } | { ctx: SessionContext };
+
+/**
+ * The GET side of a signed-out form page: bounce anyone already signed in,
+ * otherwise hand the session context back so the caller can set the guest
+ * cookie and mint a CSRF token against it.
+ *
+ * Returning the context is the point. `getSessionContext` creates a guest
+ * session as a side effect, so a caller that only wanted the redirect was
+ * writing a session row per request and then dropping the id — which left the
+ * auth forms with no session to bind a token to, and no cookie to prove it.
+ */
+export const guestPageContext = async (req: BunRequest): Promise<GuestPage> => {
   const ctx = await getSessionContext(req);
 
   if (ctx.isAuthenticated) {
-    return new Response("", {
-      status: 303,
-      headers: { Location: "/" },
-    });
+    return {
+      redirect: new Response("", {
+        status: 303,
+        headers: { Location: "/" },
+      }),
+    };
   }
 
-  return null;
+  return { ctx };
 };

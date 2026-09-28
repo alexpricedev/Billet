@@ -1,5 +1,5 @@
 import type { BunRequest } from "bun";
-import { redirectIfAuthenticated } from "../../middleware/auth";
+import { getSessionContext, guestPageContext } from "../../middleware/auth";
 import {
   PASSWORD_RESET_EXPIRY_MINUTES,
   regenerateSession,
@@ -24,6 +24,7 @@ import { ForgotPassword } from "../../templates/forgot-password";
 import type { ResetPasswordState } from "../../templates/reset-password";
 import { ResetPassword } from "../../templates/reset-password";
 import { appUrl } from "../../utils/app-url";
+import { csrfTokens } from "../../utils/csrf-tokens";
 import { render404 } from "../../utils/errors";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
@@ -44,8 +45,15 @@ export const passwordReset = {
   async index(req: BunRequest): Promise<Response> {
     if (!passwordAuthEnabled()) return render404();
 
-    const authRedirect = await redirectIfAuthenticated(req);
-    if (authRedirect) return authRedirect;
+    const page = await guestPageContext(req);
+    if ("redirect" in page) return page.redirect;
+
+    // See login.index: the CSRF token binds to the guest session, so its
+    // cookie has to go out with the page.
+    const { ctx } = page;
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
 
     // /login links here with ?email= after a sign-in against an account that
     // predates password auth. Flash wins, so a failed POST redirect back here
@@ -62,6 +70,7 @@ export const passwordReset = {
 
     return render(
       <ForgotPassword
+        csrfToken={await csrfTokens(ctx).for("/forgot-password")}
         state={state}
         challenge={captchaEnabled() ? issueChallenge() : null}
         showConsoleHint={consoleEmailProvider()}
@@ -75,7 +84,9 @@ export const passwordReset = {
     const guard = await guardAuthForm(req);
 
     if (!guard.ok) {
-      if (guard.reason === "rate-limited") return guard.response;
+      if (guard.reason === "rate-limited" || guard.reason === "csrf") {
+        return guard.response;
+      }
 
       if (guard.reason === "honeypot") {
         log.warn("password-reset", "honeypot tripped, dropping submission");
@@ -83,12 +94,15 @@ export const passwordReset = {
         return redirect("/forgot-password");
       }
 
-      // The address survives a failed challenge: a stale captcha is nobody's
-      // mistake, and making them retype it to get a fresh one is friction with
-      // nothing to show for it.
+      // The address survives a failed challenge, and a stale token the same
+      // way: neither is the visitor's mistake, and making them retype it to
+      // get a fresh one is friction with nothing to show for it.
       forgotFlash.setFlash(req, {
         state: "validation-error",
-        error: "Verification failed. Please try again.",
+        error:
+          guard.reason === "csrf-expired"
+            ? "This page expired while it was open. Please try again."
+            : "Verification failed. Please try again.",
         email: readEmail(guard.formData),
       });
       return redirect("/forgot-password");
@@ -129,6 +143,14 @@ export const passwordReset = {
   async edit(req: BunRequest): Promise<Response> {
     if (!passwordAuthEnabled()) return render404();
 
+    // No redirect for a signed-in visitor, unlike the pages above — spending a
+    // reset link is legitimate while holding a session, and the reset destroys
+    // it anyway. The context is still needed for the CSRF token.
+    const ctx = await getSessionContext(req);
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
+
     const token = new URL(req.url).searchParams.get("token") ?? "";
     const state = resetFlash.getFlash(req);
 
@@ -153,7 +175,12 @@ export const passwordReset = {
     const challenge = captchaEnabled() ? issueChallenge() : null;
 
     return render(
-      <ResetPassword token={token} state={state} challenge={challenge} />,
+      <ResetPassword
+        token={token}
+        state={state}
+        challenge={challenge}
+        csrfToken={await csrfTokens(ctx).for("/reset-password")}
+      />,
     );
   },
 
@@ -163,19 +190,24 @@ export const passwordReset = {
     const guard = await guardAuthForm(req);
 
     if (!guard.ok) {
-      if (guard.reason === "rate-limited") return guard.response;
+      if (guard.reason === "rate-limited" || guard.reason === "csrf") {
+        return guard.response;
+      }
 
       // No feigned success here — the visitor is mid-flow and needs to know the
-      // password didn't change. Nothing spent the token, though, so put them
-      // back on the same link: telling someone their link expired because a
-      // captcha challenge went stale would cost them a whole new email.
+      // password didn't change. Nothing spent the reset token, though, so put
+      // them back on the same link: telling someone their link expired because
+      // a captcha challenge or a CSRF token went stale would cost them a whole
+      // new email.
       const attempted = guard.formData.get("token");
 
       return typeof attempted === "string" && attempted
         ? retryWithToken(
             req,
             attempted,
-            "Verification failed. Please try again.",
+            guard.reason === "csrf-expired"
+              ? "This page expired while it was open. Please try again."
+              : "Verification failed. Please try again.",
           )
         : invalidToken(req);
     }

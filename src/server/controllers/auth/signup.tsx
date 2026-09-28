@@ -1,5 +1,5 @@
 import type { BunRequest } from "bun";
-import { redirectIfAuthenticated } from "../../middleware/auth";
+import { guestPageContext } from "../../middleware/auth";
 import {
   createMagicLink,
   EMAIL_VERIFICATION_EXPIRY_HOURS,
@@ -18,6 +18,7 @@ import {
 import type { SignupState } from "../../templates/signup";
 import { Signup } from "../../templates/signup";
 import { appUrl } from "../../utils/app-url";
+import { csrfTokens } from "../../utils/csrf-tokens";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { guardAuthForm, readEmail, readPassword } from "./form-guard";
@@ -33,8 +34,15 @@ const { getFlash, setFlash } = stateHelpers<SignupState>();
  */
 export const signup = {
   async index(req: BunRequest): Promise<Response> {
-    const authRedirect = await redirectIfAuthenticated(req);
-    if (authRedirect) return authRedirect;
+    const page = await guestPageContext(req);
+    if ("redirect" in page) return page.redirect;
+
+    // See login.index: the token binds to the guest session, so the cookie has
+    // to go out with the page that carries it.
+    const { ctx } = page;
+    if (ctx.requiresSetCookie && ctx.sessionId) {
+      setSessionCookie(req, ctx.sessionId);
+    }
 
     const state = getFlash(req);
     const challenge = captchaEnabled() ? issueChallenge() : null;
@@ -42,6 +50,7 @@ export const signup = {
     return render(
       <Signup
         mode={authMode()}
+        csrfToken={await csrfTokens(ctx).for("/signup")}
         state={state}
         challenge={challenge}
         showConsoleHint={consoleEmailProvider()}
@@ -53,11 +62,23 @@ export const signup = {
     const guard = await guardAuthForm(req);
 
     if (!guard.ok) {
-      if (guard.reason === "rate-limited") return guard.response;
+      if (guard.reason === "rate-limited" || guard.reason === "csrf") {
+        return guard.response;
+      }
 
       if (guard.reason === "honeypot") {
         log.warn("signup", "honeypot tripped, dropping submission");
         setFlash(req, feignedFailure(guard.formData));
+        return redirect("/signup");
+      }
+
+      // Stale token, not an attack — the twin of the branch in login.tsx.
+      if (guard.reason === "csrf-expired") {
+        setFlash(req, {
+          state: "validation-error",
+          error: "This page expired while it was open. Please try again.",
+          email: readEmail(guard.formData),
+        });
         return redirect("/signup");
       }
 
