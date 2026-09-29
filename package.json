@@ -39,7 +39,7 @@
     "@biomejs/biome": "2.5.14",
     "@happy-dom/global-registrator": "^20.14.5",
     "@types/bun": "1.4.2",
-    "@types/node": "^26.6.1",
+    "@types/node": "^26.6.3",
     "happy-dom": "^20.14.3",
     "husky": "9.1.7",
     "typescript": "^7.0.2"
@@ -47,6 +47,6 @@
   "dependencies": {
     "preact": "^10.29.8",
     "preact-render-to-string": "^6.7.0",
-    "resend": "^6.28.1"
+    "resend": "^6.30.0"
   }
 }
