@@ -432,67 +432,40 @@ you can apply them with one command instead of typing them into the dashboard.
 #### Infrastructure as Code
 
 Those six values live in [`.railway/railway.ts`](.railway/railway.ts), alongside the Postgres link
-and every environment variable the server reads. It needs Railway CLI **5.42.1 or newer**. From
+and every environment variable the server reads. Needs Railway CLI **5.42.1 or newer**. From
 nothing to a running app:
 
 ```bash
-railway init --name my-app                                      # new project, linked here
-railway config apply                                            # service + Postgres + env defaults
-railway domain                                                  # generates the public URL
+railway init --name my-app                                        # new project, linked here
+railway config apply                                              # service + Postgres + env defaults
+railway domain                                                    # generates the public URL
 railway variables --set CRYPTO_PEPPER=$(bun run generate:pepper)  # the one secret you set yourself
 ```
 
-Then connect your repo in the service's **Settings → Source**, and it deploys on every push.
+Then connect your repo in the service's **Settings → Source**, and it deploys on every push. For a
+project you already have, swap the first line for `railway link` and read `railway config plan`
+before applying. Nothing applies on `git push`.
 
-Against a project you already have, replace the first line with `railway link`, and read the diff
-with `railway config plan` before you apply it.
+Three things the plan won't warn you about:
 
-The file carries starter defaults for everything the server needs at boot, so an apply leaves a
-service that *runs* rather than one that crash-loops on a variable nobody mentioned. `APP_URL` is
-`https://${{RAILWAY_PUBLIC_DOMAIN}}` — Railway resolves that at deploy time, which is what breaks
-the chicken-and-egg of needing the domain before the service exists. `EMAIL_PROVIDER` defaults to
-`console`, so magic links appear in the deploy logs and you need no Resend key to sign in and look
-around. Change these when you go live; they are starting points, not opinions.
+- **No deployment after the first apply is expected.** The file declares no `source`, so the
+  service has nothing to build until you connect the repo. That is deliberate — a starter can't
+  know your GitHub slug — and it means a later apply leaves your connection alone.
+- **Names must match what Railway already calls things.** It names a service after the repo, so if
+  `service("billet")` doesn't match, the plan reads as *create a second service*. Check both names
+  before the first apply, or let `railway config pull` write them for you.
+- **`export const partial` scopes deletion to what the file owns.** Without it, a project holding
+  several apps and one shared PostgreSQL reads every service the file omits as one to delete.
+  Rename it with the project — it's on the list in [START_PROMPT.md](START_PROMPT.md).
 
-Two things are worth knowing before you run it. **Nothing applies on `git push`** — only an explicit
-`railway config apply`, after a plan you've read. And **`export const partial = "billet"` at the top
-of the file scopes deletion to the resources that file owns**: a Railway project is allowed to hold
-several unrelated apps and one shared PostgreSQL, and without the partial, every service the file
-doesn't mention reads as a service to delete. Rename it along with the project name — it is on the
-list in [START_PROMPT.md](START_PROMPT.md).
+Secrets stay out of the file: everything you own is `preserve()`, which means *this name exists,
+its value lives on Railway*. The defaults that are there — `EMAIL_PROVIDER=console`, an `APP_URL`
+built from `${{RAILWAY_PUBLIC_DOMAIN}}` — exist so a fresh apply boots instead of crash-looping.
+`railway.ts` comments the reasoning behind each choice, including the two that look obvious and
+aren't.
 
-**The file does not own the repo connection, and will not make one for you.** There is no `source`
-in it, deliberately: a starter can't know your GitHub slug, and hardcoding one would point every
-fork's deploy at this repo. The cost is that applying to an empty project gives you a service that
-has nothing to build — it shows as offline, with no deployment and nothing explaining why. Connect
-the repo in the service's **Settings → Source** (step 2 above) and it builds. Because the file has
-no opinion about `source`, a later plan leaves that connection alone.
-
-The names have to match what Railway already calls things, and that is the other thing a plan won't
-warn you about: Railway names a service after the repo you connected it to, so if `service("billet")`
-doesn't match, the plan reads as *create a second service* rather than *configure this one*. Check
-the service and project names in the dashboard against the file before your first apply, or run
-`railway config pull` and let the importer write them for you.
-
-Secrets are not in the file. Everything you own — `CRYPTO_PEPPER`, `APP_URL`, your Resend key, the
-feature flags — is declared as `preserve()`, which means *this name exists, its value lives on
-Railway*. The names still have to be there: a variable the file omits is one Railway may remove on
-apply. `railway config pull` writes the same shape back out from a project you've already
-configured by hand, if you'd rather start there.
-
-`CRYPTO_PEPPER` is `preserve()` rather than a sealed generated secret on purpose, and it is the one
-piece of this that is worth understanding before you change it. Railway can mint a secret for you —
-`{ generator: "secret(32)", isSealed: true }` — but a sealed variable cannot be read back, so every
-subsequent plan sees `preserve()` on the live side, can't tell *already set* from *not set*, and
-proposes writing a new one. `railway config plan` would never exit clean, and an apply that only
-meant to change a start command would rotate the pepper and sign out every user. So you set it once,
-by hand: `bun run generate:pepper`.
-
-This replaces `railway.json`. Railway has [retired Config as Code](https://docs.railway.com/config-as-code)
-— a new service can no longer opt into it, and existing ones stop reading it on **2026-12-01** — so a
-committed `railway.json` is a file that looks authoritative while being ignored. There is nothing to
-migrate here: `.railway/railway.ts` is hand-written, not the output of `railway config migrate`,
-which [drops `builder` and the restart policy](https://github.com/railwayapp/cli/issues/1199).
+This replaces `railway.json`, which Railway has [retired](https://docs.railway.com/config-as-code):
+new services can't opt in, and existing ones stop reading it on **2026-12-01**.
 
 ### Environment Variables
 
