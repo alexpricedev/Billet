@@ -12,12 +12,17 @@ import { defineRailway, postgres, preserve, project, service } from "railway/iac
 // Scopes deletion to the resources this file owns. Without it, a project holding
 // several unrelated apps and one shared Postgres would read every service it
 // *doesn't* find here as a service to delete.
-export const partial = "billet";
+//
+// This and the `service()` name below have to match what Railway calls your
+// service, or an apply reads as *create a second one*. They match by default
+// when `railway config apply` is what created the service; they won't if you
+// connected a repo first, because Railway names a service after the repo.
+export const partial = "web";
 
 export default defineRailway(() => {
   const db = postgres("Postgres");
 
-  const app = service("billet", {
+  const app = service("web", {
     // `builder` and the restart policy have no intent-layer shorthand, so they go
     // in the raw `build` / `deploy` buckets. Everything else uses the shorthand.
     build: { builder: "RAILPACK", buildCommand: "bun install && bun run build" },
@@ -85,5 +90,5 @@ export default defineRailway(() => {
     },
   });
 
-  return project("billet", { resources: [app, db] });
+  return project("my-app", { resources: [app, db] });
 });

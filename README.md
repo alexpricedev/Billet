@@ -295,7 +295,7 @@ scripts/
 └── skills/                     # Progressive-disclosure guides for agents
 
 .railway/
-├── railway.ts                  # Railway Infrastructure as Code — the six deploy settings, applied by CLI
+├── railway.ts                  # Railway Infrastructure as Code — build, deploy and env, applied by CLI
 └── railway.test.ts             # Guards those settings against drift
 ```
 
@@ -406,17 +406,42 @@ Billet is a single Bun process — no containers, no serverless adapters, no pla
 
 ### Railway
 
-Six build and deploy settings, then deploy. Deployments typically go live in under 60 seconds.
-Billet ships them as [Infrastructure as Code](#infrastructure-as-code) in `.railway/railway.ts`, so
-you can apply them with one command instead of typing them into the dashboard.
+Four commands, from nothing to a running app. Deployments typically go live in under 60 seconds.
 
-1. Push to GitHub
-2. Create a new [Railway](https://railway.com?referralCode=XB1wns) project and connect your repo
-3. Add a **PostgreSQL** plugin and link it to your service — this auto-sets `DATABASE_URL`
-4. Set the remaining environment variables (see below)
-5. Apply the six build and deploy values below — `railway config apply`, or type them into the
-   service's **Settings** tab
-6. Deploy — Railway will build, run migrations, and start the server
+```bash
+railway init --name my-app                                        # new project, linked here
+railway config apply                                              # service + Postgres + env defaults
+railway domain                                                    # generates the public URL
+railway variables --set CRYPTO_PEPPER=$(bun run generate:pepper)  # the one secret you set yourself
+```
+
+Then connect your repo in the service's **Settings → Source**, and it deploys on every push.
+
+All of it comes from [`.railway/railway.ts`](.railway/railway.ts) — the build and deploy settings,
+the Postgres link, and every environment variable the server reads. Needs Railway CLI
+**5.42.1 or newer**. For a project you already have, swap the first line for `railway link` and
+read `railway config plan` before applying. Nothing applies on `git push`.
+
+Three things the plan won't warn you about:
+
+- **No deployment after the first apply is expected.** The file declares no `source`, so the
+  service has nothing to build until you connect the repo. That is deliberate — a starter can't
+  know your GitHub slug — and it means a later apply leaves your connection alone.
+- **Names must match what Railway calls your service.** They do when `railway config apply` is
+  what created it, as above. They won't if you connected a repo first, because Railway names a
+  service after the repo — then edit `service("web")` to match, or run `railway config pull` and
+  let the importer write it. `export const partial` has to track it.
+- **That `partial` is what stops an apply deleting things it doesn't know about.** Without it, a
+  project holding several apps and one shared PostgreSQL reads every service the file omits as one
+  to delete.
+
+Secrets stay out of the file: everything you own is `preserve()`, which means *this name exists,
+its value lives on Railway*. The defaults that are there — `EMAIL_PROVIDER=console`, an `APP_URL`
+built from `${{RAILWAY_PUBLIC_DOMAIN}}` — exist so a fresh apply boots instead of crash-looping.
+`railway.ts` comments the reasoning behind each choice, including the two that look obvious and
+aren't.
+
+Prefer the dashboard? These are the same values, to set by hand in the service's **Settings** tab:
 
 | Setting | Value |
 |---|---|
@@ -428,41 +453,6 @@ you can apply them with one command instead of typing them into the dashboard.
 | Restart policy | **On failure** (Railway's default), max `3` retries |
 
 > **Tip:** If you're using Claude Code with the [Railway MCP server](https://docs.railway.com/guides/mcp), you can ask Claude to set up the project, add PostgreSQL, and configure both the environment variables and the settings above for you.
-
-#### Infrastructure as Code
-
-Those six values live in [`.railway/railway.ts`](.railway/railway.ts), alongside the Postgres link
-and every environment variable the server reads. Needs Railway CLI **5.42.1 or newer**. From
-nothing to a running app:
-
-```bash
-railway init --name my-app                                        # new project, linked here
-railway config apply                                              # service + Postgres + env defaults
-railway domain                                                    # generates the public URL
-railway variables --set CRYPTO_PEPPER=$(bun run generate:pepper)  # the one secret you set yourself
-```
-
-Then connect your repo in the service's **Settings → Source**, and it deploys on every push. For a
-project you already have, swap the first line for `railway link` and read `railway config plan`
-before applying. Nothing applies on `git push`.
-
-Three things the plan won't warn you about:
-
-- **No deployment after the first apply is expected.** The file declares no `source`, so the
-  service has nothing to build until you connect the repo. That is deliberate — a starter can't
-  know your GitHub slug — and it means a later apply leaves your connection alone.
-- **Names must match what Railway already calls things.** It names a service after the repo, so if
-  `service("billet")` doesn't match, the plan reads as *create a second service*. Check both names
-  before the first apply, or let `railway config pull` write them for you.
-- **`export const partial` scopes deletion to what the file owns.** Without it, a project holding
-  several apps and one shared PostgreSQL reads every service the file omits as one to delete.
-  Rename it with the project — it's on the list in [START_PROMPT.md](START_PROMPT.md).
-
-Secrets stay out of the file: everything you own is `preserve()`, which means *this name exists,
-its value lives on Railway*. The defaults that are there — `EMAIL_PROVIDER=console`, an `APP_URL`
-built from `${{RAILWAY_PUBLIC_DOMAIN}}` — exist so a fresh apply boots instead of crash-looping.
-`railway.ts` comments the reasoning behind each choice, including the two that look obvious and
-aren't.
 
 ### Environment Variables
 

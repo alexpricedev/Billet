@@ -23,7 +23,7 @@ const app = graph.resources?.find(
 
 describe("railway.ts", () => {
   test("owns a named partial so apply can't delete another service", () => {
-    expect(partial).toBe("billet");
+    expect(partial).toBe("web");
   });
 
   test("declares the documented build and deploy settings", () => {
