@@ -293,6 +293,10 @@ scripts/
 ├── hooks/
 │   └── no-shared-stash.ts      # Denies `git stash`, points at `bun run wip`
 └── skills/                     # Progressive-disclosure guides for agents
+
+.railway/
+├── railway.ts                  # Railway Infrastructure as Code — the six deploy settings, applied by CLI
+└── railway.test.ts             # Guards those settings against drift
 ```
 
 ---
@@ -402,13 +406,16 @@ Billet is a single Bun process — no containers, no serverless adapters, no pla
 
 ### Railway
 
-Six settings in the service UI, then deploy. Deployments typically go live in under 60 seconds.
+Six build and deploy settings, then deploy. Deployments typically go live in under 60 seconds.
+Billet ships them as [Infrastructure as Code](#infrastructure-as-code) in `.railway/railway.ts`, so
+you can apply them with one command instead of typing them into the dashboard.
 
 1. Push to GitHub
 2. Create a new [Railway](https://railway.com?referralCode=XB1wns) project and connect your repo
 3. Add a **PostgreSQL** plugin and link it to your service — this auto-sets `DATABASE_URL`
 4. Set the remaining environment variables (see below)
-5. In the service's **Settings** tab, set the six build and deploy values below
+5. Apply the six build and deploy values below — `railway config apply`, or type them into the
+   service's **Settings** tab
 6. Deploy — Railway will build, run migrations, and start the server
 
 | Setting | Value |
@@ -418,11 +425,74 @@ Six settings in the service UI, then deploy. Deployments typically go live in un
 | Start command | `bun run start` |
 | Healthcheck path | `/health` |
 | Healthcheck timeout | `30` |
-| Restart policy | **On failure**, max `3` retries |
+| Restart policy | **On failure** (Railway's default), max `3` retries |
 
 > **Tip:** If you're using Claude Code with the [Railway MCP server](https://docs.railway.com/guides/mcp), you can ask Claude to set up the project, add PostgreSQL, and configure both the environment variables and the settings above for you.
 
-These live in the dashboard rather than in a file on purpose. Railway has [deprecated Config as Code](https://docs.railway.com/config-as-code) — a new service can no longer opt into `railway.json` at all, and existing ones stop reading it on **2026-12-01** — so a committed `railway.json` is a file that looks authoritative while being ignored. Its replacement, [Infrastructure as Code](https://docs.railway.com/infrastructure-as-code), is scoped to a whole Railway project rather than to one service, which is the wrong shape for a starter: plenty of people run several unrelated apps and one shared PostgreSQL in a single project, and there `omit means delete` reaches other people's services. If you do want these six values versioned, `railway config pull` writes a `.railway/railway.ts` from what the project already has — no retyping, and no `railway.json` needed to migrate from. In a shared project add `export const partial = "<your-service>"` to it so deletion is scoped to what that file owns, and run `railway config plan` and read the diff before `apply`. Nothing applies on `git push` — only an explicit `railway config apply`.
+#### Infrastructure as Code
+
+Those six values live in [`.railway/railway.ts`](.railway/railway.ts), alongside the Postgres link
+and every environment variable the server reads. It needs Railway CLI **5.42.1 or newer**. From
+nothing to a running app:
+
+```bash
+railway init --name my-app                                      # new project, linked here
+railway config apply                                            # service + Postgres + env defaults
+railway domain                                                  # generates the public URL
+railway variables --set CRYPTO_PEPPER=$(bun run generate:pepper)  # the one secret you set yourself
+```
+
+Then connect your repo in the service's **Settings → Source**, and it deploys on every push.
+
+Against a project you already have, replace the first line with `railway link`, and read the diff
+with `railway config plan` before you apply it.
+
+The file carries starter defaults for everything the server needs at boot, so an apply leaves a
+service that *runs* rather than one that crash-loops on a variable nobody mentioned. `APP_URL` is
+`https://${{RAILWAY_PUBLIC_DOMAIN}}` — Railway resolves that at deploy time, which is what breaks
+the chicken-and-egg of needing the domain before the service exists. `EMAIL_PROVIDER` defaults to
+`console`, so magic links appear in the deploy logs and you need no Resend key to sign in and look
+around. Change these when you go live; they are starting points, not opinions.
+
+Two things are worth knowing before you run it. **Nothing applies on `git push`** — only an explicit
+`railway config apply`, after a plan you've read. And **`export const partial = "billet"` at the top
+of the file scopes deletion to the resources that file owns**: a Railway project is allowed to hold
+several unrelated apps and one shared PostgreSQL, and without the partial, every service the file
+doesn't mention reads as a service to delete. Rename it along with the project name — it is on the
+list in [START_PROMPT.md](START_PROMPT.md).
+
+**The file does not own the repo connection, and will not make one for you.** There is no `source`
+in it, deliberately: a starter can't know your GitHub slug, and hardcoding one would point every
+fork's deploy at this repo. The cost is that applying to an empty project gives you a service that
+has nothing to build — it shows as offline, with no deployment and nothing explaining why. Connect
+the repo in the service's **Settings → Source** (step 2 above) and it builds. Because the file has
+no opinion about `source`, a later plan leaves that connection alone.
+
+The names have to match what Railway already calls things, and that is the other thing a plan won't
+warn you about: Railway names a service after the repo you connected it to, so if `service("billet")`
+doesn't match, the plan reads as *create a second service* rather than *configure this one*. Check
+the service and project names in the dashboard against the file before your first apply, or run
+`railway config pull` and let the importer write them for you.
+
+Secrets are not in the file. Everything you own — `CRYPTO_PEPPER`, `APP_URL`, your Resend key, the
+feature flags — is declared as `preserve()`, which means *this name exists, its value lives on
+Railway*. The names still have to be there: a variable the file omits is one Railway may remove on
+apply. `railway config pull` writes the same shape back out from a project you've already
+configured by hand, if you'd rather start there.
+
+`CRYPTO_PEPPER` is `preserve()` rather than a sealed generated secret on purpose, and it is the one
+piece of this that is worth understanding before you change it. Railway can mint a secret for you —
+`{ generator: "secret(32)", isSealed: true }` — but a sealed variable cannot be read back, so every
+subsequent plan sees `preserve()` on the live side, can't tell *already set* from *not set*, and
+proposes writing a new one. `railway config plan` would never exit clean, and an apply that only
+meant to change a start command would rotate the pepper and sign out every user. So you set it once,
+by hand: `bun run generate:pepper`.
+
+This replaces `railway.json`. Railway has [retired Config as Code](https://docs.railway.com/config-as-code)
+— a new service can no longer opt into it, and existing ones stop reading it on **2026-12-01** — so a
+committed `railway.json` is a file that looks authoritative while being ignored. There is nothing to
+migrate here: `.railway/railway.ts` is hand-written, not the output of `railway config migrate`,
+which [drops `builder` and the restart policy](https://github.com/railwayapp/cli/issues/1199).
 
 ### Environment Variables
 
@@ -434,6 +504,7 @@ These live in the dashboard rather than in a file on purpose. Railway has [depre
 | `SITE_URL` | No | Canonical origin for canonicals, Open Graph tags, the sitemap, and JSON-LD. Defaults to `APP_URL`'s origin — set it only when the canonical domain differs from the app domain |
 | `ALLOW_INDEXING` | No | Set to `true` to let search engines index the site. Unset, every response and page says `noindex` and `robots.txt` drops its `Sitemap:` line, so a preview or staging host can't be indexed by accident. Set it on production only |
 | `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
+| `TRUST_PROXY` | No | Set to `true` behind a proxy that rewrites `x-forwarded-for` — Railway does. Without it the rate limiter sees one shared address for every visitor. Set by `.railway/railway.ts` |
 | `AUTH_MODE` | No | `magic-link` (default) or `password`. Mutually exclusive; any other value stops the server at boot |
 | `CAPTCHA_ENABLED` | No | Set to `true` to add a proof-of-work captcha to the login form. Off by default; `/login` is unchanged when unset |
 | `CAPTCHA_DIFFICULTY` | No | Tunes the captcha's client-side work (search-space size). Defaults to `100000` (~sub-second for a real browser) |

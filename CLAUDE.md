@@ -120,10 +120,12 @@ shared by every file in a process, so a file exercising a rate-limited route mus
 `clearRateLimitLog()` in `beforeEach` or it passes alone and fails after any file that drove the
 limiter to 429.
 
-`run-tests.ts` sweeps only the paths in its `TEST_PATHS`, which is `["src"]`. A test under
-`scripts/` never runs in CI unless it is named there — `scripts/browser-smoke.test.ts` is
+`run-tests.ts` sweeps only the paths in its `TEST_PATHS`, which is `["src", "./.railway/railway.test.ts"]`.
+A test outside `src/` never runs in CI unless it is named there — `scripts/browser-smoke.test.ts` is
 deliberately out, because it needs a built bundle and a listening server, and runs through
 `bun run test:browser`. Add opted-in files by name; a widened glob would drag the smoke test in.
+A path inside a dot-directory needs the leading `./`: `bun test` reads a bare argument as a name
+filter, and a filter never matches there.
 
 ### Every test file's database connection comes from `testDatabase()`
 

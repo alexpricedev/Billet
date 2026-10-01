@@ -63,6 +63,8 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 | `src/server/templates/todos.tsx` | Page title |
 | `src/server/components/layouts.tsx` | Logo text in `<span>Billet</span>` |
 | `src/server/services/seo.ts` | `SITE_NAME` and `SITE_DESCRIPTION` → project name and description |
+| `.railway/railway.ts` | `partial`, the `project()` name and the `service()` name → slug. The last two must match what Railway calls your project and service, or `railway config apply` creates a second one |
+| `.railway/railway.test.ts` | The expected `partial` → slug |
 
 > **Keep `.billet-version`.** It records which Billet release this tree came from, and it is
 > deliberately not on the list above — it isn't project identity, it's provenance. `version` in
