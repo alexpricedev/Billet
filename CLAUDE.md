@@ -16,6 +16,10 @@ spec for everything else. This file is for the things you can't learn by reading
 - Write code that reads like the surrounding code: match its comment density, naming, and idiom.
 - When you try several approaches to a problem, delete the ones you abandoned before you finish.
 - Check work in the browser with the `/browse` skill when the change is user-visible.
+- A feature PR touches **none** of `CHANGELOG.md`, `package.json`'s `version`, or
+  `.billet-version`. Releases are their own PR carrying exactly those three files —
+  `runbooks/RELEASE.md`. Park changelog prose in `.context/` until then; a version heading written
+  on a feature branch claims a version that doesn't exist yet.
 - Never `git stash`. Use `bun run wip` — see "The stash is shared, the worktrees are not".
 
 ## Gotchas
@@ -120,10 +124,12 @@ shared by every file in a process, so a file exercising a rate-limited route mus
 `clearRateLimitLog()` in `beforeEach` or it passes alone and fails after any file that drove the
 limiter to 429.
 
-`run-tests.ts` sweeps only the paths in its `TEST_PATHS`, which is `["src"]`. A test under
-`scripts/` never runs in CI unless it is named there — `scripts/browser-smoke.test.ts` is
+`run-tests.ts` sweeps only the paths in its `TEST_PATHS`, which is `["src", "./.railway/railway.test.ts"]`.
+A test outside `src/` never runs in CI unless it is named there — `scripts/browser-smoke.test.ts` is
 deliberately out, because it needs a built bundle and a listening server, and runs through
 `bun run test:browser`. Add opted-in files by name; a widened glob would drag the smoke test in.
+A path inside a dot-directory needs the leading `./`: `bun test` reads a bare argument as a name
+filter, and a filter never matches there.
 
 ### Every test file's database connection comes from `testDatabase()`
 
@@ -313,7 +319,8 @@ repo the fork may not have as a remote. With it, `git log <tag>..HEAD -- <path>`
 is deliberately no script — the file's comment carries the `curl` commands for upstream's tags and
 CHANGELOG, and every release documents what a fork must change under **Breaking changes**.
 
-Bump it in the release commit, next to the `package.json` bump and the CHANGELOG entry.
+Bump it in the release commit, next to the `package.json` bump and the CHANGELOG entry — which is
+its own PR, after the feature PR has merged. `runbooks/RELEASE.md` has the whole process.
 
 ### Linting
 
@@ -341,5 +348,6 @@ Detail lives in skills so it loads only when it's relevant:
 ## Runbooks
 
 `runbooks/` holds the operational standards this project is held to — `SECURITY.md`, `PRIVACY.md`,
-`ACCESSIBILITY.md`, `SEO.md`, `EMAIL.md`, `CI.md`, `TEAMS.md`. Read the relevant one before
-changing headers, cookies, metadata, email delivery, or anything on the team surface.
+`ACCESSIBILITY.md`, `SEO.md`, `EMAIL.md`, `CI.md`, `TEAMS.md`, `RELEASE.md`. Read the relevant one
+before changing headers, cookies, metadata, email delivery, anything on the team surface, or
+cutting a release.

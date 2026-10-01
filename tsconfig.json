@@ -16,6 +16,6 @@
       "@shared/*": ["./src/shared/*"]
     }
   },
-  "include": ["src/**/*", "scripts/**/*.ts", ".claude/hooks/**/*"],
+  "include": ["src/**/*", "scripts/**/*.ts", ".railway/**/*.ts", ".claude/hooks/**/*"],
   "exclude": ["node_modules", "dist", "src/server/services/email-providers/resend.ts"]
 }

@@ -63,6 +63,7 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 | `src/server/templates/todos.tsx` | Page title |
 | `src/server/components/layouts.tsx` | Logo text in `<span>Billet</span>` |
 | `src/server/services/seo.ts` | `SITE_NAME` and `SITE_DESCRIPTION` → project name and description |
+| `.railway/railway.ts` | `project("my-app")` → slug. Ask whether they want the service renamed from `web` too — if so, change `partial` only (the service takes its name from it), and tell them the new name must match what Railway calls the service or `railway config apply` creates a second one |
 
 > **Keep `.billet-version`.** It records which Billet release this tree came from, and it is
 > deliberately not on the list above — it isn't project identity, it's provenance. `version` in
