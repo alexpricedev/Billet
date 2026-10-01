@@ -23,7 +23,15 @@ const app = graph.resources?.find(
 
 describe("railway.ts", () => {
   test("owns a named partial so apply can't delete another service", () => {
-    expect(partial).toBe("web");
+    expect(partial).toBeTruthy();
+  });
+
+  // Asserted as an invariant rather than against a literal, because the name is
+  // meant to be changed: a rename that moved one and not the other would leave
+  // the partial owning nothing and the service outside it.
+  test("names the service after the partial", () => {
+    expect(app?.name).toBe(partial);
+    expect(app?.address).toBe(`service.${partial}`);
   });
 
   test("declares the documented build and deploy settings", () => {

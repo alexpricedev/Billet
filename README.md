@@ -427,13 +427,13 @@ Three things the plan won't warn you about:
 - **No deployment after the first apply is expected.** The file declares no `source`, so the
   service has nothing to build until you connect the repo. That is deliberate — a starter can't
   know your GitHub slug — and it means a later apply leaves your connection alone.
-- **Names must match what Railway calls your service.** They do when `railway config apply` is
-  what created it, as above. They won't if you connected a repo first, because Railway names a
-  service after the repo — then edit `service("web")` to match, or run `railway config pull` and
-  let the importer write it. `export const partial` has to track it.
-- **That `partial` is what stops an apply deleting things it doesn't know about.** Without it, a
-  project holding several apps and one shared PostgreSQL reads every service the file omits as one
-  to delete.
+- **The name must match what Railway calls your service.** It does when `railway config apply` is
+  what created it, as above. It won't if you connected a repo first, because Railway names a
+  service after the repo — then edit `export const partial` to match. The service takes its name
+  from the partial, so that one line is the whole rename.
+- **That `partial` is also what stops an apply deleting things it doesn't know about.** Without
+  it, a project holding several apps and one shared PostgreSQL reads every service the file omits
+  as one to delete.
 
 Secrets stay out of the file: everything you own is `preserve()`, which means *this name exists,
 its value lives on Railway*. The defaults that are there — `EMAIL_PROVIDER=console`, an `APP_URL`
