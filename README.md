@@ -464,9 +464,6 @@ built from `${{RAILWAY_PUBLIC_DOMAIN}}` — exist so a fresh apply boots instead
 `railway.ts` comments the reasoning behind each choice, including the two that look obvious and
 aren't.
 
-This replaces `railway.json`, which Railway has [retired](https://docs.railway.com/config-as-code):
-new services can't opt in, and existing ones stop reading it on **2026-12-01**.
-
 ### Environment Variables
 
 | Variable | Required | Description |

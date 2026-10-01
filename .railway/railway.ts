@@ -1,18 +1,12 @@
-// Railway Infrastructure as Code: the six build and deploy settings that used to
-// live only in the service's Settings tab, plus the Postgres link and the
-// environment contract. Railway's CLI evaluates this file — nothing here applies
-// on `git push`:
+// Railway Infrastructure as Code: the six build and deploy settings, the Postgres
+// link, and the environment contract. Railway's CLI evaluates this file — nothing
+// here applies on `git push`:
 //
 //   railway link                 # once, to point the CLI at your project
 //   railway config plan          # read the diff
 //   railway config apply         # apply it
 //
 // Needs Railway CLI >= 5.42.1; the SDK refuses to evaluate under anything older.
-//
-// This replaces `railway.json`, which Railway has retired — a new service can no
-// longer opt into it, and existing ones stop reading it on 2026-12-01. There is
-// nothing to migrate: the file below is hand-written, not the output of
-// `railway config migrate` (which drops `builder` and the restart policy).
 import { defineRailway, postgres, preserve, project, service } from "railway/iac";
 
 // Scopes deletion to the resources this file owns. Without it, a project holding
