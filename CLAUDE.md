@@ -16,6 +16,10 @@ spec for everything else. This file is for the things you can't learn by reading
 - Write code that reads like the surrounding code: match its comment density, naming, and idiom.
 - When you try several approaches to a problem, delete the ones you abandoned before you finish.
 - Check work in the browser with the `/browse` skill when the change is user-visible.
+- A feature PR touches **none** of `CHANGELOG.md`, `package.json`'s `version`, or
+  `.billet-version`. Releases are their own PR carrying exactly those three files —
+  `runbooks/RELEASE.md`. Park changelog prose in `.context/` until then; a version heading written
+  on a feature branch claims a version that doesn't exist yet.
 - Never `git stash`. Use `bun run wip` — see "The stash is shared, the worktrees are not".
 
 ## Gotchas
@@ -315,7 +319,8 @@ repo the fork may not have as a remote. With it, `git log <tag>..HEAD -- <path>`
 is deliberately no script — the file's comment carries the `curl` commands for upstream's tags and
 CHANGELOG, and every release documents what a fork must change under **Breaking changes**.
 
-Bump it in the release commit, next to the `package.json` bump and the CHANGELOG entry.
+Bump it in the release commit, next to the `package.json` bump and the CHANGELOG entry — which is
+its own PR, after the feature PR has merged. `runbooks/RELEASE.md` has the whole process.
 
 ### Linting
 
@@ -343,5 +348,6 @@ Detail lives in skills so it loads only when it's relevant:
 ## Runbooks
 
 `runbooks/` holds the operational standards this project is held to — `SECURITY.md`, `PRIVACY.md`,
-`ACCESSIBILITY.md`, `SEO.md`, `EMAIL.md`, `CI.md`, `TEAMS.md`. Read the relevant one before
-changing headers, cookies, metadata, email delivery, or anything on the team surface.
+`ACCESSIBILITY.md`, `SEO.md`, `EMAIL.md`, `CI.md`, `TEAMS.md`, `RELEASE.md`. Read the relevant one
+before changing headers, cookies, metadata, email delivery, anything on the team surface, or
+cutting a release.
