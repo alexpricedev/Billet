@@ -7,6 +7,78 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.1.0
+
+Billet ships Railway Infrastructure as Code. The six build and deploy settings — builder, build
+command, start command, healthcheck path and timeout, restart policy — lived only in the service's
+Settings tab, retyped by hand on every new deploy and invisible to review. They are now
+`.railway/railway.ts`, authored against Railway's `railway/iac` SDK and applied by an explicit
+`railway config apply`. Nothing applies on `git push`.
+
+The previous position was that IaC was the wrong shape for a starter, because it was scoped to a
+whole Railway project and `omit means delete` could reach services the file knew nothing about.
+Partial exports settle that: `export const partial = "web"` scopes deletion to the resources this
+file owns, so a project holding several unrelated apps and one shared PostgreSQL is safe.
+
+**No migration, and no fork has code to change.** The dashboard route still works and the settings
+table in the README is unchanged — this adds a second, versioned way to apply the same six values.
+
+### Added
+
+- **`.railway/railway.ts`** — the six settings, the Postgres link (`DATABASE_URL` by reference,
+  not by value), and every environment variable the server reads. Secrets stay out of source:
+  everything the operator owns, `CRYPTO_PEPPER` included, is `preserve()`. Needs Railway CLI
+  **5.42.1 or newer**.
+- **The service takes its name from the partial.** `export const partial = "web"` is both the
+  deletion scope and the service name, so renaming is a single edit that cannot half-apply. The
+  name has to match what Railway calls the service — it does when `railway config apply` created
+  it, and it won't if you connected a repo first, because Railway names a service after the repo.
+- **The restart policy is declared as the retry cap only**, and the file says why. Railway accepts
+  `restartPolicyMaxRetries` and silently drops `restartPolicyType`: declaring the type produced a
+  plan that never converged — apply reported success, the value read back as `null`, and the next
+  plan proposed the same change again. `ON_FAILURE` is Railway's default, so the documented
+  behaviour (on failure, max 3) is what you get without it.
+- **Starter defaults for everything the server needs at boot**, so one `railway config apply`
+  leaves a service that runs. `APP_NAME`, `FROM_NAME`, `FROM_EMAIL` and `EMAIL_PROVIDER=console`
+  are literals; `APP_URL` is `https://${{RAILWAY_PUBLIC_DOMAIN}}`, which Railway resolves at
+  deploy time — that is what breaks the chicken-and-egg of needing the public domain before the
+  service that owns it exists. Without them, apply produced a service that crash-looped in
+  `validateEnv()` on a variable nobody had mentioned.
+- **`TRUST_PROXY=true` is set by the file**, because it is always correct on Railway and was easy
+  to miss — without it the rate limiter keys every visitor to the proxy's address. It is also now
+  in the README's environment-variable table.
+- **`.railway/railway.test.ts`** guards those values and the no-literal-secrets rule against
+  drift. It is named in `TEST_PATHS` in `src/server/test-utils/run-tests.ts`, with the leading `./`
+  that `bun test` needs to read a dot-directory path as a path rather than a name filter.
+- **`railway` as a devDependency**, and `.railway/**/*.ts` in `tsconfig.json`'s `include` so
+  `bun run check` covers the file. Nothing under `src/` imports it; a production install is
+  unaffected.
+- **`runbooks/RELEASE.md`** — the process this entry was written against: a release is its own
+  pull request, opened after the feature PR has merged, carrying `CHANGELOG.md`, `package.json`'s
+  `version` and `.billet-version` and nothing else. It covers choosing the number by "does a fork
+  have to change its own code?", what belongs under `### Breaking changes`, and the tag and
+  GitHub release. `CLAUDE.md` carries the matching working agreement, so an agent writes a version
+  heading on a release branch rather than on a feature branch.
+
+### Changed
+
+- **`CRYPTO_PEPPER` is `preserve()`, and Railway's variable generators are not used at all.**
+  Neither form works here. `{ generator: "secret(32)", isSealed: true }` cannot be read back, so
+  every plan proposes it again and `railway config plan` never exits clean. Dropping `isSealed`
+  is worse: Railway stores and serves the **literal string `secret(32)`** as the value, so the app
+  boots with a publicly known pepper protecting every session token. Set it once by hand —
+  `railway variables --set CRYPTO_PEPPER=$(bun run generate:pepper)`.
+- **`README.md`'s Railway section** documents the `init` / `apply` / `domain` path from nothing to
+  a running app, the `link` / `plan` / `apply` path for a project you already have, and the three
+  things a plan won't warn you about — no deployment until you connect the repo, the service name
+  that has to match, and what the partial is protecting you from.
+- **`START_PROMPT.md`** adds `.railway/railway.ts` to the rename table. `project("my-app")` becomes
+  the project slug; renaming the service is a separate question, answered by editing `partial`
+  alone.
+- **`railway.json` is still not here, and now can't be.** Railway has retired Config as Code: a new
+  service cannot opt into it and existing ones stop reading it on **2026-12-01**. There is nothing
+  to migrate — the file is hand-written, not the output of `railway config migrate`.
+
 ## 5.0.1
 
 `Content-Signal` in `/robots.txt` now follows `ALLOW_INDEXING` like every other statement Billet
