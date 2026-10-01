@@ -102,8 +102,15 @@ describe("railway.ts", () => {
       "SITE_URL",
       "ALLOW_INDEXING",
       "AUTH_MODE",
+      "CAPTCHA_ENABLED",
+      "CAPTCHA_DIFFICULTY",
       "TEAMS_ENABLED",
       "TRUST_PROXY",
+      "REPLY_TO_EMAIL",
+      "SECURITY_CONTACT",
+      "SESSION_COOKIE_NAME",
+      "MAINTENANCE_MODE",
+      "MAINTENANCE_RETRY_AFTER",
     ]) {
       expect(declared).toContain(key);
     }

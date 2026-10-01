@@ -104,8 +104,8 @@ After the release PR merges to `main`:
 
 1. Tag the release commit — `v` prefix, on `main`:
    ```bash
-   git tag v5.1.0 <release-commit>
-   git push origin v5.1.0
+   git tag v5.0.1 <release-commit>
+   git push origin v5.0.1
    ```
 2. Publish a GitHub release on that tag. Title is `vX.Y.Z — <the subtitle from
    the PR title>`, lowercase after the dash:
@@ -116,7 +116,7 @@ After the release PR merges to `main`:
    `### Note for forks` section saying what a fork must do, then:
 
    ```markdown
-   Full notes: [CHANGELOG.md](https://github.com/alexpricedev/Billet/blob/main/CHANGELOG.md#511)
+   Full notes: [CHANGELOG.md](https://github.com/alexpricedev/Billet/blob/main/CHANGELOG.md#501)
    ```
 
    The anchor is the version with the dots removed.
