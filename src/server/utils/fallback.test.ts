@@ -13,6 +13,27 @@ describe("handleFallback", () => {
     expect(res.headers.get("Location")).toBe("/stack?ref=x");
   });
 
+  test.each([
+    ["//evil.example/", "/evil.example"],
+    ["///evil.example/", "/evil.example"],
+    ["/\\evil.example/", "/evil.example"],
+    ["/.//evil.example/", "/evil.example"],
+    ["/%2F%2Fevil.example/", "/%2F%2Fevil.example"],
+    ["/%5Cevil.example/", "/%5Cevil.example"],
+    ["//", "/"],
+  ])("never redirects %s off-site", async (path, location) => {
+    const res = await req(path);
+
+    expect(res.status).toBe(308);
+    expect(res.headers.get("Location")).toBe(location);
+  });
+
+  test("keeps the query when collapsing leading slashes", async () => {
+    const res = await req("//evil.example/?next=x");
+
+    expect(res.headers.get("Location")).toBe("/evil.example?next=x");
+  });
+
   test("does not redirect the root path", async () => {
     const res = await req("/");
     expect(res.status).not.toBe(308);
