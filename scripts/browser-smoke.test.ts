@@ -82,6 +82,7 @@ beforeAll(async () => {
       PORT: String(PORT),
       APP_URL: BASE,
       CAPTCHA_ENABLED: "true",
+      TEAMS_ENABLED: "true",
     },
     stdout: "pipe",
     stderr: "inherit",
@@ -340,6 +341,33 @@ describe("browser smoke", () => {
       (text) => text.includes("Logout"),
     );
     expect(signedIn).toContain("Logout");
+  });
+
+  test("/team fits a phone screen without scrolling sideways", async () => {
+    // Continues signed in from the magic link above. A long unbroken address
+    // in the invitations table is the widest row the page can render; on a
+    // plain four-column table it pushed the page past 390px.
+    await view.navigate(`${BASE}/team`);
+    await view.click("#team-name");
+    await view.type("Smoke team");
+    await clickThrough("form.team-create button");
+    await until(bodyText, (text) => text.includes("Invite someone"));
+
+    await view.click("#invite-email");
+    await view.type(`a-very-long-invitee-address-${Date.now()}@example.com`);
+    await clickThrough("form.team-invite button");
+    await until(bodyText, (text) => text.includes("Pending invitations"));
+
+    await view.resize(390, 844);
+    const widths = await until(
+      () =>
+        view.evaluate<[number, number]>(
+          "[document.documentElement.scrollWidth, window.innerWidth]",
+        ),
+      ([scroll, inner]) => inner === 390 && scroll === inner,
+    );
+    expect(widths).toEqual([390, 390]);
+    await view.resize(1280, 900);
   });
 
   test("no page threw or hit a CSP violation across the run", () => {

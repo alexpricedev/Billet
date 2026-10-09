@@ -150,7 +150,7 @@ export const Team = (props: TeamProps) => (
         {props.invites.length > 0 && (
           <section className="card">
             <h2>Pending invitations</h2>
-            <DataTable caption="Pending invitations">
+            <DataTable caption="Pending invitations" className="team-table">
               <thead>
                 <tr>
                   <th scope="col">Email</th>
@@ -166,7 +166,9 @@ export const Team = (props: TeamProps) => (
                   <tr key={invite.id}>
                     <td>{invite.email}</td>
                     <td>{roleBadge(invite.org_role)}</td>
-                    <td>{formatDate(invite.created_at)}</td>
+                    <td data-label="Invited">
+                      {formatDate(invite.created_at)}
+                    </td>
                     <td>
                       <form
                         method="post"
@@ -226,7 +228,7 @@ const MembersTable = ({
   const ownerCount = members.filter((m) => m.org_role === "owner").length;
 
   return (
-    <DataTable caption="Team members">
+    <DataTable caption="Team members" className="team-table">
       <thead>
         <tr>
           <th scope="col">Email</th>
@@ -293,7 +295,7 @@ const MembersTable = ({
                   roleBadge(member.org_role)
                 )}
               </td>
-              <td>{formatDate(member.joined_at)}</td>
+              <td data-label="Joined">{formatDate(member.joined_at)}</td>
               <td>
                 {isSelf || isLastOwner || !mayChange ? null : (
                   <a
