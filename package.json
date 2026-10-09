@@ -1,7 +1,7 @@
 {
   "name": "billet",
   "description": "A full-stack TypeScript starter that gives AI coding agents guardrails",
-  "version": "5.1.0",
+  "version": "5.1.1",
   "engines": {
     "bun": ">=1.4.0"
   },
@@ -36,10 +36,10 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
+    "@biomejs/biome": "2.5.15",
     "@happy-dom/global-registrator": "^20.14.5",
     "@types/bun": "1.4.2",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "happy-dom": "^20.14.3",
     "husky": "9.1.7",
     "railway": "^3.12.0",
@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "preact": "^11.0.0",
-    "preact-render-to-string": "^6.7.0",
-    "resend": "^6.30.0"
+    "preact-render-to-string": "^6.8.0",
+    "resend": "^6.32.0"
   }
 }

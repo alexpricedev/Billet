@@ -7,6 +7,21 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.1.1
+
+The trailing-slash canonicaliser 308-redirected `//evil.example/` to `//evil.example` — a
+protocol-relative URL, which browsers resolve against the request's own scheme rather than treating
+it as a path, so the redirect left the site. Leading slashes now collapse to one alongside trailing
+ones, so the `Location` header always stays on-origin.
+
+**No migration, and no fork has code to change.**
+
+### Fixed
+
+- **Open redirect in `handleFallback`'s trailing-slash canonicaliser** (`src/server/utils/fallback.ts`)
+  — a request path with multiple leading slashes no longer produces a protocol-relative redirect
+  target.
+
 ## 5.1.0
 
 Billet ships Railway Infrastructure as Code. The six build and deploy settings — builder, build
