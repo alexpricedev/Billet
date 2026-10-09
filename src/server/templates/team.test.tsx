@@ -98,6 +98,14 @@ describe("Team template", () => {
     expect(html).toContain("/team/invites/invite-1/revoke");
   });
 
+  test("labels each date cell, since the header row is hidden on phones", () => {
+    const html = render(<Team {...props({ invites: [pending()] })} />);
+
+    expect(html).toContain('<td data-label="Joined">');
+    expect(html).toContain('<td data-label="Invited">');
+    expect(html.match(/class="data-table team-table"/g)).toHaveLength(2);
+  });
+
   test("does not offer a Remove control on your own row", () => {
     const html = render(
       <Team

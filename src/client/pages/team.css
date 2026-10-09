@@ -67,3 +67,58 @@
   gap: 12px;
   flex-wrap: wrap;
 }
+
+/* At phone width the four columns don't fit the card: an email, the role form
+   and a long date are already wider than 390px before the action. Each row
+   becomes a small block instead — email, then role, then the date and the
+   action on one line — so the page never scrolls sideways. The header row is
+   hidden visually, so the date cell names itself through data-label. */
+@media (width <= 640px) {
+  .team-table {
+    display: block;
+
+    thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    tbody {
+      display: block;
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 12px 0;
+      border-top: 1px solid var(--color-border);
+    }
+
+    td {
+      border-top: none;
+      padding: 0;
+    }
+
+    td:nth-child(-n + 2) {
+      grid-column: 1 / -1;
+    }
+
+    td:first-child {
+      overflow-wrap: anywhere;
+    }
+
+    td[data-label] {
+      color: var(--color-text-quaternary);
+    }
+
+    td[data-label]::before {
+      content: attr(data-label) " ";
+    }
+  }
+}
