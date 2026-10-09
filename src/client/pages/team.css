@@ -13,12 +13,6 @@
   white-space: nowrap;
 }
 
-.data-table .btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-}
-
 /* Both single-column forms on this page. .form-field carries no bottom margin,
    so without the gap the submit button sits flush against the input above it,
    and without the cap a one-word team name gets a card-wide field. */

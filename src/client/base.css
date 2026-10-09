@@ -207,6 +207,22 @@ img {
   }
 }
 
+/* A link styled as a ghost button (Cancel, Remove, Account) gets the same box
+   as a <button>, so it lines up with the Save or submit beside it. */
+a.btn-ghost {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: var(--control-line-height);
+  padding: var(--control-padding-y) 16px;
+  border-radius: var(--control-radius);
+
+  &:hover,
+  &:focus {
+    text-decoration: none;
+  }
+}
+
 .btn-danger {
   background: transparent;
   color: var(--color-danger);

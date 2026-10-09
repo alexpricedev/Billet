@@ -150,7 +150,7 @@ describe("browser smoke", () => {
     expect(validationMessage).toBe("Oi, enter your name.");
   });
 
-  test("an input, a select and a button in one row line up", async () => {
+  test("an input, a select, a button and a ghost link in one row line up", async () => {
     await view.navigate(`${BASE}/forms`);
 
     // Built in the page rather than found on one, so the assertion is about
@@ -171,11 +171,11 @@ describe("browser smoke", () => {
       row.style.gap = "8px";
       row.style.width = "900px";
       row.innerHTML =
-        '<input aria-label="Email"><select aria-label="Role"><option>Member</option></select><button type="button">Send</button>' +
+        '<input aria-label="Email"><select aria-label="Role"><option>Member</option></select><button type="button">Send</button><a class="btn-ghost" href="#">Cancel</a>' +
         '<select multiple aria-label="Roles"><option>Member</option><option>Admin</option><option>Owner</option></select>';
       document.querySelector("main").prepend(row);
-      const [input, select, button, listBox] = row.children;
-      const boxes = [input, select, button].map((el) => el.getBoundingClientRect());
+      const [input, select, button, link, listBox] = row.children;
+      const boxes = [input, select, button, link].map((el) => el.getBoundingClientRect());
       const style = getComputedStyle(select);
       // Where the chevron is actually drawn, read back from the computed
       // background-position rather than from the token that feeds it, so a
@@ -209,9 +209,11 @@ describe("browser smoke", () => {
       return result;
     })()`);
 
-    const [inputHeight, selectHeight, buttonHeight] = row.heights;
+    const [inputHeight, selectHeight, buttonHeight, linkHeight] = row.heights;
     expect(selectHeight).toBe(inputHeight);
     expect(buttonHeight).toBe(inputHeight);
+    // A Cancel or Remove link beside a Save button takes the same box.
+    expect(linkHeight).toBe(inputHeight);
     expect(new Set(row.bottoms).size).toBe(1);
     // flex: none — a select in a 900px row stays at its content width rather
     // than stretching and stranding its chevron at the far edge.
