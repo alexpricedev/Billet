@@ -197,7 +197,7 @@ img {
 
 .btn-ghost {
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: var(--control-border-width) solid var(--color-border);
   color: var(--color-text-secondary);
 
   &:hover,
@@ -270,11 +270,24 @@ select {
     2
   );
 
+  &:disabled {
+    cursor: default;
+  }
+
   /* A list box, not a dropdown: no chevron, and its height is its rows. */
   &[multiple],
   &[size]:not([size="1"]) {
     background-image: none;
     height: auto;
+    padding-right: var(--control-padding-x);
+  }
+
+  /* The drawn chevron is a fixed colour the system palette can't recolour, so
+     in forced colours it can vanish against a light theme. Hand the arrow back
+     to the platform, which draws it in system colours. */
+  @media (forced-colors: active) {
+    appearance: auto;
+    background-image: none;
     padding-right: var(--control-padding-x);
   }
 }

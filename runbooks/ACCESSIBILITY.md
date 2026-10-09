@@ -56,7 +56,10 @@ you:
   `forced-colors` media block. If your design relies on background colours to
   convey meaning (e.g. status pills), add
   [forced-colours](https://specification.website/spec/accessibility/forced-colors/)
-  handling so Windows High Contrast users don't lose it.
+  handling so Windows High Contrast users don't lose it. The one exception is
+  the base `select`: in forced colours it goes back to `appearance: auto`, so
+  the platform draws its arrow in system colours instead of the fixed-colour
+  SVG chevron.
 - **Touch targets** — the default buttons clear the 24×24 CSS px WCAG 2.2
   minimum but not the 44×44 enhanced target. Size your interactive controls
   accordingly.

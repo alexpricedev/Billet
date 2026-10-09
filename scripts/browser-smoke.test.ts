@@ -160,9 +160,10 @@ describe("browser smoke", () => {
       heights: number[];
       bottoms: number[];
       selectWidth: number;
-      chevronRight: number;
+      chevronLeft: number | null;
       chevronSize: number;
       paddingRight: number;
+      listBox: { backgroundImage: string; height: number };
     }>(`(() => {
       const row = document.createElement("div");
       row.style.display = "flex";
@@ -170,18 +171,39 @@ describe("browser smoke", () => {
       row.style.gap = "8px";
       row.style.width = "900px";
       row.innerHTML =
-        '<input aria-label="Email"><select aria-label="Role"><option>Member</option></select><button type="button">Send</button>';
+        '<input aria-label="Email"><select aria-label="Role"><option>Member</option></select><button type="button">Send</button>' +
+        '<select multiple aria-label="Roles"><option>Member</option><option>Admin</option><option>Owner</option></select>';
       document.querySelector("main").prepend(row);
-      const [input, select, button] = row.children;
+      const [input, select, button, listBox] = row.children;
       const boxes = [input, select, button].map((el) => el.getBoundingClientRect());
       const style = getComputedStyle(select);
+      // Where the chevron is actually drawn, read back from the computed
+      // background-position rather than from the token that feeds it, so a
+      // rule that moves the image without touching the token still fails.
+      // Engines serialise "right 12px" either as is or as calc(100% - 12px).
+      const width = boxes[1].width;
+      const size = parseFloat(style.backgroundSize);
+      const posX = style.backgroundPositionX.trim();
+      const fromRight = posX.match(/^right\\s+(-?[\\d.]+)px$/) ??
+        posX.match(/^calc\\(100% - (-?[\\d.]+)px\\)$/);
+      const fromLeft = posX.match(/^(-?[\\d.]+)px$/);
+      const chevronLeft = fromRight
+        ? width - parseFloat(fromRight[1]) - size
+        : fromLeft
+          ? parseFloat(fromLeft[1])
+          : null;
+      const listStyle = getComputedStyle(listBox);
       const result = {
         heights: boxes.map((box) => box.height),
         bottoms: boxes.map((box) => box.bottom),
-        selectWidth: boxes[1].width,
-        chevronRight: parseFloat(style.getPropertyValue("--select-chevron-inset")),
-        chevronSize: parseFloat(style.backgroundSize),
+        selectWidth: width,
+        chevronLeft,
+        chevronSize: size,
         paddingRight: parseFloat(style.paddingRight),
+        listBox: {
+          backgroundImage: listStyle.backgroundImage,
+          height: listBox.getBoundingClientRect().height,
+        },
       };
       row.remove();
       return result;
@@ -195,11 +217,16 @@ describe("browser smoke", () => {
     // than stretching and stranding its chevron at the far edge.
     expect(row.selectWidth).toBeLessThan(300);
     // The chevron is drawn inside the padding reserved for it, so option text
-    // can never run underneath it.
-    expect(row.chevronRight).toBeGreaterThan(0);
-    expect(row.chevronRight + row.chevronSize).toBeLessThanOrEqual(
-      row.paddingRight,
+    // can never run underneath it, and it doesn't touch the right edge.
+    expect(row.chevronLeft).not.toBeNull();
+    const chevronLeft = row.chevronLeft as number;
+    expect(chevronLeft).toBeGreaterThanOrEqual(
+      row.selectWidth - row.paddingRight,
     );
+    expect(chevronLeft + row.chevronSize).toBeLessThan(row.selectWidth);
+    // A list box keeps its rows: no chevron, and not squeezed to one control.
+    expect(row.listBox.backgroundImage).toBe("none");
+    expect(row.listBox.height).not.toBe(inputHeight);
   });
 
   test("a guest submits the form through the CSRF round-trip", async () => {
