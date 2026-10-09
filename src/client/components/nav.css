@@ -96,16 +96,6 @@
     .btn-ghost {
       border: none;
     }
-
-    /* The Account link is an <a> next to a <button>; match the button's box so
-       the two sit on the same baseline. */
-    a.btn-ghost {
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 500;
-      padding: 8px 16px;
-      text-decoration: none;
-    }
   }
 
   /* Everything below is the enhanced mobile nav, kept last so it outranks the
@@ -180,12 +170,10 @@
         padding-top: 0.5rem;
       }
 
-      /* a.btn-ghost is spelled out because the shared rule above matches it
-         that specifically, and its 16px inset would indent the auth actions
-         out of line with the pages. */
+      /* The auth actions drop the control box's 16px inset, which would indent
+         them out of line with the pages. */
       li a,
-      .nav-auth .btn-ghost,
-      .nav-auth a.btn-ghost {
+      .nav-auth .btn-ghost {
         border-radius: 0;
         display: block;
         padding: 0.625rem 0;
