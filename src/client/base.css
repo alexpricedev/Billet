@@ -207,6 +207,16 @@ img {
   }
 }
 
+.btn-danger {
+  background: transparent;
+  color: var(--color-danger);
+
+  &:hover,
+  &:focus {
+    background: rgba(248, 113, 113, 0.1);
+  }
+}
+
 /* A link styled as a ghost button (Cancel, Remove, Account) gets the same box
    as a <button>, so it lines up with the Save or submit beside it. */
 a.btn-ghost {
@@ -220,16 +230,6 @@ a.btn-ghost {
   &:hover,
   &:focus {
     text-decoration: none;
-  }
-}
-
-.btn-danger {
-  background: transparent;
-  color: var(--color-danger);
-
-  &:hover,
-  &:focus {
-    background: rgba(248, 113, 113, 0.1);
   }
 }
 
