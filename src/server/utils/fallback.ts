@@ -16,9 +16,11 @@ export const handleFallback = async (req: Request): Promise<Response> => {
 
   // Canonicalise trailing slashes: every path has exactly one URL. Requests
   // for "/stack/" 308-redirect to "/stack" (preserving the query string) so
-  // crawlers never index duplicate slashed/unslashed variants.
+  // crawlers never index duplicate slashed/unslashed variants. Leading slashes
+  // collapse to one as well: "//evil.example/" would otherwise redirect to
+  // "//evil.example", a protocol-relative URL that leaves the site.
   if (url.pathname !== "/" && url.pathname.endsWith("/")) {
-    const canonical = url.pathname.replace(/\/+$/, "");
+    const canonical = `/${url.pathname.replace(/^\/+|\/+$/g, "")}`;
     return new Response(null, {
       status: 308,
       headers: { Location: canonical + url.search },
