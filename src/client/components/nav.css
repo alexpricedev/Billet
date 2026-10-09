@@ -103,7 +103,8 @@
       border-radius: var(--radius);
       font-size: 14px;
       font-weight: 500;
-      padding: 8px 16px;
+      line-height: var(--control-line-height);
+      padding: var(--control-padding-y) 16px;
       text-decoration: none;
     }
   }

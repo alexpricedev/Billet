@@ -164,6 +164,31 @@ describe("client boundaries", () => {
     ).toEqual([]);
   });
 
+  test("select is styled once, in base.css", async () => {
+    // Native selects size, pad and place their chevron differently in every
+    // engine, so base.css draws one select from the control tokens. A page
+    // rule that resizes or re-pads one select is how rows stop lining up and
+    // forks collect a patch per page. A select that should fill its row gets a
+    // class and a width, never a `select` rule.
+    const offenders: string[] = [];
+    for (const dir of ["components", "pages"]) {
+      for (const file of new Glob("**/*.css").scanSync(`${CLIENT}/${dir}`)) {
+        const path = `${CLIENT}/${dir}/${file}`;
+        const source = (await Bun.file(path).text()).replace(
+          /\/\*[\s\S]*?\*\//g,
+          "",
+        );
+        if (/(^|[\s,>+~(])select(?![\w-])[^{};]*\{/.test(source)) {
+          offenders.push(path);
+        }
+      }
+    }
+    expect(
+      offenders,
+      "style selects through the control tokens and the select rule in base.css, not per page",
+    ).toEqual([]);
+  });
+
   test("the main bundle stays under its byte budget", async () => {
     // Built in memory with the same flags as `build:client`, so the number is
     // the one that ships. Nothing is written to dist/.

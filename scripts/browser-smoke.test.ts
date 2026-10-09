@@ -150,6 +150,58 @@ describe("browser smoke", () => {
     expect(validationMessage).toBe("Oi, enter your name.");
   });
 
+  test("an input, a select and a button in one row line up", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    // Built in the page rather than found on one, so the assertion is about
+    // the base styles every fork starts from, not about whichever page happens
+    // to have such a row today. Layout is the part happy-dom can't compute.
+    const row = await view.evaluate<{
+      heights: number[];
+      bottoms: number[];
+      selectWidth: number;
+      chevronRight: number;
+      chevronSize: number;
+      paddingRight: number;
+    }>(`(() => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "flex-start";
+      row.style.gap = "8px";
+      row.style.width = "900px";
+      row.innerHTML =
+        '<input aria-label="Email"><select aria-label="Role"><option>Member</option></select><button type="button">Send</button>';
+      document.querySelector("main").prepend(row);
+      const [input, select, button] = row.children;
+      const boxes = [input, select, button].map((el) => el.getBoundingClientRect());
+      const style = getComputedStyle(select);
+      const result = {
+        heights: boxes.map((box) => box.height),
+        bottoms: boxes.map((box) => box.bottom),
+        selectWidth: boxes[1].width,
+        chevronRight: parseFloat(style.getPropertyValue("--select-chevron-inset")),
+        chevronSize: parseFloat(style.backgroundSize),
+        paddingRight: parseFloat(style.paddingRight),
+      };
+      row.remove();
+      return result;
+    })()`);
+
+    const [inputHeight, selectHeight, buttonHeight] = row.heights;
+    expect(selectHeight).toBe(inputHeight);
+    expect(buttonHeight).toBe(inputHeight);
+    expect(new Set(row.bottoms).size).toBe(1);
+    // flex: none — a select in a 900px row stays at its content width rather
+    // than stretching and stranding its chevron at the far edge.
+    expect(row.selectWidth).toBeLessThan(300);
+    // The chevron is drawn inside the padding reserved for it, so option text
+    // can never run underneath it.
+    expect(row.chevronRight).toBeGreaterThan(0);
+    expect(row.chevronRight + row.chevronSize).toBeLessThanOrEqual(
+      row.paddingRight,
+    );
+  });
+
   test("a guest submits the form through the CSRF round-trip", async () => {
     await view.navigate(`${BASE}/forms`);
 

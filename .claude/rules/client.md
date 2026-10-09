@@ -175,3 +175,15 @@ one and silently win ties against the pages and components it appears to precede
 to imports is what makes the order on screen the order in the cascade, and `boundaries.test.ts`
 fails the suite if a rule goes back in. New page CSS goes in `pages/` with its `@import` in the
 page group; anything global goes in `base.css`.
+
+## Form controls share one box
+
+Inputs, selects and buttons draw their height, padding, border and radius from the `--control-*`
+tokens at the top of `base.css`, so a field, a select and a button in one row line up with no
+page rule. Don't restyle `select` per page; use the base. It drops the native look (Safari ignores
+padding on a native select), draws its chevron at a fixed inset inside reserved padding, and is
+`flex: none` so it keeps its content width in a flex row. A select that should fill its row gets a
+class and a width. To change every control's size, change the tokens, not a page.
+`boundaries.test.ts` fails the suite if a component or page stylesheet has a `select` rule, and
+`bun run test:browser` checks the row lines up in a real engine. A deliberately compact button
+(the todo filters) opts out with its own padding and `line-height: normal`.

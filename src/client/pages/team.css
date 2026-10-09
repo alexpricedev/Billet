@@ -6,16 +6,10 @@
   gap: 8px;
 }
 
-.team-role-form select,
-.team-invite select {
-  /* WCAG 2.2 target size — dense table rows are exactly where this gets
-     breached. */
-  min-height: 32px;
-}
-
+/* Height comes from the control tokens; only the inline padding is trimmed,
+   because the row sits in a table column. */
 .team-role-form button {
-  min-height: 32px;
-  padding: 4px 10px;
+  padding-inline: 10px;
   white-space: nowrap;
 }
 
