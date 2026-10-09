@@ -7,6 +7,84 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.2.0
+
+Form controls now share one box. Inputs, selects and buttons were each sized by their own
+padding, border and font, so a field, a select and a button placed in one row came out at three
+different heights (36, 38 and 33px on /team in Chromium), and Safari ignored a select's padding
+altogether and drew it at 23px. Pages patched the difference with `min-height` rules, one row at a
+time. The sizes now come from one set of `--control-*` tokens in `base.css`, and every control in
+a row is 40px in Chrome, Safari and Firefox without page rules.
+
+The /team tables also fit a phone. At 390px wide the Members and Pending invitations tables were
+wider than their cards, which made the whole page about 596px wide and scrolled sideways.
+
+**No migration, and nothing a fork must change to keep running.** A fork with its own per-page
+`select` styling will see `boundaries.test.ts` go red until that styling moves into `base.css`, and
+any page that relied on the old button height gets 40px buttons. Both are listed under Upgrade
+notes below.
+
+### Changed
+
+- **Form controls share one box** (`src/client/base.css`). New tokens `--control-border-width`,
+  `--control-padding-y`, `--control-padding-x`, `--control-line-height`, `--control-radius` and a
+  derived `--control-height` size inputs, selects and buttons. The line-height is an absolute 24px,
+  because inputs use 16px text and buttons 14px, and a relative line-height would make them
+  different heights again. Buttons now carry a transparent 1px border instead of `border: none`, so
+  a filled button is the same height as a bordered input.
+- **One select style.** `select` drops the native look and draws an SVG chevron at a fixed 12px
+  inset inside reserved right padding, so the chevron no longer drifts to the edge of a stretched
+  select. It is `flex: none` with `max-width: 100%` in rows. `[multiple]` and `[size]` list boxes
+  opt out, disabled selects use `cursor: default`, and in forced-colours mode the select goes back
+  to `appearance: auto` so the platform draws its arrow in system colours
+  (`runbooks/ACCESSIBILITY.md` notes the exception).
+- **Ghost links get the control box.** One `a.btn-ghost` rule in `base.css` makes a link styled as
+  a ghost button 40px, so the /team Remove and Cancel links line up with Save. It replaces the 32px
+  rules in `team.css` and the nav's own copy in `nav.css`.
+- **Compact buttons opt out.** The todos `.filter-btn` and `.delete-btn` set `line-height: normal`
+  and stay at 25px.
+- **`.claude/rules/client.md`** gains "Form controls share one box": don't restyle `select` per
+  page, use the base rule and the tokens.
+- **Dependencies:** `preact` 10 → 11, `preact-render-to-string` 6.7 → 6.8, `resend`,
+  `@biomejs/biome` and `@types/node`. Billet's own client code needed no changes for Preact 11.
+
+### Fixed
+
+- **The /team tables no longer scroll the page sideways on a phone** (`src/client/pages/team.css`,
+  `src/server/templates/team.tsx`). At `width <= 640px`, each `.team-table` row stacks as a
+  two-column grid: the email first, then the role form or badge, then the date and the action.
+  Long addresses wrap with `overflow-wrap: anywhere`, the header row is visually hidden, and the
+  date cells carry `data-label="Joined"` / `data-label="Invited"` so the date still says what it
+  is. Desktop is unchanged.
+
+### Tests
+
+- **`src/client/boundaries.test.ts` → "select is styled once, in base.css"** fails if any
+  `components/` or `pages/` stylesheet has a `select` rule.
+- **`scripts/browser-smoke.test.ts`** gains "an input, a select, a button and a ghost link in one
+  row line up", which checks equal heights and bottoms, the chevron's computed position, and that a
+  `select multiple` list box keeps no chevron; and "/team fits a phone screen without scrolling
+  sideways", which checks `scrollWidth` at 390×844. The smoke server now runs with
+  `TEAMS_ENABLED=true`.
+
+### Upgrade notes
+
+- **Per-page `select` rules fail `boundaries.test.ts`.** Search your `components/` and `pages/`
+  CSS for `select`, and move that styling into the tokens or the base `select` rule in `base.css`.
+- **Buttons are 40px.** They get a 1px transparent border and a fixed 24px line-height. A fork that
+  sized buttons by padding alone, or drew its own border, should check its buttons; a deliberately
+  compact button opts out with `line-height: normal` and its own padding.
+- **Inputs set `background-color`, not the `background` shorthand.** A fork that relied on the
+  shorthand to reset `background-image` on an input or textarea (to clear an icon, say) needs to
+  reset it explicitly.
+- **Selects no longer stretch in flex rows.** A fork that relied on that needs `width` or `flex`
+  on that select.
+- **Preact 11.** A fork that has written its own client components should read Preact's
+  [upgrade guide](https://preactjs.com/guide/v11/upgrade-guide) before merging.
+- **Screen readers on the stacked /team tables.** At 640px and below the tables are set to
+  `display: block`/`grid`, and some screen readers (historically older Safari with VoiceOver) drop
+  table semantics when that happens. The rows still read in order and the date is labelled.
+
 ## 5.1.1
 
 The trailing-slash canonicaliser 308-redirected `//evil.example/` to `//evil.example` — a

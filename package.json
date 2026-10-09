@@ -1,7 +1,7 @@
 {
   "name": "billet",
   "description": "A full-stack TypeScript starter that gives AI coding agents guardrails",
-  "version": "5.1.1",
+  "version": "5.2.0",
   "engines": {
     "bun": ">=1.4.0"
   },
