@@ -232,6 +232,48 @@ describe("browser smoke", () => {
     expect(row.listBox.height).not.toBe(inputHeight);
   });
 
+  test("a link styled as a button takes the button's box", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    // /team pairs an <a class="btn-ghost"> (Remove, in the members row) with a
+    // <button class="btn-ghost"> (Revoke, in the invitations row), one above
+    // the other; the anchor's text sits against its border unless the link
+    // draws the button's padding and radius too. Built in the page rather than
+    // found on one, so the assertion is about the base styles every fork
+    // starts from — the same reasoning as the row test above.
+    const boxes = await view.evaluate<Record<string, number>[]>(`(() => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.innerHTML =
+        '<button type="button" class="btn-ghost">Revoke</button>' +
+        '<a class="btn-ghost" href="#">Remove</a>' +
+        '<button type="button" class="btn-danger">Delete</button>' +
+        '<a class="btn-danger" href="#">Delete</a>';
+      document.querySelector("main").prepend(row);
+      const box = (el) => {
+        const style = getComputedStyle(el);
+        return {
+          height: el.getBoundingClientRect().height,
+          paddingTop: parseFloat(style.paddingTop),
+          paddingLeft: parseFloat(style.paddingLeft),
+          borderRadius: parseFloat(style.borderTopLeftRadius),
+          borderWidth: parseFloat(style.borderTopWidth),
+          fontSize: parseFloat(style.fontSize),
+          fontWeight: Number(style.fontWeight),
+          lineHeight: parseFloat(style.lineHeight),
+        };
+      };
+      const result = Array.from(row.children).map(box);
+      row.remove();
+      return result;
+    })()`);
+
+    const [ghostButton, ghostLink, dangerButton, dangerLink] = boxes;
+    expect(ghostLink).toEqual(ghostButton);
+    expect(dangerLink).toEqual(dangerButton);
+  });
+
   test("a guest submits the form through the CSRF round-trip", async () => {
     await view.navigate(`${BASE}/forms`);
 
