@@ -274,6 +274,49 @@ describe("browser smoke", () => {
     expect(dangerLink).toEqual(dangerButton);
   });
 
+  test("a hovered danger link keeps the danger colour", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    // The global a:hover colour is more specific than a lone .btn-danger rule,
+    // so a hovered danger link turns indigo unless its state re-states the
+    // colour — the bug this guards. A plain link beside it is the control: it
+    // must still change colour on hover, or :hover never applied and the
+    // assertion would pass for the wrong reason. getComputedStyle reads the
+    // colour mid-transition (a carries a 150ms colour transition), so wait it
+    // out before reading.
+    await view.evaluate(`(() => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.innerHTML =
+        '<a id="smoke-danger" class="btn-danger" href="#">Delete</a>' +
+        '<a id="smoke-plain" href="#">Plain</a>';
+      document.querySelector("main").prepend(row);
+    })()`);
+
+    const colour = (id: string): Promise<string> =>
+      view.evaluate<string>(
+        `getComputedStyle(document.querySelector("#${id}")).color`,
+      );
+
+    const dangerResting = await colour("smoke-danger");
+    const plainResting = await colour("smoke-plain");
+
+    // A native click parks the pointer on the link, so :hover matches it.
+    await view.click("#smoke-danger");
+    await Bun.sleep(250);
+    const dangerHovered = await colour("smoke-danger");
+
+    await view.click("#smoke-plain");
+    await Bun.sleep(250);
+    const plainHovered = await colour("smoke-plain");
+
+    // The danger link keeps the danger colour on hover...
+    expect(dangerHovered).toBe(dangerResting);
+    // ...and the control proves hover really changed a colour in this browser.
+    expect(plainHovered).not.toBe(plainResting);
+  });
+
   test("a guest submits the form through the CSRF round-trip", async () => {
     await view.navigate(`${BASE}/forms`);
 

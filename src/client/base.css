@@ -218,6 +218,10 @@ img {
   &:hover,
   &:focus {
     background: rgba(248, 113, 113, 0.1);
+    /* The global a:hover/a:focus colour is more specific than a lone
+       .btn-danger rule, so a danger link turned indigo on hover unless the
+       state re-states the colour here. */
+    color: var(--color-danger);
   }
 }
 
