@@ -207,19 +207,31 @@ img {
   }
 }
 
+/* The border is what keeps a link and a <button> the same height: the button
+   element draws it transparent, so a .btn-danger anchor has to draw the same
+   one rather than sit two pixels short. .btn-ghost carries its own. */
 .btn-danger {
   background: transparent;
+  border: var(--control-border-width) solid transparent;
   color: var(--color-danger);
 
   &:hover,
   &:focus {
     background: rgba(248, 113, 113, 0.1);
+    /* The global a:hover/a:focus colour is more specific than a lone
+       .btn-danger rule, so a danger link turned indigo on hover unless the
+       state re-states the colour here. */
+    color: var(--color-danger);
   }
 }
 
-/* A link styled as a ghost button (Cancel, Remove, Account) gets the same box
-   as a <button>, so it lines up with the Save or submit beside it. */
-a.btn-ghost {
+/* A link styled as a button (Cancel, Remove, Account) gets the same box as a
+   <button>, so it lines up with the Save or submit beside it — the /team
+   Remove link beside the Pending-invitations Revoke button, for instance.
+   .btn-danger is here for forks: without it a link with that class is a bare
+   word with no box. */
+a.btn-ghost,
+a.btn-danger {
   display: inline-block;
   font-size: 14px;
   font-weight: 500;
