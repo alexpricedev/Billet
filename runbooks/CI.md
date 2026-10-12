@@ -69,14 +69,24 @@ On Linux `Bun.WebView` drives an installed Chrome over the Chrome DevTools
 Protocol (macOS uses the system WebKit, which is why the same file passes locally
 on a Mac without one). The job:
 
-- installs Chrome with `browser-actions/setup-chrome` and points `BUN_CHROME_PATH`
-  at exactly that binary, so which browser runs doesn't depend on a `$PATH` search
-  or on what the runner image happens to ship;
+- installs Chrome with `browser-actions/setup-chrome` and pins the **stable**
+  channel — older releases of that action default to a Chromium nightly snapshot,
+  free to break between runs — and points `BUN_CHROME_PATH` at exactly that
+  binary, so which browser runs doesn't depend on a `$PATH` search or on what the
+  runner image happens to ship;
 - gives it the **same Postgres service as `Tests`** — the smoke test boots its own
   server on a scratch port, which runs migrations and the seed, then exercises the
   app through a real page;
 - runs `test:browser` alone, which builds the bundles first; the `Build` job's
   output is not reused.
+
+The smoke test launches that Chrome with `--no-sandbox --disable-dev-shm-usage`
+(off macOS only). The browser the job installs is not the distro package: its
+sandbox helper isn't root-owned, Ubuntu restricts unprivileged user namespaces,
+and the runner's `/dev/shm` is small — without the flags it exits before the first
+page with `Chrome process closed the pipe`. Skipping the sandbox is fine for a
+browser that only ever loads this app on localhost, and passing `argv` also forces
+spawn mode, so CI never connects to a Chrome another process left running.
 
 It is a normal required check. If it ever proves flaky, make the *job*
 non-blocking — drop `"Browser smoke"` from the required contexts in §2 — rather

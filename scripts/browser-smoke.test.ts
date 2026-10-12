@@ -134,12 +134,29 @@ beforeAll(async () => {
   );
   if (!ready) throw new Error(`Server did not answer on ${BASE}`);
 
+  // Bun drives an installed Chrome over CDP off macOS; macOS uses the system
+  // WebKit. The Chrome the CI job installs is not the distro package — its
+  // sandbox helper isn't root-owned and Ubuntu restricts unprivileged user
+  // namespaces — so headless Chrome there exits before the first page ("Chrome
+  // process closed the pipe") unless it skips the sandbox, which is fine for a
+  // browser that only ever loads this app on localhost. A small /dev/shm makes
+  // it exit the same way, hence the second flag. Neither applies to WebKit, so
+  // they're set only off macOS; passing argv also forces spawn mode, so CI
+  // never connects to a Chrome some other process left running.
   view = new Bun.WebView({
     width: 1280,
     height: 900,
     console: (type, ...args) => {
       if (type === "error") pageErrors.push(args.map(String).join(" "));
     },
+    ...(process.platform === "darwin"
+      ? {}
+      : {
+          backend: {
+            type: "chrome" as const,
+            argv: ["--no-sandbox", "--disable-dev-shm-usage"],
+          },
+        }),
   });
 });
 
