@@ -1,7 +1,8 @@
 # CI & merge protection Runbook
 
-Billet runs lint, type-check, build, and the full test suite on every pull
-request via GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)),
+Billet runs lint, type-check, build, the full test suite, and the browser smoke
+tests on every pull request via GitHub Actions
+([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)),
 plus a dependency audit on its own schedule
 ([`.github/workflows/audit.yml`](../.github/workflows/audit.yml)).
 But **CI results only gate merges if you make the checks _required_** — that's a
@@ -14,13 +15,16 @@ This runbook covers the pipeline and how to lock merges behind green CI.
 
 ## 1. What runs on every PR
 
-Three jobs, chained so a failure short-circuits the rest:
+Four jobs. `Lint & Typecheck`, `Build` and `Tests` are chained so a failure
+short-circuits the rest; `Browser smoke` hangs off `Build` beside `Tests`, so it
+runs in parallel with the unit suite:
 
 | Check (job name) | Command | Depends on |
 |---|---|---|
 | `Lint & Typecheck` | `bun run check` | — |
 | `Build` | `bun run build` | `Lint & Typecheck` |
 | `Tests` | `bun run test` against a Postgres service | `Build` |
+| `Browser smoke` | `bun run test:browser` against a Postgres service and an installed Chrome | `Build` |
 
 The job **names** above are exactly the check "contexts" GitHub sees — you'll
 reference them by name in §2.
@@ -51,6 +55,33 @@ The `Tests` job is tuned in two ways a fork should keep:
   is slower than a laptop even with the database in RAM, and a run killed at the
   wire counts every test in it as lost — which reads as a broken test rather than
   the timing accident it is. Per-test timeouts are Bun's own `--timeout`.
+
+## 1a. The browser smoke tests
+
+`Browser smoke` runs `bun run test:browser` — i.e. `scripts/browser-smoke.test.ts`
+— which is deliberately **not** part of `bun run test`: that suite globs `src`
+only, and these journeys drive `Bun.WebView`, an experimental API whose engine
+differs by platform. A separate job means a real-browser failure shows up as its
+own red check rather than reading as a broken unit test, and it runs beside
+`Tests` instead of lengthening the chained path.
+
+On Linux `Bun.WebView` drives an installed Chrome over the Chrome DevTools
+Protocol (macOS uses the system WebKit, which is why the same file passes locally
+on a Mac without one). The job:
+
+- installs Chrome with `browser-actions/setup-chrome` and points `BUN_CHROME_PATH`
+  at exactly that binary, so which browser runs doesn't depend on a `$PATH` search
+  or on what the runner image happens to ship;
+- gives it the **same Postgres service as `Tests`** — the smoke test boots its own
+  server on a scratch port, which runs migrations and the seed, then exercises the
+  app through a real page;
+- runs `test:browser` alone, which builds the bundles first; the `Build` job's
+  output is not reused.
+
+It is a normal required check. If it ever proves flaky, make the *job*
+non-blocking — drop `"Browser smoke"` from the required contexts in §2 — rather
+than deleting it: the coverage is the point, and an ignored check is still a
+signal.
 
 ## 1b. The dependency audit
 
@@ -108,10 +139,11 @@ require the checks on your default branch, and _every_ merge path is gated by
 them.
 
 This also closes a race worth knowing about: because the jobs are chained, when a
-PR first opens only `Lint & Typecheck` exists as a check — `Build` and `Tests`
-haven't registered yet. An auto-merge that acts on "the checks I can see are
-green" could merge after lint and before Tests ever runs. Requiring all three
-names means GitHub holds the merge until each required context reports success.
+PR first opens only `Lint & Typecheck` exists as a check — `Build`, `Tests` and
+`Browser smoke` haven't registered yet. An auto-merge that acts on "the checks I
+can see are green" could merge after lint and before the suite ever runs.
+Requiring all four names means GitHub holds the merge until each required context
+reports success.
 
 Apply the rule (the `{owner}`/`{repo}` placeholders resolve from the current
 clone, so this is copy-paste safe in any fork):
@@ -119,7 +151,7 @@ clone, so this is copy-paste safe in any fork):
 ```bash
 gh api -X PUT repos/{owner}/{repo}/branches/main/protection --input - <<'JSON'
 {
-  "required_status_checks": { "strict": false, "contexts": ["Lint & Typecheck", "Build", "Tests"] },
+  "required_status_checks": { "strict": false, "contexts": ["Lint & Typecheck", "Build", "Tests", "Browser smoke"] },
   "enforce_admins": true,
   "required_pull_request_reviews": null,
   "restrictions": null

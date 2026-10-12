@@ -83,5 +83,6 @@ system WebKit on macOS, an installed Chrome elsewhere). It builds the assets, bo
 on a scratch port against the test database, and covers what happy-dom can't: the client bundle
 actually executing, CSP not silently blocking an asset, and a full form journey with trusted input
 events. Deliberately not part of `bun run test` — the API is experimental and the engine varies by
-platform, so it must never gate the deterministic suite. Run it after changing
-`security-headers.ts`, `layouts.tsx`, or anything under `src/client/`.
+platform, so it must not sit in the deterministic suite — but CI runs it in its own `Browser smoke`
+job (`.github/workflows/ci.yml`), where a red check means a real browser disagreed. Run it after
+changing `security-headers.ts`, `layouts.tsx`, or anything under `src/client/`.
