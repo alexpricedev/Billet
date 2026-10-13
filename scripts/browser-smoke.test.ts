@@ -583,14 +583,23 @@ describe("browser smoke", () => {
     await until(bodyText, (text) => text.includes("Pending invitations"));
 
     await view.resize(390, 844);
-    const widths = await until(
+    // Measure against the layout viewport, not the window. A phone's scrollbar
+    // floats over the page and takes no width; a desktop browser reserves it —
+    // and `scrollbar-gutter: stable` on `html` reserves one before it is even
+    // needed — so the CI runner's Chrome lays the page out 15px narrower than
+    // its 390px window. `scrollWidth` over `clientWidth` is the browser's own
+    // test for "this page scrolls sideways": past that line a horizontal
+    // scrollbar appears. Since the layout viewport is never wider than the
+    // window, passing it also means the page fits a 390px phone.
+    const [content, layout, viewport] = await until(
       () =>
-        view.evaluate<[number, number]>(
-          "[document.documentElement.scrollWidth, window.innerWidth]",
+        view.evaluate<[number, number, number]>(
+          "[document.documentElement.scrollWidth, document.documentElement.clientWidth, window.innerWidth]",
         ),
-      ([scroll, inner]) => inner === 390 && scroll === inner,
+      ([scroll, client, inner]) => inner === 390 && scroll <= client,
     );
-    expect(widths).toEqual([390, 390]);
+    expect(viewport).toBe(390);
+    expect(content).toBeLessThanOrEqual(layout);
     await view.resize(1280, 900);
   });
 
