@@ -71,3 +71,55 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run test
+
+  # The real-browser smoke tests, in a job of their own so a failure here reads
+  # as "a browser disagreed" rather than as part of the deterministic suite. They
+  # need a browser and the same Postgres as `test`, but nothing the unit suite
+  # needs — Bun.WebView drives an installed Chrome over CDP on Linux, and the
+  # action below installs one and hands its path to Bun directly.
+  browser-smoke:
+    name: Browser smoke
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ci-test
+          # Same reasoning as the `test` job: the smoke run adds and toggles
+          # todos through the real server, and a RAM-backed cluster keeps those
+          # writes off the runner's disk.
+          PGDATA: /dev/shm/pgdata
+        ports:
+          - 5432:5432
+        options: >-
+          --shm-size=1g
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ci-test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      # Bun resolves an installed Chrome from $PATH, but BUN_CHROME_PATH (set on
+      # the test step below) pins it to exactly the binary this action installed,
+      # so a runner-image change can't quietly move which browser runs. Pin the
+      # stable channel explicitly: setup-chrome's older `latest` default is a
+      # Chromium *nightly* snapshot, which is free to break between runs.
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
+      # test:browser builds the bundles, then boots its own server on a scratch
+      # port against DATABASE_URL — no separate build step, and no server for the
+      # suite to share.
+      - run: bun run test:browser
+        env:
+          BUN_CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}

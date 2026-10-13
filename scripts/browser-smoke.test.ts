@@ -1,11 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Subprocess } from "bun";
 
-// Real-browser smoke tests, run via `bun run test:browser` — deliberately NOT
-// part of `bun run test`, which globs `src` only. Bun.WebView is experimental
-// and the engine differs by platform (system WebKit on macOS, an installed
-// Chrome elsewhere), so these journeys must never gate the deterministic
-// suite. What they cover is exactly what happy-dom can't:
+// Real-browser smoke tests, run via `bun run test:browser`. They get a CI job
+// of their own (`.github/workflows/ci.yml`, "Browser smoke") rather than a place
+// in `bun run test`, which globs `src` only. Bun.WebView is experimental and the
+// engine differs by platform — system WebKit on macOS, an installed Chrome on
+// the Linux runner — so folding them into the deterministic suite would let a
+// platform difference read as a broken diff; as their own job, a failure here is
+// its own signal. What they cover is exactly what happy-dom can't:
 //
 // - the client bundle executing in a real page (running, not just parsing)
 // - CSP: a blocked script passes every unit test and fails only here
@@ -66,6 +68,34 @@ const bodyText = (): Promise<string> =>
 const clickThrough = (selector: string): Promise<void> =>
   view.click(selector).catch(() => {});
 
+/**
+ * Click something that may sit below the fold. Bun's selector click waits for
+ * the element to be "actionable", and Chrome treats in-viewport as part of
+ * that — WebKit scrolls to it, Chrome refuses — so a target that is off-screen
+ * times out. The todos page grows past the fold as rows accumulate, so scroll
+ * the target to the middle first. A no-op when it is already visible.
+ */
+const clickIntoView = async (selector: string): Promise<void> => {
+  await view.scrollTo(selector, { block: "center" });
+  await view.click(selector);
+};
+
+/**
+ * Navigate, retrying once on net::ERR_ABORTED. The login redirect paints its
+ * flash before the page finishes loading, and a navigate() issued in that
+ * window is cancelled rather than failed — Chrome reports net::ERR_ABORTED,
+ * WebKit waits it out. The navigation was cancelled, not rejected, so the retry
+ * either lands on the page or fails for a real reason.
+ */
+const goto = async (url: string): Promise<void> => {
+  try {
+    await view.navigate(url);
+  } catch (error) {
+    if (!String(error).includes("ERR_ABORTED")) throw error;
+    await view.navigate(url);
+  }
+};
+
 beforeAll(async () => {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required (run via bun run test:browser)");
@@ -104,12 +134,29 @@ beforeAll(async () => {
   );
   if (!ready) throw new Error(`Server did not answer on ${BASE}`);
 
+  // Bun drives an installed Chrome over CDP off macOS; macOS uses the system
+  // WebKit. The Chrome the CI job installs is not the distro package — its
+  // sandbox helper isn't root-owned and Ubuntu restricts unprivileged user
+  // namespaces — so headless Chrome there exits before the first page ("Chrome
+  // process closed the pipe") unless it skips the sandbox, which is fine for a
+  // browser that only ever loads this app on localhost. A small /dev/shm makes
+  // it exit the same way, hence the second flag. Neither applies to WebKit, so
+  // they're set only off macOS; passing argv also forces spawn mode, so CI
+  // never connects to a Chrome some other process left running.
   view = new Bun.WebView({
     width: 1280,
     height: 900,
     console: (type, ...args) => {
       if (type === "error") pageErrors.push(args.map(String).join(" "));
     },
+    ...(process.platform === "darwin"
+      ? {}
+      : {
+          backend: {
+            type: "chrome" as const,
+            argv: ["--no-sandbox", "--disable-dev-shm-usage"],
+          },
+        }),
   });
 });
 
@@ -390,7 +437,7 @@ describe("browser smoke", () => {
 
     // Toggle: the row is swapped for the server's completed version, and the
     // count follows.
-    await view.click(`${rowSelector} .toggle-btn`);
+    await clickIntoView(`${rowSelector} .toggle-btn`);
     const completed = await until(
       () =>
         view.evaluate<boolean>(
@@ -406,7 +453,7 @@ describe("browser smoke", () => {
     expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
 
     // Filter: Active hides the row just completed; All brings it back.
-    await view.click(".todo-filters button:nth-of-type(2)");
+    await clickIntoView(".todo-filters button:nth-of-type(2)");
     const hidden = await until(
       () =>
         view.evaluate<boolean>(
@@ -415,7 +462,7 @@ describe("browser smoke", () => {
       (ok) => ok === true,
     );
     expect(hidden).toBe(true);
-    await view.click(".todo-filters button:nth-of-type(1)");
+    await clickIntoView(".todo-filters button:nth-of-type(1)");
     const shown = await until(
       () =>
         view.evaluate<boolean>(
@@ -429,7 +476,7 @@ describe("browser smoke", () => {
     // This is the one a component test cannot: a real stylesheet is loaded, so
     // `display` is the resolved value and a rule that outranked `hidden` would
     // show up here. It is why `data-show` writes an inline display as well.
-    await view.click(".todo-filters button:nth-of-type(2)");
+    await clickIntoView(".todo-filters button:nth-of-type(2)");
     const collapsed = await until(
       () =>
         view.evaluate<string>(
@@ -438,7 +485,7 @@ describe("browser smoke", () => {
       (value) => value === "none",
     );
     expect(collapsed).toBe("none");
-    await view.click(".todo-filters button:nth-of-type(1)");
+    await clickIntoView(".todo-filters button:nth-of-type(1)");
 
     expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
   });
@@ -489,13 +536,24 @@ describe("browser smoke", () => {
     const link = log.match(/\/auth\/callback\?token=[^"'\s&]+/)?.[0];
     if (!link) throw new Error("No magic link in the server log");
 
+    // The flash text is in the document as soon as the redirect paints, which
+    // can be before the login page has finished loading. Let it settle, then
+    // load the link — a navigate() that starts mid-load is cancelled
+    // (net::ERR_ABORTED), which `goto` also absorbs.
+    await until(
+      () =>
+        view.evaluate<string>("document.readyState").catch(() => "loading"),
+      (state) => state === "complete",
+      5_000,
+    );
+
     // Emailed links render a confirm step on GET and spend the token on POST —
     // mail scanners follow links, they don't submit forms. Loading the link
     // twice must leave the token intact, or a scanner would burn it before
-    // the recipient ever clicked. Two navigate()s, not navigate()+reload():
-    // WebKit left the confirm click inert after a reload().
-    await view.navigate(`${BASE}${link}`);
-    await view.navigate(`${BASE}${link}`);
+    // the recipient ever clicked. Two loads, not load+reload(): WebKit left the
+    // confirm click inert after a reload().
+    await goto(`${BASE}${link}`);
+    await goto(`${BASE}${link}`);
     const confirm = await view.evaluate<boolean>(
       `!!document.querySelector("form button.login-submit")`,
     );
@@ -525,14 +583,23 @@ describe("browser smoke", () => {
     await until(bodyText, (text) => text.includes("Pending invitations"));
 
     await view.resize(390, 844);
-    const widths = await until(
+    // Measure against the layout viewport, not the window. A phone's scrollbar
+    // floats over the page and takes no width; a desktop browser reserves it —
+    // and `scrollbar-gutter: stable` on `html` reserves one before it is even
+    // needed — so the CI runner's Chrome lays the page out 15px narrower than
+    // its 390px window. `scrollWidth` over `clientWidth` is the browser's own
+    // test for "this page scrolls sideways": past that line a horizontal
+    // scrollbar appears. Since the layout viewport is never wider than the
+    // window, passing it also means the page fits a 390px phone.
+    const [content, layout, viewport] = await until(
       () =>
-        view.evaluate<[number, number]>(
-          "[document.documentElement.scrollWidth, window.innerWidth]",
+        view.evaluate<[number, number, number]>(
+          "[document.documentElement.scrollWidth, document.documentElement.clientWidth, window.innerWidth]",
         ),
-      ([scroll, inner]) => inner === 390 && scroll === inner,
+      ([scroll, client, inner]) => inner === 390 && scroll <= client,
     );
-    expect(widths).toEqual([390, 390]);
+    expect(viewport).toBe(390);
+    expect(content).toBeLessThanOrEqual(layout);
     await view.resize(1280, 900);
   });
 

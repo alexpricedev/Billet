@@ -38,13 +38,14 @@ const TIMEOUT_MS = Number.parseInt(process.env.TEST_TIMEOUT_MS ?? "600000", 10);
 const SLOWEST_TO_REPORT = 10;
 
 // The paths `bun test` sweeps, named rather than globbed. `scripts/` is not in
-// the list: `scripts/browser-smoke.test.ts` needs a built bundle and a
-// listening server, so it runs on its own through `bun run test:browser`. Any
-// other test outside `src/` has to be added here by name or it never runs in
-// CI, and nothing will tell you — a widened glob would drag the smoke test in
-// with it. `.railway/railway.test.ts` is one of those, and it needs the leading
-// `./`: `bun test` reads a bare argument as a name filter, and a filter never
-// matches inside a dot-directory.
+// the list: `scripts/browser-smoke.test.ts` needs a built bundle and a listening
+// server, so it runs through `bun run test:browser` in its own CI job instead
+// (`.github/workflows/ci.yml`, `Browser smoke`). Any other test outside `src/`
+// has to be added here by name or it never runs in this job, and nothing will
+// tell you — a widened glob would drag the smoke test in with it.
+// `.railway/railway.test.ts` is one of those, and it needs the leading `./`:
+// `bun test` reads a bare argument as a name filter, and a filter never matches
+// inside a dot-directory.
 const TEST_PATHS = ["src", "./.railway/railway.test.ts"];
 
 // One worker per core by default. `TEST_WORKERS=1` runs the suite in a single

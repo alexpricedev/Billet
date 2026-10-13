@@ -284,7 +284,7 @@ scripts/
 ├── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
 ├── qa-session.ts               # Mints a QA session cookie so an agent never borrows a human's
 ├── benchmark.ts                # Times the suite, checks and build; saves/compares records
-├── browser-smoke.test.ts       # Real-browser smoke test — `bun run test:browser`, not in CI's sweep
+├── browser-smoke.test.ts       # Real-browser smoke test — `bun run test:browser`, its own CI job
 └── workspace.ts                # Per-workspace port + dev/test databases (provision/destroy)
 
 .claude/
