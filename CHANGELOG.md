@@ -7,6 +7,79 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.3.0
+
+The browser smoke tests run in CI. `scripts/browser-smoke.test.ts` reaches a real browser through
+`bun run test:browser`, and `bun run test` globs `src` only, so nothing ran it on a pull request
+and it was free to go stale — a copy in a downstream fork did. It has a `Browser smoke` job of its
+own now, hanging off `Build` beside the unit suite, so a failure there reads as "a browser
+disagreed" rather than as a broken unit test, and it does not lengthen the chained path. The job
+installs Chrome, pins `BUN_CHROME_PATH` to exactly the binary it installed, and runs against the
+same Postgres service as `Tests`.
+
+On that runner the suite drives Chrome where a Mac drives the system WebKit, and three differences
+between the two had been lying in wait: Chrome refuses to click a target below the fold where
+WebKit scrolls to it, a navigation started while a page is still loading is cancelled rather than
+queued, and a desktop scrollbar takes 15px out of the layout viewport that a phone's overlay
+scrollbar does not. Each is handled where it bites rather than papered over.
+
+The /team Remove link also got the box the rest of the page draws. 5.2.0 gave every control one box
+and taught `a.btn-ghost` to draw it; `a.btn-danger` was missed, so a link with that class was a
+bare word — colour and background, no padding, radius or border — next to a `<button>` with the
+same class that was a full 40px control. The transparent 1px border moves onto the `.btn-danger`
+modifier, where the button element rule had been supplying it, and `a.btn-danger` now shares the
+ghost link's box rule.
+
+**No migration, and no fork has code to change.** A fork merges this and gains a workflow job, not
+a change to its app. The check is advisory until it is required, which is a repo setting GitHub
+does not inherit (`runbooks/CI.md` §2), and the job needs no configuring: it installs its own
+Chrome and runs against the Postgres service beside it.
+
+### Added
+
+- **A `Browser smoke` job** (`.github/workflows/ci.yml`) runs `bun run test:browser` on
+  `ubuntu-latest` against a `postgres:16` service with `PGDATA` in `/dev/shm`, beside `Tests` and
+  needing `Build`. `browser-actions/setup-chrome@v2` installs Chrome and pins the **stable**
+  channel — older releases of that action default to a Chromium nightly snapshot, free to break
+  between runs — and `BUN_CHROME_PATH` points at exactly that binary, so which browser runs doesn't
+  depend on a `$PATH` search or on what the runner image happens to ship.
+- **`runbooks/CI.md` §1a** covers the job and the flags it gives Chrome, and §2's required contexts
+  name four checks now. It also spells out the two ways this job can strand a PR: a new check is
+  not required until its name is in that list, and a required check that never reports blocks every
+  PR forever.
+- **`CLAUDE.md`, `README.md`, the `verifying-changes` skill** and the `TEST_PATHS` note in
+  `src/server/test-utils/run-tests.ts` all say where the smoke tests run, so "not in the suite" no
+  longer reads as "not in CI".
+
+### Fixed
+
+- **`a.btn-danger` draws the control box** (`src/client/base.css`). The 1px transparent border
+  moves from the button element rule onto the `.btn-danger` modifier, and `a.btn-danger` joins
+  `a.btn-ghost` on the shared box rule — so the /team Remove link is a 40px control like the Revoke
+  button beside it rather than text sitting against nothing.
+- **A hovered or focused danger link keeps the danger colour.** The global `a:hover, a:focus`
+  colour out-specified a lone `.btn-danger` rule, so the link turned indigo on interaction; the
+  state re-states `var(--color-danger)`.
+
+### Tests
+
+- **`scripts/browser-smoke.test.ts`** gains "a link styled as a button takes the button's box" and
+  "a hovered danger link keeps the danger colour", both comparing computed styles against the
+  matching `<button>` rather than asserting a literal — the only place a real stylesheet and a real
+  `:hover` can be checked at all.
+- **The suite runs on the Chrome backend as well as WebKit.** Chrome treats in-viewport as part of
+  "actionable", so the todo journey scrolls its target into view before clicking it; the login
+  redirect paints its flash before the page finishes loading, so a navigation is retried once on
+  `net::ERR_ABORTED`; and off macOS the Chrome backend launches with `--no-sandbox
+  --disable-dev-shm-usage`, because that Chrome's sandbox helper isn't root-owned and Ubuntu
+  restricts unprivileged user namespaces, so it exits before the first page without them.
+- **The /team phone check measures the layout viewport.** `scrollWidth` against `window.innerWidth`
+  only holds where scrollbars float over the page; the runner's Chrome draws classic ones, and
+  `scrollbar-gutter: stable` on `html` reserves a gutter, so a 390px window lays the page out 375px
+  wide and the check read the 15px scrollbar as a broken layout. It now compares `scrollWidth` with
+  `clientWidth` — the browser's own test for a page that scrolls sideways — and still asserts the
+  viewport is 390, so a pass still means the page fits a phone.
+
 ## 5.2.0
 
 Form controls now share one box. Inputs, selects and buttons were each sized by their own
