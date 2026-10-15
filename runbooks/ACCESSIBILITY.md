@@ -52,14 +52,14 @@ you:
   `--color-primary`. If you change the palette, confirm the ring stays clearly
   visible against every surface it can appear on. Never reintroduce
   `outline: none` without an equally visible replacement.
-- **Forced colours mode** — Billet is dark-only and does not yet ship a
-  `forced-colors` media block. If your design relies on background colours to
-  convey meaning (e.g. status pills), add
+- **Forced colours mode** — Billet is dark-only, so there is almost nothing here
+  to hand over: the platform replaces the palette wholesale, and the one rule
+  that draws a colour the system can't replace is the base `select`'s SVG
+  chevron, which turns itself off in `forced-colors: active` and lets the
+  platform draw its arrow instead. Everything else is yours. If your design
+  relies on background colours to convey meaning (e.g. status pills), add
   [forced-colours](https://specification.website/spec/accessibility/forced-colors/)
-  handling so Windows High Contrast users don't lose it. The one exception is
-  the base `select`: in forced colours it goes back to `appearance: auto`, so
-  the platform draws its arrow in system colours instead of the fixed-colour
-  SVG chevron.
+  handling of your own so Windows High Contrast users don't lose it.
 - **Touch targets** — the default buttons clear the 24×24 CSS px WCAG 2.2
   minimum but not the 44×44 enhanced target. Size your interactive controls
   accordingly.

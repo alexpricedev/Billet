@@ -178,12 +178,20 @@ page group; anything global goes in `base.css`.
 
 ## Form controls share one box
 
-Inputs, selects and buttons draw their height, padding, border and radius from the `--control-*`
-tokens at the top of `base.css`, so a field, a select and a button in one row line up with no
-page rule. Don't restyle `select` per page; use the base. It drops the native look (Safari ignores
-padding on a native select), draws its chevron at a fixed inset inside reserved padding, and is
-`flex: none` so it keeps its content width in a flex row. A select that should fill its row gets a
-class and a width. To change every control's size, change the tokens, not a page.
-`boundaries.test.ts` fails the suite if a component or page stylesheet has a `select` rule, and
-`bun run test:browser` checks the row lines up in a real engine. A deliberately compact button
-(the todo filters) opts out with its own padding and `line-height: normal`.
+Inputs, selects and buttons take their height, border and radius from the `--control-*` tokens at
+the top of `base.css`, so a field, a select and a button in one row line up with no page rule. Inline
+padding is the one part a control sets for itself: a field uses `--control-padding-x`, a button a
+wider 16px. To change the size of every control, change the tokens, not a page.
+
+`select` is the one control with a style of its own, and it is the base rule's or nothing. It drops
+the native look (Safari ignores padding on a native select), draws its chevron at a fixed inset
+inside reserved padding, is `flex: none` so it keeps its content width in a flex row, and keeps that
+space on the inline-end edge so a right-to-left document is not the odd one out. A select that should
+fill its row gets a class and a width. `boundaries.test.ts` fails the suite if a component or page
+stylesheet has a `select` rule, and `bun run test:browser` checks the row, the chevron and the
+list-box and disabled cases in a real engine.
+
+Two kinds of control step off the shared box on purpose, and both say why where they do it: a
+deliberately compact button (the todo filters) sets its own padding and `line-height: normal`, and
+the nav's auth actions drop the border and shrink at phone width, because the header has one row to
+give them.
