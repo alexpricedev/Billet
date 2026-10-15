@@ -23,11 +23,14 @@
   --radius: 0.5rem;
   --shadow: none;
 
-  /* Form controls. Inputs, selects and buttons all draw their box from these,
+  /* Form controls. Inputs, selects and buttons all take their box from these,
      so a row of field, select and button lines up without per-page height
-     fixes. The line-height is absolute on purpose: inputs need 16px text and
-     buttons use 14px, and a relative line-height would give them different
-     heights. --control-height is derived, never set — change its parts. */
+     fixes. Inline padding is the one part a control sets for itself: fields
+     use --control-padding-x, and a button keeps a wider 16px so its label has
+     room in a filled shape. The line-height is absolute on purpose: inputs
+     need 16px text and buttons use 14px, and a relative line-height would give
+     them different heights. --control-height is derived, never set — change
+     its parts. */
   --control-border-width: 1px;
   --control-padding-y: 7px;
   --control-padding-x: 12px;
@@ -291,23 +294,42 @@ select {
   flex: none;
   height: var(--control-height);
   max-width: 100%;
-  padding-right: calc(
+  /* The reserved space follows the writing direction, so the option text can
+     never run under the arrow in either one. */
+  padding-inline-end: calc(
     var(--select-chevron-inset) +
     var(--select-chevron-size) +
     var(--control-padding-x) /
     2
   );
 
+  /* The chevron is placed physically, so a right-to-left document needs it
+     moved to the inline-end edge — which is where padding-inline-end has
+     already reserved the room. Matched on the attribute rather than :dir(),
+     which the CSS build rewrites to a :lang() list that a `dir` on the
+     document doesn't satisfy. */
+  &[dir="rtl"],
+  [dir="rtl"] & {
+    background-position: left var(--select-chevron-inset) center;
+  }
+
+  /* appearance: none took the platform's greyed text with it, so a disabled
+     select looked exactly like an enabled one. Mute the value — and only the
+     value: the arrow is baked into a data URI and can't be recoloured, and
+     dropping it would hide that the control is a select at all. */
   &:disabled {
+    color: var(--color-text-quaternary);
     cursor: default;
   }
 
-  /* A list box, not a dropdown: no chevron, and its height is its rows. */
+  /* A list box is a list, not a dropdown: no chevron, no space reserved for
+     one, its own rows for a height, and the cursor a list is read with. */
   &[multiple],
   &[size]:not([size="1"]) {
     background-image: none;
+    cursor: default;
     height: auto;
-    padding-right: var(--control-padding-x);
+    padding-inline-end: var(--control-padding-x);
   }
 
   /* The drawn chevron is a fixed colour the system palette can't recolour, so
@@ -316,7 +338,7 @@ select {
   @media (forced-colors: active) {
     appearance: auto;
     background-image: none;
-    padding-right: var(--control-padding-x);
+    padding-inline-end: var(--control-padding-x);
   }
 }
 
