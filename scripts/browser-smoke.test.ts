@@ -359,6 +359,7 @@ describe("browser smoke", () => {
       listBox: SelectBox;
       sizeBox: SelectBox;
       sizeZero: SelectBox;
+      sizeEmpty: SelectBox;
       dropdown: SelectBoxWithChevron;
       disabled: { color: string; cursor: string };
       enabled: { color: string };
@@ -379,6 +380,7 @@ describe("browser smoke", () => {
         '<select aria-label="Role" size="2"><option>Member</option><option>Admin</option></select>' +
         '<select aria-label="Size zero" size="0"><option>Member</option></select>' +
         '<select aria-label="One row" size="1"><option>Member</option></select>' +
+        '<select aria-label="Empty size" size=""><option>Member</option></select>' +
         '<select aria-label="Frozen" disabled><option>Member</option></select>' +
         '<select aria-label="Live"><option>Member</option></select>';
       document.querySelector("main").prepend(row);
@@ -389,7 +391,7 @@ describe("browser smoke", () => {
         '<select aria-label="LTR in RTL" dir="ltr"><option>Member</option></select>' +
         '<div dir="ltr"><select aria-label="LTR subtree in RTL"><option>Member</option></select></div>';
       document.querySelector("main").prepend(host);
-      const [listBox, sizeBox, sizeZero, oneRow, disabled, enabled] = row.children;
+      const [listBox, sizeBox, sizeZero, oneRow, sizeEmpty, disabled, enabled] = row.children;
       const rtl = host.querySelector('select[aria-label="RTL"]');
       const ltrInRtl = [
         host.querySelector('select[aria-label="LTR in RTL"]'),
@@ -420,6 +422,7 @@ describe("browser smoke", () => {
         listBox: box(listBox),
         sizeBox: box(sizeBox),
         sizeZero: box(sizeZero),
+        sizeEmpty: box(sizeEmpty),
         dropdown: box(oneRow, true),
         disabled: { color: style(disabled).color, cursor: style(disabled).cursor },
         enabled: { color: style(enabled).color },
@@ -451,6 +454,12 @@ describe("browser smoke", () => {
     expect(report.sizeZero.backgroundImage).not.toBe("none");
     expect(report.sizeZero.paddingRight).toBeGreaterThan(report.sizeZero.paddingLeft);
     expect(report.sizeZero.cursor).toBe("pointer");
+
+    // size="" is an invalid size the same way size="0" is an invalid number of
+    // rows, so it reads as an absent size — a dropdown — and not as a list box.
+    expect(report.sizeEmpty.backgroundImage).not.toBe("none");
+    expect(report.sizeEmpty.paddingRight).toBeGreaterThan(report.sizeEmpty.paddingLeft);
+    expect(report.sizeEmpty.cursor).toBe("pointer");
 
     // Disabled: muted, and not a pointer. The enabled select beside it is the
     // control — the assertion means nothing if it is muted too.

@@ -235,8 +235,10 @@ describe("client boundaries", () => {
     // The guard above fails a fork's suite, so it has to be right about what
     // it is looking at in both directions: a rule that styles a select must be
     // caught wherever it is written, and a select named as a condition must
-    // not be. The two lists are those two directions, one selector context per
-    // line.
+    // not be. `.form-field:has(select)` is the second direction in its common
+    // form — it styles the container the select sits in, not the select — and
+    // the guard accepts it on purpose. The two lists are those two directions,
+    // one selector context per line.
     const styles: string[] = [
       "select { color: red; }",
       ".form-field select { color: red; }",
@@ -261,6 +263,7 @@ describe("client boundaries", () => {
       "::selection { background: red; }",
       ".a:not(select) { color: red; }",
       ".a:has(> select) { color: red; }",
+      ".form-field:has(select) { color: red; }",
       "@supports selector(select) { .a { color: red; } }",
       "@keyframes select { from { opacity: 0; } }",
       "@media (width <= 640px) { .a { color: red; } }",
