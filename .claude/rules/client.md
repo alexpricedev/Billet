@@ -185,11 +185,13 @@ wider 16px. To change the size of every control, change the tokens, not a page.
 
 `select` is the one control with a style of its own, and it is the base rule's or nothing. It drops
 the native look (Safari ignores padding on a native select), draws its chevron at a fixed inset
-inside reserved padding, is `flex: none` so it keeps its content width in a flex row, and keeps that
-space on the inline-end edge so a right-to-left document is not the odd one out. A select that should
-fill its row gets a class and a width. `boundaries.test.ts` fails the suite if a component or page
-stylesheet has a `select` rule, and `bun run test:browser` checks the row, the chevron and the
-list-box and disabled cases in a real engine.
+inside reserved padding, is `flex: 0 1 auto` with `min-width: 0` so it keeps its content width in a
+flex row without pushing the next control off a narrow screen, and keeps that space on the
+inline-end edge so a right-to-left document is not the odd one out. A select that should fill its
+row gets a class rule like `.role-picker { width: 100% }`, not `select.role-picker`.
+`boundaries.test.ts` fails the suite if a component or page stylesheet has a `select` rule, and
+`bun run test:browser` checks the row, the chevron and the list-box and disabled cases in a real
+engine.
 
 A control that steps off the shared box says why where it does it. The template's three are the
 compact todo filters (own padding and `line-height: normal`), the nav's auth actions (no border, and

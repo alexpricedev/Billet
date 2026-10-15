@@ -79,11 +79,11 @@
     margin-left: auto;
 
     /* The auth actions are the header's own controls, not page controls: the
-       shared ghost box's border and 16px inset would make them read as buttons
-       beside the page links. They keep the ghost colours and a borderless,
-       header-sized box instead — and they take it from this one rule, so the
-       Account link and the Logout button can't drift apart. The enhanced panel
-       below re-pads them into full-width rows. */
+       shared ghost box's border would make them read as buttons beside the page
+       links. On desktop they drop only the border and keep the 16px inset, and
+       they take that from this one rule, so the Account link and the Logout
+       button can't drift apart. The phone layout below shrinks the inset, and
+       the enhanced panel re-pads them into full-width rows. */
     .btn-ghost {
       border: none;
     }

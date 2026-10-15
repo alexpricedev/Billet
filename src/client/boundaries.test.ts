@@ -217,7 +217,7 @@ describe("client boundaries", () => {
     // engine, so base.css draws one select from the control tokens. A page
     // rule that resizes or re-pads one select is how rows stop lining up and
     // forks collect a patch per page. A select that should fill its row gets a
-    // class and a width, never a `select` rule.
+    // class rule like `.role-picker { width: 100% }`, not `select.role-picker`.
     const offenders: string[] = [];
     for (const dir of ["components", "pages"]) {
       for (const file of new Glob("**/*.css").scanSync(`${CLIENT}/${dir}`)) {

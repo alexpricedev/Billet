@@ -288,8 +288,9 @@ describe("browser smoke", () => {
     // A Cancel or Remove link beside a Save button takes the same box.
     expect(linkHeight).toBe(inputHeight);
     expect(new Set(row.bottoms).size).toBe(1);
-    // flex: none — a select in a 900px row stays at its content width rather
-    // than stretching and stranding its chevron at the far edge.
+    // flex: 0 1 auto — a select in a 900px row stays at its content width
+    // rather than stretching and stranding its chevron at the far edge. It can
+    // still shrink when the row is too narrow; that is the 390px test below.
     expect(row.selectWidth).toBeLessThan(300);
     // The chevron is drawn inside the padding reserved for it, so option text
     // can never run underneath it, and it doesn't touch the right edge.
@@ -304,6 +305,47 @@ describe("browser smoke", () => {
     expect(row.listBox.height).not.toBe(inputHeight);
   });
 
+  test("a long option doesn't push its button off a 390 screen", async () => {
+    await view.navigate(`${BASE}/forms`);
+    await view.resize(390, 844);
+
+    // A select holds its content width in a flex row, and a long option makes
+    // that wider than a phone. Without `min-width: 0` the select's automatic
+    // minimum is the option's width, so it fills the row and shoves the button
+    // past the edge; with the shrink allowed, the button stays in the viewport.
+    // Built in the page so the assertion is about the base styles every fork
+    // starts from, not about a page that happens to fit today.
+    const report = await view.evaluate<{
+      buttonRight: number;
+      viewport: number;
+      selectWidth: number;
+    }>(`(() => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "flex-start";
+      row.style.gap = "8px";
+      row.style.width = "100%";
+      row.innerHTML =
+        '<select aria-label="Role"><option>A role name long enough to overflow a phone screen</option></select>' +
+        '<button type="button">Save</button>';
+      document.querySelector("main").prepend(row);
+      const [select, button] = row.children;
+      const result = {
+        buttonRight: button.getBoundingClientRect().right,
+        viewport: window.innerWidth,
+        selectWidth: select.getBoundingClientRect().width,
+      };
+      row.remove();
+      return result;
+    })()`);
+
+    expect(report.viewport).toBe(390);
+    expect(report.buttonRight).toBeLessThanOrEqual(report.viewport);
+    expect(report.selectWidth).toBeLessThan(report.viewport);
+
+    await view.resize(1280, 900);
+  });
+
   test("a select's list-box, disabled and right-to-left cases", async () => {
     await view.navigate(`${BASE}/forms`);
 
@@ -316,10 +358,17 @@ describe("browser smoke", () => {
     const report = await view.evaluate<{
       listBox: SelectBox;
       sizeBox: SelectBox;
+      sizeZero: SelectBox;
       dropdown: SelectBoxWithChevron;
       disabled: { color: string; cursor: string };
       enabled: { color: string };
       rtl: SelectBoxWithChevron;
+      ltrInRtl: {
+        backgroundImage: string;
+        placedRight: boolean;
+        paddingLeft: number;
+        paddingRight: number;
+      }[];
     }>(`(() => {
       const row = document.createElement("div");
       row.style.display = "flex";
@@ -328,22 +377,36 @@ describe("browser smoke", () => {
       row.innerHTML =
         '<select aria-label="Roles" multiple><option>Member</option><option>Admin</option></select>' +
         '<select aria-label="Role" size="2"><option>Member</option><option>Admin</option></select>' +
+        '<select aria-label="Size zero" size="0"><option>Member</option></select>' +
         '<select aria-label="One row" size="1"><option>Member</option></select>' +
         '<select aria-label="Frozen" disabled><option>Member</option></select>' +
         '<select aria-label="Live"><option>Member</option></select>';
       document.querySelector("main").prepend(row);
       const host = document.createElement("div");
       host.dir = "rtl";
-      host.innerHTML = '<select aria-label="RTL"><option>Member</option></select>';
+      host.innerHTML =
+        '<select aria-label="RTL"><option>Member</option></select>' +
+        '<select aria-label="LTR in RTL" dir="ltr"><option>Member</option></select>' +
+        '<div dir="ltr"><select aria-label="LTR subtree in RTL"><option>Member</option></select></div>';
       document.querySelector("main").prepend(host);
-      const [listBox, sizeBox, oneRow, disabled, enabled] = row.children;
-      const rtl = host.querySelector("select");
+      const [listBox, sizeBox, sizeZero, oneRow, disabled, enabled] = row.children;
+      const rtl = host.querySelector('select[aria-label="RTL"]');
+      const ltrInRtl = [
+        host.querySelector('select[aria-label="LTR in RTL"]'),
+        host.querySelector('select[aria-label="LTR subtree in RTL"]'),
+      ];
       const style = (el) => getComputedStyle(el);
       const px = (el, side) => parseFloat(style(el)[side]);
       const asLeft = (el) => {
         const value = style(el).backgroundPositionX.trim();
         const match = value.match(/^(-?[\\d.]+)px$/);
         return match ? parseFloat(match[1]) : null;
+      };
+      // Engines serialise "right 12px" either as is or as calc(100% - 12px).
+      const placedRight = (el) => {
+        const value = style(el).backgroundPositionX.trim();
+        return /^right\\s+-?[\\d.]+px$/.test(value) ||
+          /^calc\\(100% - -?[\\d.]+px\\)$/.test(value);
       };
       const box = (el, position) => ({
         cursor: style(el).cursor,
@@ -356,10 +419,17 @@ describe("browser smoke", () => {
       return {
         listBox: box(listBox),
         sizeBox: box(sizeBox),
+        sizeZero: box(sizeZero),
         dropdown: box(oneRow, true),
         disabled: { color: style(disabled).color, cursor: style(disabled).cursor },
         enabled: { color: style(enabled).color },
         rtl: box(rtl, true),
+        ltrInRtl: ltrInRtl.map((el) => ({
+          backgroundImage: style(el).backgroundImage,
+          placedRight: placedRight(el),
+          paddingLeft: px(el, "paddingLeft"),
+          paddingRight: px(el, "paddingRight"),
+        })),
       };
     })()`);
 
@@ -376,6 +446,12 @@ describe("browser smoke", () => {
     expect(report.dropdown.paddingRight).toBeGreaterThan(report.dropdown.paddingLeft);
     expect(report.dropdown.cursor).toBe("pointer");
 
+    // size="0" is a dropdown too: the browser treats it like an absent size
+    // rather than a list box, so it keeps the chevron and the reserved edge.
+    expect(report.sizeZero.backgroundImage).not.toBe("none");
+    expect(report.sizeZero.paddingRight).toBeGreaterThan(report.sizeZero.paddingLeft);
+    expect(report.sizeZero.cursor).toBe("pointer");
+
     // Disabled: muted, and not a pointer. The enabled select beside it is the
     // control — the assertion means nothing if it is muted too.
     expect(report.disabled.color).not.toBe(report.enabled.color);
@@ -387,6 +463,15 @@ describe("browser smoke", () => {
     expect(report.rtl.paddingLeft).toBe(report.dropdown.paddingRight);
     expect(report.rtl.paddingRight).toBe(report.dropdown.paddingLeft);
     expect(report.rtl.chevronFromLeft as number).toBeLessThan(report.rtl.paddingLeft);
+
+    // A left-to-right select inside that right-to-left ancestor is back on the
+    // right — whether it carries dir="ltr" itself or sits in an LTR subtree: it
+    // is the select's own direction that decides, not the host's.
+    for (const ltr of report.ltrInRtl) {
+      expect(ltr.backgroundImage).not.toBe("none");
+      expect(ltr.placedRight).toBe(true);
+      expect(ltr.paddingRight).toBeGreaterThan(ltr.paddingLeft);
+    }
   });
 
   test("the home page's ghost CTA is the shared ghost button in a bigger box", async () => {
