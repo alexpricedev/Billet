@@ -235,7 +235,8 @@ describe("client boundaries", () => {
     // The guard above fails a fork's suite, so it has to be right about what
     // it is looking at in both directions: a rule that styles a select must be
     // caught wherever it is written, and a select named as a condition must
-    // not be. Each line is one selector context; the comment says which.
+    // not be. The two lists are those two directions, one selector context per
+    // line.
     const styles: string[] = [
       "select { color: red; }",
       ".form-field select { color: red; }",

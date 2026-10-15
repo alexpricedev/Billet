@@ -191,7 +191,6 @@ fill its row gets a class and a width. `boundaries.test.ts` fails the suite if a
 stylesheet has a `select` rule, and `bun run test:browser` checks the row, the chevron and the
 list-box and disabled cases in a real engine.
 
-Two kinds of control step off the shared box on purpose, and both say why where they do it: a
-deliberately compact button (the todo filters) sets its own padding and `line-height: normal`, and
-the nav's auth actions drop the border and shrink at phone width, because the header has one row to
-give them.
+A control that steps off the shared box says why where it does it. The template's three are the
+compact todo filters (own padding and `line-height: normal`), the nav's auth actions (no border, and
+smaller at phone width, because the header has one row to give them) and the home hero's larger CTAs.
