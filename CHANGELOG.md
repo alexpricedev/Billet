@@ -7,6 +7,103 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.3.1
+
+The shared form controls from 5.2.0 got the cases a page can hand them. A disabled `select` looked
+exactly like an enabled one, because `appearance: none` had taken the platform's greyed text with it
+and only the cursor gave it away; its value takes `--color-text-quaternary` now. A list box
+(`[multiple]`, or a `size` above 1) was still styled as a dropdown, taking the pointer cursor and
+reserving room for a chevron it does not draw. The chevron and the padding reserved for it sat on the
+physical right, so a `dir="rtl"` document drew the arrow on top of the option text. And `select` was
+`flex: none`, so a long option in a flex row pushed the control beside it off a 390px screen instead
+of shrinking.
+
+The boundary guard that fails a fork's suite for a per-page `select` rule matched the word `select`
+anywhere in a stylesheet. `:not(select)`, `:has(select)`, `@supports selector(select)` and
+`@keyframes select` all failed a fork that had done nothing wrong, while `}select{` — a real select
+rule — slipped past. It reads each rule's prelude now and asks whether a compound selector starts
+with the select element, so at-rules and anything parenthesised are skipped. It fails a suite, so it
+has a test of its own: thirteen selectors it must catch and fourteen it must not, each of the old
+false positives named.
+
+Two rules in the client stylesheets were copies rather than references, and both are now references.
+The home hero's ghost CTA carried a verbatim copy of `.btn-ghost` and takes the base rule instead,
+keeping only the box its row needs, so a ghost button is drawn in one place. The nav's auth actions
+say where their borderless box comes from: Account and Logout are the header's own controls, not page
+controls. Neither changes what a page looks like.
+
+**No migration, and no fork has code to change.** A fork merges this and its app keeps running. The
+one suite that can go red is `boundaries.test.ts` on a per-page `select` rule that 5.2.0 already
+asked a fork to move into `base.css` — including the `}select{` form the old guard missed, so a fork
+that has done that migration sees nothing.
+
+### Fixed
+
+- **A disabled select mutes its value** (`src/client/base.css`). `appearance: none` took the
+  platform's greyed text with it, so a disabled select was indistinguishable from an enabled one. The
+  value takes `--color-text-quaternary`; the arrow stays, because it is baked into a data URI and
+  dropping it would hide that the control is a select at all. This is Billet's first disabled-control
+  style — inputs are unchanged, and a fork that wants the same treatment has `--color-text-quaternary`
+  to hand.
+- **A list box is a list, not a dropdown.** `[multiple]` and a `size` above 1 no longer take the
+  dropdown's pointer cursor or the space reserved for a chevron. `size="0"` and `size="1"` are
+  dropdowns like an absent size, and `size=""` reads as absent too, so all three stay dropdowns.
+- **A right-to-left document gets the chevron on its inline-end edge.** The arrow is a fixed image
+  placed physically, so `dir="rtl"` drew it over the option text. The chevron, the padding reserved
+  for it, and a left-to-right subtree inside a right-to-left ancestor all follow the writing
+  direction now. It is matched on the `dir` attribute rather than `:dir()`, which the CSS build
+  rewrites to a `:lang()` list that a document-level `dir` does not satisfy. This is the only RTL
+  support in Billet — nothing else in the app knows about writing direction.
+- **A long option no longer pushes the control beside it off a narrow screen.** `select` is
+  `flex: 0 1 auto` with `min-width: 0`, so it shrinks in a flex row — the /team role picker beside its
+  Save button — instead of forcing the row wider than the viewport.
+- **The per-page `select` guard reads selectors, not the word** (`src/client/boundaries.test.ts`). It
+  takes the prelude of every rule and asks whether a compound selector starts with the select
+  element, skipping at-rule preludes and anything parenthesised, where the old regex matched the word
+  anywhere and required a `{` to follow.
+
+### Changed
+
+- **The hero's ghost CTA is the shared ghost button** (`src/client/pages/home.css`). The rule was a
+  verbatim copy of `.btn-ghost`, so a fork fixing a ghost button had two places to fix; the hero keeps
+  the box its row needs and takes the colours from `base.css`.
+- **The nav's auth actions state where their box comes from** (`src/client/components/nav.css`). No
+  visible change: Account and Logout keep one borderless, header-sized box, and the compact phone
+  padding moves into the no-JS fallback branch, the only state that ever read it — the enhanced panel
+  re-pads its rows into full-width ones.
+- **The control docs say what the tokens actually do** (`.claude/rules/client.md`,
+  `runbooks/ACCESSIBILITY.md`). Inline padding is the one part a control sets for itself, so the
+  section and the token comment in `base.css` no longer claim the tokens draw it; the three controls
+  that step off the shared box (the compact todo filters, the nav's auth actions, the hero's CTAs) are
+  named where they do it. The accessibility runbook's forced-colours bullet described the base
+  `select`'s exception and then said Billet did not ship one in the next sentence; it now says what
+  the `select` does and which way round the rest of the responsibility sits.
+- **Dependencies:** `resend` 6.32.0 → 6.32.1, `happy-dom` and `@happy-dom/global-registrator`
+  20.14.5 → 20.14.6, `@types/node` 26.6.4 → 26.6.5, `railway` 3.12.0 → 3.13.1 (dev-only).
+
+### Tests
+
+- **`src/client/boundaries.test.ts` → "the select guard reads selectors, not the word"** pins thirteen
+  selectors the guard must catch (including `}select{`, `.a { select { … } }` and `input, select,
+  textarea`) and fourteen it must not (`::selection`, `.select-all`, `.a:not(select)`,
+  `.form-field:has(select)`, `@supports selector(select)`, `@keyframes select`, a `select` inside a
+  comment or a `content` string).
+- **`scripts/browser-smoke.test.ts`** gains "a select's list-box, disabled and right-to-left cases"
+  (the row, a list box, a disabled select, and RTL and LTR-in-RTL), "the home page's ghost CTA is the
+  shared ghost button in a bigger box" against a bare `.btn-ghost` built in the page, and "the nav's
+  Account link and Logout button take the same box" in the desktop header, the opened phone panel and
+  the no-JS fallback. Each compares computed styles in a real engine rather than asserting literals.
+
+### Upgrade notes
+
+- **The `select` guard catches one more shape.** A fork with a per-page `select` rule that the old
+  regex missed — no whitespace before the brace, as in `}select{` — now sees `boundaries.test.ts` fail
+  and can move that styling into `base.css` as 5.2.0 asked. The narrowed guard is the more likely
+  change: a fork that had worked around a false positive on `:not(select)`, `:has(select)`,
+  `@supports selector(select)` or `@keyframes select` can drop the workaround.
+- **RTL is new, and only on the select.** Nothing else in Billet reads `dir`, so a fork with RTL
+  styles of its own gets a self-consistent `select` and nothing more.
+
 ## 5.3.0
 
 The browser smoke tests run in CI. `scripts/browser-smoke.test.ts` reaches a real browser through
