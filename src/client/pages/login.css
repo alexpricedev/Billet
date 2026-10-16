@@ -90,11 +90,11 @@
 .login-footer {
   text-align: center;
   margin-top: 24px;
-  color: var(--color-text-quaternary);
+  color: var(--color-text-tertiary);
   font-size: 14px;
 
   a {
     font-size: 14px;
-    color: var(--color-text-quaternary);
+    color: var(--color-text-tertiary);
   }
 }

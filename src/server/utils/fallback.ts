@@ -29,9 +29,13 @@ export const handleFallback = async (req: Request): Promise<Response> => {
 
   // Lightweight liveness check for the platform healthcheck. Intentionally
   // does not touch the DB — a transient DB blip should not cause the host to
-  // cycle the instance.
+  // cycle the instance. The explicit text/plain (rather than Bun's default
+  // application/octet-stream) keeps a browser from downloading the body.
   if (url.pathname === "/health") {
-    return new Response("ok", { status: 200 });
+    return new Response("ok", {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
 
   if (url.pathname.startsWith("/assets/")) {

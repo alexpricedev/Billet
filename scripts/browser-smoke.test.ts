@@ -106,6 +106,29 @@ const clickIntoView = async (selector: string): Promise<void> => {
 };
 
 /**
+ * WCAG relative-luminance contrast ratio for two computed CSS colours
+ * ("rgb(r, g, b)"). The accessibility assertions below read the real
+ * stylesheet's computed values and check the ratio, rather than asserting the
+ * token names — a fork can retune the palette and the numbers still have to
+ * clear the floor.
+ */
+const relativeLuminance = (css: string): number => {
+  const [r, g, b] = (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+  const channel = (value: number): number => {
+    const c = value / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+};
+
+const contrastRatio = (a: string, b: string): number => {
+  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort(
+    (x, y) => y - x,
+  );
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+/**
  * Navigate, retrying once on net::ERR_ABORTED. The login redirect paints its
  * flash before the page finishes loading, and a navigate() issued in that
  * window is cancelled rather than failed — Chrome reports net::ERR_ABORTED,
@@ -362,6 +385,7 @@ describe("browser smoke", () => {
       sizeEmpty: SelectBox;
       dropdown: SelectBoxWithChevron;
       disabled: { color: string; cursor: string };
+      disabledListBox: { cursor: string };
       enabled: { color: string };
       rtl: SelectBoxWithChevron;
       ltrInRtl: {
@@ -382,6 +406,7 @@ describe("browser smoke", () => {
         '<select aria-label="One row" size="1"><option>Member</option></select>' +
         '<select aria-label="Empty size" size=""><option>Member</option></select>' +
         '<select aria-label="Frozen" disabled><option>Member</option></select>' +
+        '<select aria-label="Frozen list" size="3" disabled><option>Member</option><option>Admin</option><option>Owner</option></select>' +
         '<select aria-label="Live"><option>Member</option></select>';
       document.querySelector("main").prepend(row);
       const host = document.createElement("div");
@@ -391,7 +416,7 @@ describe("browser smoke", () => {
         '<select aria-label="LTR in RTL" dir="ltr"><option>Member</option></select>' +
         '<div dir="ltr"><select aria-label="LTR subtree in RTL"><option>Member</option></select></div>';
       document.querySelector("main").prepend(host);
-      const [listBox, sizeBox, sizeZero, oneRow, sizeEmpty, disabled, enabled] = row.children;
+      const [listBox, sizeBox, sizeZero, oneRow, sizeEmpty, disabled, disabledListBox, enabled] = row.children;
       const rtl = host.querySelector('select[aria-label="RTL"]');
       const ltrInRtl = [
         host.querySelector('select[aria-label="LTR in RTL"]'),
@@ -425,6 +450,7 @@ describe("browser smoke", () => {
         sizeEmpty: box(sizeEmpty),
         dropdown: box(oneRow, true),
         disabled: { color: style(disabled).color, cursor: style(disabled).cursor },
+        disabledListBox: { cursor: style(disabledListBox).cursor },
         enabled: { color: style(enabled).color },
         rtl: box(rtl, true),
         ltrInRtl: ltrInRtl.map((el) => ({
@@ -461,10 +487,15 @@ describe("browser smoke", () => {
     expect(report.sizeEmpty.paddingRight).toBeGreaterThan(report.sizeEmpty.paddingLeft);
     expect(report.sizeEmpty.cursor).toBe("pointer");
 
-    // Disabled: muted, and not a pointer. The enabled select beside it is the
-    // control — the assertion means nothing if it is muted too.
+    // Disabled: muted, and not a usable cursor. The enabled select beside it is
+    // the control — the assertion means nothing if it is muted too.
     expect(report.disabled.color).not.toBe(report.enabled.color);
-    expect(report.disabled.cursor).toBe("default");
+    expect(report.disabled.cursor).toBe("not-allowed");
+
+    // A disabled list box keeps the shared cursor too. The list-box rule sets
+    // its own cursor and out-specifies the :disabled rule, so without the
+    // exclusion a frozen list box would still read as one you can use.
+    expect(report.disabledListBox.cursor).toBe("not-allowed");
 
     // Right-to-left: the chevron moves to the inline-end edge (the left) and
     // the space reserved for it moves with it.
@@ -638,6 +669,365 @@ describe("browser smoke", () => {
     expect(dangerHovered).toBe(dangerResting);
     // ...and the control proves hover really changed a colour in this browser.
     expect(plainHovered).not.toBe(plainResting);
+  });
+
+  test("the primary button's white label clears AA resting and hovered", async () => {
+    await view.navigate(`${BASE}/`);
+
+    // A plain <button> takes its fill from base.css; the two .btn-primary
+    // anchors (home hero, error page) take theirs from the page rules over the
+    // same tokens. Built rather than found, so the assertion is about the
+    // shared base styles and not about whichever page is open.
+    await view.evaluate(`(() => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.id = "smoke-primary";
+      button.textContent = "Save";
+      document.querySelector("main").prepend(button);
+    })()`);
+
+    const read = (): Promise<{ color: string; background: string }> =>
+      view.evaluate(`(() => {
+        const s = getComputedStyle(document.querySelector("#smoke-primary"));
+        return { color: s.color, background: s.backgroundColor };
+      })()`);
+
+    const resting = await read();
+    expect(
+      contrastRatio(resting.color, resting.background),
+      JSON.stringify(resting),
+    ).toBeGreaterThanOrEqual(4.5);
+
+    // A native click parks the pointer on the button, so :hover matches it.
+    await view.click("#smoke-primary");
+    await Bun.sleep(250);
+    const hovered = await read();
+    expect(hovered.background).not.toBe(resting.background);
+    expect(
+      contrastRatio(hovered.color, hovered.background),
+      JSON.stringify(hovered),
+    ).toBeGreaterThanOrEqual(4.5);
+
+    await view.evaluate(`document.querySelector("#smoke-primary")?.remove()`);
+  });
+
+  test("disabled controls look disabled", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    // A disabled input normally keeps its box, and a restyled select or button
+    // keeps its fill, in both Chromium and WebKit — so "disabled" has to be
+    // drawn. The enabled button is the control: the fade means nothing if it
+    // is faded too.
+    const report = await view.evaluate<{
+      disabled: Record<
+        "input" | "select" | "button",
+        { opacity: string; cursor: string }
+      >;
+      enabled: { opacity: string; cursor: string };
+    }>(`(() => {
+      const wrap = document.createElement("div");
+      wrap.innerHTML =
+        '<input id="smoke-d-input" disabled aria-label="Disabled input">' +
+        '<select id="smoke-d-select" disabled aria-label="Disabled select"><option>Member</option></select>' +
+        '<button id="smoke-d-button" type="button" disabled>Save</button>' +
+        '<button id="smoke-e-button" type="button">Send</button>';
+      document.querySelector("main").prepend(wrap);
+      const read = (id) => {
+        const s = getComputedStyle(document.getElementById(id));
+        return { opacity: s.opacity, cursor: s.cursor };
+      };
+      const result = {
+        disabled: {
+          input: read("smoke-d-input"),
+          select: read("smoke-d-select"),
+          button: read("smoke-d-button"),
+        },
+        enabled: read("smoke-e-button"),
+      };
+      wrap.remove();
+      return result;
+    })()`);
+
+    for (const box of Object.values(report.disabled)) {
+      expect(box.opacity, JSON.stringify(box)).toBe("0.5");
+    }
+    expect(report.enabled.opacity).toBe("1");
+    expect(report.disabled.input.cursor).toBe("not-allowed");
+    expect(report.disabled.select.cursor).toBe("not-allowed");
+    expect(report.disabled.button.cursor).toBe("not-allowed");
+    expect(report.enabled.cursor).toBe("pointer");
+  });
+
+  test("a disabled button keeps its resting fill while hovered", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    // :hover matches a disabled button — the engine doesn't consult the
+    // attribute for it — so the fill rules exclude :disabled rather than
+    // leaning on the shared fade: a frozen control stays at its resting fill
+    // under the pointer. The enabled twins are the proof hover reached the
+    // page: "the disabled one didn't change" means nothing if nothing changed.
+    //
+    // A click at (1, 1) parks the pointer on the header's inert corner first —
+    // the previous test left it wherever it hovered last, and every resting
+    // read below would otherwise be a hovered one.
+    await view.click(1, 1);
+    await Bun.sleep(250);
+
+    const resting = await view.evaluate<
+      Record<string, { x: number; y: number; background: string }>
+    >(`(() => {
+      const row = document.createElement("div");
+      row.id = "smoke-hover-row";
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.innerHTML =
+        '<button id="smoke-h-primary" type="button">Save</button>' +
+        '<button id="smoke-h-primary-disabled" type="button" disabled>Save</button>' +
+        '<button id="smoke-h-ghost" type="button" class="btn-ghost">Cancel</button>' +
+        '<button id="smoke-h-ghost-disabled" type="button" class="btn-ghost" disabled>Cancel</button>';
+      document.querySelector("main").prepend(row);
+      const read = (id) => {
+        const el = document.getElementById(id);
+        const box = el.getBoundingClientRect();
+        return {
+          x: box.left + box.width / 2,
+          y: box.top + box.height / 2,
+          background: getComputedStyle(el).backgroundColor,
+        };
+      };
+      return {
+        primary: read("smoke-h-primary"),
+        primaryDisabled: read("smoke-h-primary-disabled"),
+        ghost: read("smoke-h-ghost"),
+        ghostDisabled: read("smoke-h-ghost-disabled"),
+      };
+    })()`);
+
+    const background = (id: string): Promise<string> =>
+      view.evaluate<string>(
+        `getComputedStyle(document.getElementById("${id}")).backgroundColor`,
+      );
+
+    // A native click parks the pointer on the disabled controls, which is how
+    // :hover comes to match them at all.
+    await view.click(resting.primaryDisabled.x, resting.primaryDisabled.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-h-primary-disabled")).toBe(
+      resting.primaryDisabled.background,
+    );
+
+    await view.click(resting.ghostDisabled.x, resting.ghostDisabled.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-h-ghost-disabled")).toBe(
+      resting.ghostDisabled.background,
+    );
+
+    // The same click on an enabled control changes its fill, so hover really
+    // applied to this page in this engine.
+    await view.click(resting.primary.x, resting.primary.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-h-primary")).not.toBe(
+      resting.primary.background,
+    );
+
+    await view.click(resting.ghost.x, resting.ghost.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-h-ghost")).not.toBe(
+      resting.ghost.background,
+    );
+
+    await view.evaluate(
+      `document.getElementById("smoke-hover-row")?.remove()`,
+    );
+  });
+
+  test("a page's own button state survives the shared hover fill", async () => {
+    await view.navigate(`${BASE}/todos`);
+
+    // base.css sets the filled button's hover fill as a (0,1,1) default —
+    // :where() keeps it there. A page rule at class specificity still has to
+    // win on hover: the todos .toggle-btn draws a transparent circle and the
+    // /team danger button its own tint, so neither may take the indigo fill
+    // under the pointer. Scoping the state to the plain element instead would
+    // out-specify both. The plain primary button is the control — its hover
+    // fill is exactly the one the other two must not take.
+    //
+    // A click at (1, 1) parks the pointer on the header's inert corner first,
+    // so every resting read below is a resting one.
+    await view.click(1, 1);
+    await Bun.sleep(250);
+
+    const resting = await view.evaluate<
+      Record<
+        "primary" | "danger" | "toggle",
+        { x: number; y: number; background: string; color: string }
+      >
+    >(`(() => {
+      const row = document.createElement("div");
+      row.id = "smoke-state-row";
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.innerHTML =
+        '<button id="smoke-s-primary" type="button">Save</button>' +
+        '<button id="smoke-s-danger" type="button" class="btn-danger">Remove</button>' +
+        '<button id="smoke-s-toggle" type="button" class="toggle-btn" aria-pressed="false">Done</button>';
+      document.querySelector("main").prepend(row);
+      const read = (id) => {
+        const el = document.getElementById(id);
+        const box = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return {
+          x: box.left + box.width / 2,
+          y: box.top + box.height / 2,
+          background: style.backgroundColor,
+          color: style.color,
+        };
+      };
+      return {
+        primary: read("smoke-s-primary"),
+        danger: read("smoke-s-danger"),
+        toggle: read("smoke-s-toggle"),
+      };
+    })()`);
+
+    const read = (id: string): Promise<{ background: string; color: string }> =>
+      view.evaluate(`(() => {
+        const style = getComputedStyle(document.getElementById("${id}"));
+        return { background: style.backgroundColor, color: style.color };
+      })()`);
+
+    // Hover the toggle: it stays the transparent circle its own rule draws,
+    // and the colour step that rule does carry still happens — so the
+    // background assertion is not passing because hover never reached it.
+    await view.click(resting.toggle.x, resting.toggle.y);
+    await Bun.sleep(250);
+    const toggle = await read("smoke-s-toggle");
+    expect(toggle.background).toBe(resting.toggle.background);
+    expect(toggle.color).not.toBe(resting.toggle.color);
+
+    // Hover the danger button: it takes its own tint, not the shared fill.
+    await view.click(resting.danger.x, resting.danger.y);
+    await Bun.sleep(250);
+    const danger = await read("smoke-s-danger");
+    expect(danger.background).not.toBe(resting.danger.background);
+
+    // The control: a plain primary button does take the shared hover fill.
+    await view.click(resting.primary.x, resting.primary.y);
+    await Bun.sleep(250);
+    const primary = await read("smoke-s-primary");
+    expect(primary.background).not.toBe(resting.primary.background);
+
+    // The regression this guards: the page rules failed to out-specify the
+    // shared fill, so both took the control's indigo.
+    expect(danger.background).not.toBe(primary.background);
+    expect(toggle.background).not.toBe(primary.background);
+
+    await view.evaluate(
+      `document.getElementById("smoke-state-row")?.remove()`,
+    );
+  });
+
+  test("a field's border and placeholder clear their contrast floors", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    const report = await view.evaluate<{
+      border: string;
+      placeholder: string;
+      background: string;
+    }>(`(() => {
+      const input = document.createElement("input");
+      input.setAttribute("aria-label", "Field");
+      input.placeholder = "you@example.com";
+      document.querySelector("main").prepend(input);
+      const result = {
+        border: getComputedStyle(input).borderTopColor,
+        placeholder: getComputedStyle(input, "::placeholder").color,
+        background: getComputedStyle(input).backgroundColor,
+      };
+      input.remove();
+      return result;
+    })()`);
+
+    // WCAG 1.4.11: the boundary that identifies a field needs 3:1.
+    expect(
+      contrastRatio(report.border, report.background),
+      JSON.stringify(report),
+    ).toBeGreaterThanOrEqual(3);
+    // The placeholder is text, so it needs 4.5:1.
+    expect(
+      contrastRatio(report.placeholder, report.background),
+      JSON.stringify(report),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("the site footer and login-footer links clear AA", async () => {
+    // The two muted links the review called out. Reads them at rest; /login is
+    // signed-out chrome, so this runs before the magic link signs in.
+    // Navigated to explicitly rather than inheriting whatever page the previous
+    // test left, which is how this used to read a footer that might not exist.
+    await view.navigate(`${BASE}/`);
+
+    const site = await view.evaluate<{ link: string; background: string }>(
+      `(() => {
+        const footer = document.querySelector('[data-component="layout"] > footer');
+        return {
+          link: getComputedStyle(footer.querySelector("a")).color,
+          background: getComputedStyle(document.body).backgroundColor,
+        };
+      })()`,
+    );
+    expect(
+      contrastRatio(site.link, site.background),
+      JSON.stringify(site),
+    ).toBeGreaterThanOrEqual(4.5);
+
+    await view.navigate(`${BASE}/login`);
+    const login = await view.evaluate<{ link: string; background: string }>(
+      `(() => {
+        const footer = document.querySelector(".login-footer");
+        return {
+          link: getComputedStyle(footer.querySelector("a")).color,
+          background: getComputedStyle(document.querySelector(".login-page")).backgroundColor,
+        };
+      })()`,
+    );
+    expect(
+      contrastRatio(login.link, login.background),
+      JSON.stringify(login),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("the error page's nav is one row on a phone", async () => {
+    // The 404 ships no client JavaScript by design, so there is no hamburger;
+    // the fallback layout has to fit the pages and the single Login on one row.
+    await view.navigate(`${BASE}/this-page-does-not-exist`);
+    await view.resize(390, 844);
+
+    const report = await view.evaluate<{
+      linkCentre: number;
+      authCentre: number;
+      scrollWidth: number;
+      clientWidth: number;
+    }>(`(() => {
+      const nav = document.querySelector('[data-component="nav"]');
+      const link = nav.querySelector("ul a").getBoundingClientRect();
+      const auth = nav.querySelector(".nav-auth a").getBoundingClientRect();
+      return {
+        linkCentre: link.top + link.height / 2,
+        authCentre: auth.top + auth.height / 2,
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      };
+    })()`);
+
+    // align-items: center makes one row's centres equal; a second row would
+    // separate them by most of its height.
+    expect(
+      Math.abs(report.linkCentre - report.authCentre),
+      JSON.stringify(report),
+    ).toBeLessThanOrEqual(6);
+    expect(report.scrollWidth).toBeLessThanOrEqual(report.clientWidth);
+    await view.resize(1280, 900);
   });
 
   test("a guest submits the form through the CSRF round-trip", async () => {

@@ -124,7 +124,7 @@ parallel with a database per worker.
 - **Progressive enhancement over plain forms** — every mutation on the todo page is a `<form>` that works without JavaScript. With it, `server.submit(form)` posts the same form with the CSRF token as a header and asks for a fragment; the controller answers with the server-rendered row instead of a redirect, and a stale token is refreshed and retried once. The classic todo list is the worked example — add, toggle, delete and filter, no page loads
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
 - **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
-- **Accessibility baseline** — semantic landmarks, labelled form controls, a keyboard focus ring, reduced-motion support, announced flash messages, and captioned data tables out of the box — see [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md)
+- **Accessibility baseline** — semantic landmarks, labelled form controls, a keyboard focus ring, reduced-motion support, announced flash messages, captioned data tables, AA-checked button and link contrast, visible field borders, and faded disabled controls out of the box — see [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md)
 - **Privacy-clean by default** — no analytics, no trackers, no third-party cookies; only strictly-necessary first-party cookies, so no consent banner is legally required until you add tracking — see [runbooks/PRIVACY.md](runbooks/PRIVACY.md) for the consent-banner and privacy-policy pattern
 - **Asset cache-busting** in production — MD5-hashed filenames with immutable `Cache-Control` headers
 
@@ -198,7 +198,7 @@ The other thing worktrees share is everything in `.env`. [`.conductor/settings.t
 |---|---|
 | **Foundations** | Doctype, charset, viewport, canonical URLs, Open Graph, favicons, theme-color |
 | **SEO** | robots.txt, XML sitemap, JSON-LD, per-page metadata, an explicit indexing policy |
-| **Accessibility** | Semantic landmarks, labelled forms, focus rings, reduced motion, captioned tables |
+| **Accessibility** | Semantic landmarks, labelled forms, focus rings, reduced motion, captioned tables, AA-checked contrast, disabled styling |
 | **Security** | Security headers on every response, a Content Security Policy, HSTS, security.txt, Subresource Integrity, Clear-Site-Data |
 | **Agent readiness** | An llms.txt index, AI-crawler rules and Content-Signal in robots.txt, machine-readable Link headers, structured data, stable URLs |
 | **Performance** | Brotli and gzip compression, fingerprinted immutable assets, ETag revalidation with 304s, preconnect resource hints, minified bundles |

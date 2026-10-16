@@ -143,12 +143,12 @@
        the ghost ones — a copy of that rule here would be a second place to
        keep a ghost button right. */
     .btn-primary {
-      background: var(--color-primary);
+      background: var(--color-primary-fill);
       color: #fff;
 
       &:hover,
       &:focus {
-        background: var(--color-primary-hover);
+        background: var(--color-primary-fill-hover);
         color: #fff;
         text-decoration: none;
       }

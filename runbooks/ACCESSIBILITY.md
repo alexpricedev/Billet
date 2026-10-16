@@ -25,6 +25,8 @@ These are handled in the framework layer and apply to every page automatically:
 | Native interactive elements | throughout | Real `<button>` / `<a>` / `<form>` — never `<div onclick>` |
 | Labelled form controls | `form-field.tsx`, templates | Every input has an associated `<label>` (see §3) |
 | Keyboard focus ring | `base.css` | Global `:focus-visible { outline }` — visible, keyboard-only |
+| Disabled controls | `base.css` | `:is(input, select, textarea, button):disabled` fades to 50% and shows `cursor: not-allowed` |
+| Field borders | `base.css` | Inputs, selects and textareas draw `--color-border-strong` — 3:1 on the surface (WCAG 1.4.11 non-text contrast) |
 | Reduced motion | `base.css`, `home.ts` | `prefers-reduced-motion` shrinks transitions and stops the hero animation looping |
 | Announced flash messages | `flash.tsx` | `role="alert"` for errors, `role="status"` for success |
 | Data tables | `data-table.tsx`, templates | `<caption>` + `scope="col"` header cells |
@@ -43,7 +45,14 @@ you:
 
 - **Colour contrast** — text and meaningful UI must meet WCAG contrast against
   their background (4.5:1 for body text, 3:1 for large text and UI). Check every
-  colour pair in your palette, not just the defaults. See
+  colour pair in your palette, not just the defaults. A filled primary control
+  is its own pair: `--color-primary` is the accent — link text, badges, the
+  focus ring — and has to stay light enough to read as text on the dark
+  surfaces, while `--color-primary-fill` and `--color-primary-fill-hover` are
+  the same hue darkened for the control's background, so its white 14px label
+  clears 4.5:1 at rest and on hover. Retune **both pairs together**: one colour
+  can't do both jobs, because a fill dark enough for a white label is too dark
+  to read as link text. See
   [contrast](https://specification.website/spec/accessibility/color-contrast/)
   and the CSS
   [`contrast-color()`](https://specification.website/spec/accessibility/contrast-color/)
@@ -125,3 +134,11 @@ Before you ship a new page or a redesign:
    automated tools catch roughly a third of issues.
 5. **Contrast** — check your palette's colour pairs with a contrast checker (or
    the browser DevTools contrast readout) after any theme change.
+6. **Automated browser pass** — `bun run test:browser` computes the ratios a
+   happy-dom test can't, in a real engine: the primary button's white label at
+   rest and hovered (4.5:1), a disabled control's opacity and cursor, the cases
+   the shared fade would otherwise miss (a disabled button under the pointer,
+   a disabled list box), the field border (3:1) and placeholder (4.5:1), the
+   footer and login-footer links, the 404 page's nav on one row at 390px, and a
+   page rule's own hover state (the todos toggle's circle, a danger button)
+   against the shared button fill.

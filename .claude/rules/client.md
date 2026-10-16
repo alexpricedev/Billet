@@ -196,3 +196,11 @@ engine.
 A control that steps off the shared box says why where it does it. The template's three are the
 compact todo filters (own padding and `line-height: normal`), the nav's auth actions (no border, and
 smaller at phone width, because the header has one row to give them) and the home hero's larger CTAs.
+
+Two of a control's colours are separated on purpose. `--color-primary` is the accent — link text,
+badges, the focus ring, accent borders — and stays light enough to read on the dark surfaces;
+`--color-primary-fill` (and its hover) is the same hue darkened, and is what a filled primary
+control draws so its white label clears 4.5:1. A disabled control is faded and given the
+`not-allowed` cursor by one `:is(input, select, textarea, button):disabled` rule, and a field's
+border is `--color-border-strong` so the boundary clears the 3:1 non-text minimum rather than
+blending into the surface.

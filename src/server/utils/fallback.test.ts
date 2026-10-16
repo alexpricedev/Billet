@@ -46,6 +46,14 @@ describe("handleFallback", () => {
     expect(await res.text()).toBe("ok");
   });
 
+  test("serves the health check as text, not a download", async () => {
+    // Bun's default for a string body is application/octet-stream, which makes
+    // a browser download the response instead of showing "ok".
+    const res = await req("/health");
+
+    expect(res.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+  });
+
   test("serves an existing public/ file with caching headers", async () => {
     const res = await req("/logo.svg");
 
