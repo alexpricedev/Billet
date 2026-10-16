@@ -841,6 +841,92 @@ describe("browser smoke", () => {
     );
   });
 
+  test("a page's own button state survives the shared hover fill", async () => {
+    await view.navigate(`${BASE}/todos`);
+
+    // base.css sets the filled button's hover fill as a (0,1,1) default —
+    // :where() keeps it there. A page rule at class specificity still has to
+    // win on hover: the todos .toggle-btn draws a transparent circle and the
+    // /team danger button its own tint, so neither may take the indigo fill
+    // under the pointer. Scoping the state to the plain element instead would
+    // out-specify both. The plain primary button is the control — its hover
+    // fill is exactly the one the other two must not take.
+    //
+    // A click at (1, 1) parks the pointer on the header's inert corner first,
+    // so every resting read below is a resting one.
+    await view.click(1, 1);
+    await Bun.sleep(250);
+
+    const resting = await view.evaluate<
+      Record<
+        "primary" | "danger" | "toggle",
+        { x: number; y: number; background: string; color: string }
+      >
+    >(`(() => {
+      const row = document.createElement("div");
+      row.id = "smoke-state-row";
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.innerHTML =
+        '<button id="smoke-s-primary" type="button">Save</button>' +
+        '<button id="smoke-s-danger" type="button" class="btn-danger">Remove</button>' +
+        '<button id="smoke-s-toggle" type="button" class="toggle-btn" aria-pressed="false">Done</button>';
+      document.querySelector("main").prepend(row);
+      const read = (id) => {
+        const el = document.getElementById(id);
+        const box = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return {
+          x: box.left + box.width / 2,
+          y: box.top + box.height / 2,
+          background: style.backgroundColor,
+          color: style.color,
+        };
+      };
+      return {
+        primary: read("smoke-s-primary"),
+        danger: read("smoke-s-danger"),
+        toggle: read("smoke-s-toggle"),
+      };
+    })()`);
+
+    const read = (id: string): Promise<{ background: string; color: string }> =>
+      view.evaluate(`(() => {
+        const style = getComputedStyle(document.getElementById("${id}"));
+        return { background: style.backgroundColor, color: style.color };
+      })()`);
+
+    // Hover the toggle: it stays the transparent circle its own rule draws,
+    // and the colour step that rule does carry still happens — so the
+    // background assertion is not passing because hover never reached it.
+    await view.click(resting.toggle.x, resting.toggle.y);
+    await Bun.sleep(250);
+    const toggle = await read("smoke-s-toggle");
+    expect(toggle.background).toBe(resting.toggle.background);
+    expect(toggle.color).not.toBe(resting.toggle.color);
+
+    // Hover the danger button: it takes its own tint, not the shared fill.
+    await view.click(resting.danger.x, resting.danger.y);
+    await Bun.sleep(250);
+    const danger = await read("smoke-s-danger");
+    expect(danger.background).not.toBe(resting.danger.background);
+
+    // The control: a plain primary button does take the shared hover fill.
+    await view.click(resting.primary.x, resting.primary.y);
+    await Bun.sleep(250);
+    const primary = await read("smoke-s-primary");
+    expect(primary.background).not.toBe(resting.primary.background);
+
+    // The regression this guards: the page rules failed to out-specify the
+    // shared fill, so both took the control's indigo.
+    expect(danger.background).not.toBe(primary.background);
+    expect(toggle.background).not.toBe(primary.background);
+
+    await view.evaluate(
+      `document.getElementById("smoke-state-row")?.remove()`,
+    );
+  });
+
   test("a field's border and placeholder clear their contrast floors", async () => {
     await view.navigate(`${BASE}/forms`);
 

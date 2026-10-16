@@ -139,4 +139,6 @@ Before you ship a new page or a redesign:
    rest and hovered (4.5:1), a disabled control's opacity and cursor, the cases
    the shared fade would otherwise miss (a disabled button under the pointer,
    a disabled list box), the field border (3:1) and placeholder (4.5:1), the
-   footer and login-footer links, and the 404 page's nav on one row at 390px.
+   footer and login-footer links, the 404 page's nav on one row at 390px, and a
+   page rule's own hover state (the todos toggle's circle, a danger button)
+   against the shared button fill.

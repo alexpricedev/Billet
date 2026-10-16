@@ -186,8 +186,11 @@ button {
   /* :hover matches a disabled button — the engine doesn't consult the
      attribute for it — so the shared :disabled fade can't be what keeps a
      frozen control at its resting fill: the state has to exclude :disabled
-     itself. */
-  &:not(:disabled):is(:hover, :focus) {
+     itself. :where() keeps that exclusion at zero specificity, so this rule
+     stays a (0,1,1) button default: a page rule like .btn-danger:hover, or
+     the todos .toggle-btn, still out-specifies it instead of having its own
+     fill overridden on hover. */
+  &:where(:not(:disabled)):is(:hover, :focus) {
     background: var(--color-primary-fill-hover);
   }
 }
@@ -219,8 +222,9 @@ img {
   color: var(--color-text-secondary);
 
   /* Scoped the same way as the filled button: a disabled ghost button keeps
-     its transparent fill under the pointer. */
-  &:not(:disabled):is(:hover, :focus) {
+     its transparent fill under the pointer, and :where() keeps this state at
+     the class's own specificity. */
+  &:where(:not(:disabled)):is(:hover, :focus) {
     background: var(--color-surface);
     color: var(--color-text);
   }
