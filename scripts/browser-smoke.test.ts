@@ -22,6 +22,31 @@ const PORT = 3987;
 const BASE = `http://localhost:${PORT}`;
 const SCREENSHOT_DIR = "/tmp/billet-browser-smoke";
 
+// The computed box of a select read back from the page. A dropdown also has
+// where its chevron is drawn, from the left edge, or null when the browser
+// reports a position that isn't a plain pixel value.
+type SelectBox = {
+  cursor: string;
+  paddingLeft: number;
+  paddingRight: number;
+  backgroundImage: string;
+  height: number;
+};
+type SelectBoxWithChevron = SelectBox & { chevronFromLeft: number | null };
+
+// The computed box of a nav auth action, read back from the page. The two
+// actions are compared against each other rather than against literals, so a
+// fork can resize the header without making the assertions wrong.
+type NavBox = {
+  top: number;
+  height: number;
+  padding: string;
+  borderWidth: string;
+  fontSize: string;
+  fontWeight: string;
+  lineHeight: string;
+};
+
 let server: Subprocess;
 let view: InstanceType<typeof Bun.WebView>;
 
@@ -263,8 +288,9 @@ describe("browser smoke", () => {
     // A Cancel or Remove link beside a Save button takes the same box.
     expect(linkHeight).toBe(inputHeight);
     expect(new Set(row.bottoms).size).toBe(1);
-    // flex: none — a select in a 900px row stays at its content width rather
-    // than stretching and stranding its chevron at the far edge.
+    // flex: 0 1 auto — a select in a 900px row stays at its content width
+    // rather than stretching and stranding its chevron at the far edge. It can
+    // still shrink when the row is too narrow; that is the 390px test below.
     expect(row.selectWidth).toBeLessThan(300);
     // The chevron is drawn inside the padding reserved for it, so option text
     // can never run underneath it, and it doesn't touch the right edge.
@@ -277,6 +303,256 @@ describe("browser smoke", () => {
     // A list box keeps its rows: no chevron, and not squeezed to one control.
     expect(row.listBox.backgroundImage).toBe("none");
     expect(row.listBox.height).not.toBe(inputHeight);
+  });
+
+  test("a long option doesn't push its button off a 390 screen", async () => {
+    await view.navigate(`${BASE}/forms`);
+    await view.resize(390, 844);
+
+    // A select holds its content width in a flex row, and a long option makes
+    // that wider than a phone. Without `min-width: 0` the select's automatic
+    // minimum is the option's width, so it fills the row and shoves the button
+    // past the edge; with the shrink allowed, the button stays in the viewport.
+    // Built in the page so the assertion is about the base styles every fork
+    // starts from, not about a page that happens to fit today.
+    const report = await view.evaluate<{
+      buttonRight: number;
+      viewport: number;
+      selectWidth: number;
+    }>(`(() => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "flex-start";
+      row.style.gap = "8px";
+      row.style.width = "100%";
+      row.innerHTML =
+        '<select aria-label="Role"><option>A role name long enough to overflow a phone screen</option></select>' +
+        '<button type="button">Save</button>';
+      document.querySelector("main").prepend(row);
+      const [select, button] = row.children;
+      const result = {
+        buttonRight: button.getBoundingClientRect().right,
+        viewport: window.innerWidth,
+        selectWidth: select.getBoundingClientRect().width,
+      };
+      row.remove();
+      return result;
+    })()`);
+
+    expect(report.viewport).toBe(390);
+    expect(report.buttonRight).toBeLessThanOrEqual(report.viewport);
+    expect(report.selectWidth).toBeLessThan(report.viewport);
+
+    await view.resize(1280, 900);
+  });
+
+  test("a select's list-box, disabled and right-to-left cases", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    // The base rule draws one select for every case a page can hand it. These
+    // are the ones a restyled select usually gets wrong: a list box is not a
+    // dropdown (no chevron, no space reserved for one, and the cursor a list is
+    // read with rather than a pointer), `appearance: none` took the platform's
+    // disabled treatment with it, and the drawn chevron is placed physically so
+    // a right-to-left document needs it on the other edge.
+    const report = await view.evaluate<{
+      listBox: SelectBox;
+      sizeBox: SelectBox;
+      sizeZero: SelectBox;
+      sizeEmpty: SelectBox;
+      dropdown: SelectBoxWithChevron;
+      disabled: { color: string; cursor: string };
+      enabled: { color: string };
+      rtl: SelectBoxWithChevron;
+      ltrInRtl: {
+        backgroundImage: string;
+        placedRight: boolean;
+        paddingLeft: number;
+        paddingRight: number;
+      }[];
+    }>(`(() => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "flex-start";
+      row.style.gap = "8px";
+      row.innerHTML =
+        '<select aria-label="Roles" multiple><option>Member</option><option>Admin</option></select>' +
+        '<select aria-label="Role" size="2"><option>Member</option><option>Admin</option></select>' +
+        '<select aria-label="Size zero" size="0"><option>Member</option></select>' +
+        '<select aria-label="One row" size="1"><option>Member</option></select>' +
+        '<select aria-label="Empty size" size=""><option>Member</option></select>' +
+        '<select aria-label="Frozen" disabled><option>Member</option></select>' +
+        '<select aria-label="Live"><option>Member</option></select>';
+      document.querySelector("main").prepend(row);
+      const host = document.createElement("div");
+      host.dir = "rtl";
+      host.innerHTML =
+        '<select aria-label="RTL"><option>Member</option></select>' +
+        '<select aria-label="LTR in RTL" dir="ltr"><option>Member</option></select>' +
+        '<div dir="ltr"><select aria-label="LTR subtree in RTL"><option>Member</option></select></div>';
+      document.querySelector("main").prepend(host);
+      const [listBox, sizeBox, sizeZero, oneRow, sizeEmpty, disabled, enabled] = row.children;
+      const rtl = host.querySelector('select[aria-label="RTL"]');
+      const ltrInRtl = [
+        host.querySelector('select[aria-label="LTR in RTL"]'),
+        host.querySelector('select[aria-label="LTR subtree in RTL"]'),
+      ];
+      const style = (el) => getComputedStyle(el);
+      const px = (el, side) => parseFloat(style(el)[side]);
+      const asLeft = (el) => {
+        const value = style(el).backgroundPositionX.trim();
+        const match = value.match(/^(-?[\\d.]+)px$/);
+        return match ? parseFloat(match[1]) : null;
+      };
+      // Engines serialise "right 12px" either as is or as calc(100% - 12px).
+      const placedRight = (el) => {
+        const value = style(el).backgroundPositionX.trim();
+        return /^right\\s+-?[\\d.]+px$/.test(value) ||
+          /^calc\\(100% - -?[\\d.]+px\\)$/.test(value);
+      };
+      const box = (el, position) => ({
+        cursor: style(el).cursor,
+        paddingLeft: px(el, "paddingLeft"),
+        paddingRight: px(el, "paddingRight"),
+        backgroundImage: style(el).backgroundImage,
+        height: el.getBoundingClientRect().height,
+        ...(position ? { chevronFromLeft: asLeft(el) } : {}),
+      });
+      return {
+        listBox: box(listBox),
+        sizeBox: box(sizeBox),
+        sizeZero: box(sizeZero),
+        sizeEmpty: box(sizeEmpty),
+        dropdown: box(oneRow, true),
+        disabled: { color: style(disabled).color, cursor: style(disabled).cursor },
+        enabled: { color: style(enabled).color },
+        rtl: box(rtl, true),
+        ltrInRtl: ltrInRtl.map((el) => ({
+          backgroundImage: style(el).backgroundImage,
+          placedRight: placedRight(el),
+          paddingLeft: px(el, "paddingLeft"),
+          paddingRight: px(el, "paddingRight"),
+        })),
+      };
+    })()`);
+
+    // A list box, at every size: no chevron, no reserved edge, list cursor.
+    for (const box of [report.listBox, report.sizeBox]) {
+      expect(box.backgroundImage).toBe("none");
+      expect(box.paddingRight).toBe(box.paddingLeft);
+      expect(box.cursor).toBe("default");
+    }
+    expect(report.listBox.height).toBeGreaterThan(report.dropdown.height);
+
+    // size="1" is a dropdown like any other.
+    expect(report.dropdown.backgroundImage).not.toBe("none");
+    expect(report.dropdown.paddingRight).toBeGreaterThan(report.dropdown.paddingLeft);
+    expect(report.dropdown.cursor).toBe("pointer");
+
+    // size="0" is a dropdown too: the browser treats it like an absent size
+    // rather than a list box, so it keeps the chevron and the reserved edge.
+    expect(report.sizeZero.backgroundImage).not.toBe("none");
+    expect(report.sizeZero.paddingRight).toBeGreaterThan(report.sizeZero.paddingLeft);
+    expect(report.sizeZero.cursor).toBe("pointer");
+
+    // size="" is an invalid size the same way size="0" is an invalid number of
+    // rows, so it reads as an absent size — a dropdown — and not as a list box.
+    expect(report.sizeEmpty.backgroundImage).not.toBe("none");
+    expect(report.sizeEmpty.paddingRight).toBeGreaterThan(report.sizeEmpty.paddingLeft);
+    expect(report.sizeEmpty.cursor).toBe("pointer");
+
+    // Disabled: muted, and not a pointer. The enabled select beside it is the
+    // control — the assertion means nothing if it is muted too.
+    expect(report.disabled.color).not.toBe(report.enabled.color);
+    expect(report.disabled.cursor).toBe("default");
+
+    // Right-to-left: the chevron moves to the inline-end edge (the left) and
+    // the space reserved for it moves with it.
+    expect(report.rtl.chevronFromLeft).not.toBeNull();
+    expect(report.rtl.paddingLeft).toBe(report.dropdown.paddingRight);
+    expect(report.rtl.paddingRight).toBe(report.dropdown.paddingLeft);
+    expect(report.rtl.chevronFromLeft as number).toBeLessThan(report.rtl.paddingLeft);
+
+    // A left-to-right select inside that right-to-left ancestor is back on the
+    // right — whether it carries dir="ltr" itself or sits in an LTR subtree: it
+    // is the select's own direction that decides, not the host's.
+    for (const ltr of report.ltrInRtl) {
+      expect(ltr.backgroundImage).not.toBe("none");
+      expect(ltr.placedRight).toBe(true);
+      expect(ltr.paddingRight).toBeGreaterThan(ltr.paddingLeft);
+    }
+  });
+
+  test("the home page's ghost CTA is the shared ghost button in a bigger box", async () => {
+    await view.navigate(`${BASE}/`);
+
+    // The hero's "View Stack" used to carry its own copy of .btn-ghost's
+    // colours, border, hover background and underline reset. It takes them from
+    // base.css now, and keeps only the box its row needs — so a ghost button is
+    // drawn in one place, and the CTA still looks like the CTA. The probe link
+    // is a second ghost link in the same row, with an href that goes nowhere,
+    // so hovering it tests the resting and hover rules the copy used to carry.
+    const report = await view.evaluate<{
+      hero: Record<string, string>;
+      plain: Record<string, string>;
+    }>(`(() => {
+      const hero = document.querySelector(".hero-actions a.btn-ghost");
+      const plain = document.createElement("a");
+      plain.className = "btn-ghost";
+      plain.href = "#";
+      plain.textContent = "Plain";
+      document.querySelector("main").prepend(plain);
+      const probe = document.createElement("a");
+      probe.id = "smoke-hero-ghost";
+      probe.className = "btn-ghost";
+      probe.href = "#";
+      probe.textContent = "Probe";
+      document.querySelector(".hero-actions").append(probe);
+      const read = (el) => {
+        const s = getComputedStyle(el);
+        return {
+          color: s.color,
+          background: s.backgroundColor,
+          border: s.borderTopWidth + " " + s.borderTopStyle + " " + s.borderTopColor,
+          fontWeight: s.fontWeight,
+          padding: s.paddingTop + " " + s.paddingRight,
+          height: el.getBoundingClientRect().height,
+        };
+      };
+      const result = { hero: read(hero), plain: read(plain) };
+      plain.remove();
+      return result;
+    })()`);
+
+    // The same button: base.css draws the colours, border and weight in both.
+    expect(report.hero.color).toBe(report.plain.color);
+    expect(report.hero.background).toBe(report.plain.background);
+    expect(report.hero.border).toBe(report.plain.border);
+    expect(report.hero.fontWeight).toBe(report.plain.fontWeight);
+    // The hero's own box is what makes it the bigger CTA.
+    expect(Number(report.hero.height)).toBeGreaterThan(Number(report.plain.height));
+    expect(report.hero.padding).not.toBe(report.plain.padding);
+
+    // And the hover: the surface fills in and the link does not sprout the
+    // underline a plain link gets. A hash href, so the click stays on the page.
+    await view.click("#smoke-hero-ghost");
+    await Bun.sleep(250);
+    const hovered = await view.evaluate<{
+      color: string;
+      background: string;
+      decoration: string;
+    }>(`(() => {
+      const s = getComputedStyle(document.querySelector("#smoke-hero-ghost"));
+      return {
+        color: s.color,
+        background: s.backgroundColor,
+        decoration: s.textDecorationLine,
+      };
+    })()`);
+    expect(hovered.background).not.toBe(report.hero.background);
+    expect(hovered.color).not.toBe(report.hero.color);
+    expect(hovered.decoration).toBe("none");
+    await view.evaluate(`document.querySelector("#smoke-hero-ghost")?.remove()`);
   });
 
   test("a link styled as a button takes the button's box", async () => {
@@ -565,6 +841,79 @@ describe("browser smoke", () => {
       (text) => text.includes("Logout"),
     );
     expect(signedIn).toContain("Logout");
+  });
+
+  test("the nav's Account link and Logout button take the same box", async () => {
+    // Continues signed in from the magic link above. `.nav-auth` styles the
+    // auth actions as the header's own controls — no border, and a smaller box
+    // once the phone layout takes over — and the header shows an <a> beside a
+    // <button> inside a <form>, which is two ways to arrive at a box. Whatever
+    // that treatment is, the two must agree in every state. The boxes are
+    // compared against each other rather than against literals, so a fork can
+    // resize the nav without the assertion becoming wrong.
+    const readNav = (): Promise<{ anchor: NavBox; button: NavBox }> =>
+      view.evaluate(`(() => {
+        const auth = document.querySelector(".nav-auth");
+        const anchor = auth.querySelector("a.btn-ghost");
+        const button = auth.querySelector("button.btn-ghost");
+        const box = (el) => {
+          const s = getComputedStyle(el);
+          const r = el.getBoundingClientRect();
+          return {
+            top: r.top,
+            height: r.height,
+            padding: s.paddingTop + " " + s.paddingRight,
+            borderWidth: s.borderTopWidth,
+            fontSize: s.fontSize,
+            fontWeight: s.fontWeight,
+            lineHeight: s.lineHeight,
+          };
+        };
+        return { anchor: box(anchor), button: box(button) };
+      })()`);
+    const agree = ({ anchor, button }: { anchor: NavBox; button: NavBox }) =>
+      anchor.height === button.height &&
+      anchor.padding === button.padding &&
+      anchor.borderWidth === button.borderWidth;
+
+    // Desktop: the header's own treatment, applied to both. A row, so they
+    // share a baseline as well as a box.
+    await view.navigate(`${BASE}/`);
+    const desktop = await readNav();
+    expect(desktop.anchor).toEqual(desktop.button);
+
+    // The phone header with JS: the toggle opens the panel, which re-pads both
+    // into full-width rows. Driven by a real click rather than a hand-set
+    // attribute — an attribute the engine has just been told to stop matching
+    // on is not recomputed until the next frame, and a read in between returns
+    // the previous box for one of the two elements.
+    await view.resize(390, 844);
+    await view.click(".nav-toggle");
+    await until(
+      () =>
+        view.evaluate<string>(
+          `getComputedStyle(document.querySelector(".nav-panel")).display`,
+        ),
+      (display) => display === "flex",
+    );
+    const panel = await readNav();
+    // Stacked rows, so only the box is shared — the tops differ by design.
+    expect(agree(panel), JSON.stringify(panel)).toBe(true);
+    expect(panel.anchor.height).toBeGreaterThan(desktop.anchor.height);
+
+    // The no-JS fallback: no panel, so the pages and the auth actions share the
+    // wrapped header row. Both still take the same box, top included. Poll for
+    // the fallback to take effect rather than read the panel's box back.
+    await view.evaluate(
+      `document.querySelector('[data-component="nav"]').removeAttribute("data-nav-enhanced")`,
+    );
+    const fallback = await until(
+      readNav,
+      (boxes) => agree(boxes) && boxes.anchor.height < panel.anchor.height,
+    );
+    expect(fallback.anchor).toEqual(fallback.button);
+
+    await view.resize(1280, 900);
   });
 
   test("/team fits a phone screen without scrolling sideways", async () => {

@@ -23,11 +23,14 @@
   --radius: 0.5rem;
   --shadow: none;
 
-  /* Form controls. Inputs, selects and buttons all draw their box from these,
+  /* Form controls. Inputs, selects and buttons all take their box from these,
      so a row of field, select and button lines up without per-page height
-     fixes. The line-height is absolute on purpose: inputs need 16px text and
-     buttons use 14px, and a relative line-height would give them different
-     heights. --control-height is derived, never set — change its parts. */
+     fixes. Inline padding is the one part a control sets for itself: fields
+     use --control-padding-x, and a button keeps a wider 16px so its label has
+     room in a filled shape. The line-height is absolute on purpose: inputs
+     need 16px text and buttons use 14px, and a relative line-height would give
+     them different heights. --control-height is derived, never set — change
+     its parts. */
   --control-border-width: 1px;
   --control-padding-y: 7px;
   --control-padding-x: 12px;
@@ -225,9 +228,10 @@ img {
   }
 }
 
-/* A link styled as a button (Cancel, Remove, Account) gets the same box as a
+/* A link styled as a button (Cancel, Remove) gets the same box as a
    <button>, so it lines up with the Save or submit beside it — the /team
    Remove link beside the Pending-invitations Revoke button, for instance.
+   nav.css gives the Account link its own borderless box rather than this one.
    .btn-danger is here for forks: without it a link with that class is a bare
    word with no box. */
 a.btn-ghost,
@@ -275,9 +279,10 @@ select {
    --color-text-secondary; a data URI can't read a custom property, so change
    both together. Don't restyle select per page: adjust the tokens or this rule.
 
-   flex: none keeps a select at its content width in a flex row (a role picker
-   beside its Save button) instead of stretching and stranding the chevron;
-   give it a width where a row should fill. */
+   flex: 0 1 auto keeps a select at its content width in a flex row (a role
+   picker beside its Save button) instead of stretching and stranding the
+   chevron; min-width: 0 lets it shrink there rather than push the button off a
+   390px screen. Give it a width where a row should fill. */
 select {
   --select-chevron-inset: var(--control-padding-x);
   --select-chevron-size: 12px;
@@ -288,26 +293,56 @@ select {
   background-repeat: no-repeat;
   background-size: var(--select-chevron-size);
   cursor: pointer;
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   height: var(--control-height);
   max-width: 100%;
-  padding-right: calc(
+  /* The reserved space follows the writing direction, so the option text can
+     never run under the arrow in either one. */
+  padding-inline-end: calc(
     var(--select-chevron-inset) +
     var(--select-chevron-size) +
     var(--control-padding-x) /
     2
   );
 
+  /* The chevron is placed physically, so a right-to-left document needs it
+     moved to the inline-end edge — which is where padding-inline-end has
+     already reserved the room. Matched on the attribute rather than :dir(),
+     which the CSS build rewrites to a :lang() list that a `dir` on the
+     document doesn't satisfy. */
+  &[dir="rtl"],
+  [dir="rtl"] & {
+    background-position: left var(--select-chevron-inset) center;
+  }
+
+  /* The mirror of that: a left-to-right select inside a right-to-left ancestor
+     matches the RTL rule above by ancestry, so put its chevron back on the
+     right — and let an LTR subtree nested in RTL do the same. */
+  &[dir="ltr"],
+  [dir="rtl"] [dir="ltr"] & {
+    background-position: right var(--select-chevron-inset) center;
+  }
+
+  /* appearance: none took the platform's greyed text with it, so a disabled
+     select looked exactly like an enabled one. Mute the value — and only the
+     value: the arrow is baked into a data URI and can't be recoloured, and
+     dropping it would hide that the control is a select at all. */
   &:disabled {
+    color: var(--color-text-quaternary);
     cursor: default;
   }
 
-  /* A list box, not a dropdown: no chevron, and its height is its rows. */
+  /* A list box is a list, not a dropdown: no chevron, no space reserved for
+     one, its own rows for a height, and the cursor a list is read with.
+     size="0" and size="1" are dropdowns like an absent or invalid size, so
+     only a size above them is a list box. */
   &[multiple],
-  &[size]:not([size="1"]) {
+  &[size]:not([size="0"], [size="1"], [size=""]) {
     background-image: none;
+    cursor: default;
     height: auto;
-    padding-right: var(--control-padding-x);
+    padding-inline-end: var(--control-padding-x);
   }
 
   /* The drawn chevron is a fixed colour the system palette can't recolour, so
@@ -316,7 +351,10 @@ select {
   @media (forced-colors: active) {
     appearance: auto;
     background-image: none;
-    padding-right: var(--control-padding-x);
+    /* The platform draws its own arrow inside the box rather than over the
+       padding, so reserve both gutters' worth for it and keep the value text
+       clear of it. */
+    padding-inline-end: calc(var(--control-padding-x) * 2);
   }
 }
 

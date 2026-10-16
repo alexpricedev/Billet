@@ -75,6 +75,54 @@ const importStatements = (source: string): string[] =>
 const isTypeOnly = (statement: string): boolean =>
   /^import\s+type\b/.test(statement);
 
+// The text before every `{` in a stylesheet, which is where a selector lives.
+// A rule's prelude runs from the previous `{` or `}` to this one, so a nested
+// rule inside a rule is read as its own selector.
+const rulePreludes = (css: string): string[] => {
+  const preludes: string[] = [];
+  let start = 0;
+  for (let index = 0; index < css.length; index++) {
+    if (css[index] === "{") {
+      preludes.push(css.slice(start, index));
+      start = index + 1;
+    } else if (css[index] === "}") {
+      start = index + 1;
+    }
+  }
+  return preludes;
+};
+
+const withoutCommentsAndStrings = (css: string): string =>
+  css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/"[^"]*"|'[^']*'/g, "");
+
+// Everything inside parentheses at any depth: a pseudo-class argument, a media
+// query. Excluded before the match because a select named there is a condition
+// the rule is filtered by, not the element it styles — `:not(select)` styles
+// everything that isn't one, and `@supports selector(select)` styles nothing.
+const withoutParenthesised = (text: string): string => {
+  let out = text;
+  while (/\([^()]*\)/.test(out)) out = out.replace(/\([^()]*\)/g, " ");
+  return out;
+};
+
+/**
+ * Whether a stylesheet styles a `select` element. True when a compound
+ * selector in some rule's prelude starts with the select element: `select`,
+ * `.a select`, `select.foo`, `.a>select`. At-rule preludes are skipped
+ * (`@keyframes select` names a keyframe, `@media` a condition), and so is
+ * anything parenthesised. A `select` inside `:is()` is missed — deliberately:
+ * the guard catches the page rule that re-pads a select, and the parenthesised
+ * forms are how a false positive is written.
+ */
+const stylesSelect = (source: string): boolean =>
+  rulePreludes(withoutCommentsAndStrings(source)).some((prelude) => {
+    const preludeText = prelude.trimStart();
+    if (preludeText.startsWith("@")) return false;
+    return /(^|[\s,>+~])select(?![\w-])/.test(
+      withoutParenthesised(preludeText),
+    );
+  });
+
 describe("client boundaries", () => {
   const clientFiles = sources(CLIENT);
   const serverFiles = sources(SERVER);
@@ -169,23 +217,66 @@ describe("client boundaries", () => {
     // engine, so base.css draws one select from the control tokens. A page
     // rule that resizes or re-pads one select is how rows stop lining up and
     // forks collect a patch per page. A select that should fill its row gets a
-    // class and a width, never a `select` rule.
+    // class rule like `.role-picker { width: 100% }`, not `select.role-picker`.
     const offenders: string[] = [];
     for (const dir of ["components", "pages"]) {
       for (const file of new Glob("**/*.css").scanSync(`${CLIENT}/${dir}`)) {
         const path = `${CLIENT}/${dir}/${file}`;
-        const source = (await Bun.file(path).text()).replace(
-          /\/\*[\s\S]*?\*\//g,
-          "",
-        );
-        if (/(^|[\s,>+~(])select(?![\w-])[^{};]*\{/.test(source)) {
-          offenders.push(path);
-        }
+        if (stylesSelect(await Bun.file(path).text())) offenders.push(path);
       }
     }
     expect(
       offenders,
       "style selects through the control tokens and the select rule in base.css, not per page",
+    ).toEqual([]);
+  });
+
+  test("the select guard reads selectors, not the word", () => {
+    // The guard above fails a fork's suite, so it has to be right about what
+    // it is looking at in both directions: a rule that styles a select must be
+    // caught wherever it is written, and a select named as a condition must
+    // not be. `.form-field:has(select)` is the second direction in its common
+    // form — it styles the container the select sits in, not the select — and
+    // the guard accepts it on purpose. The two lists are those two directions,
+    // one selector context per line.
+    const styles: string[] = [
+      "select { color: red; }",
+      ".form-field select { color: red; }",
+      "select.foo { color: red; }",
+      "select[multiple] { color: red; }",
+      "select:focus-visible { color: red; }",
+      ".a,\nselect { color: red; }",
+      ".a > select { color: red; }",
+      ".a + select { color: red; }",
+      ".a ~ select { color: red; }",
+      ".a { select { color: red; } }",
+      ".a { color: red }select { color: blue; }",
+      "input, select, textarea { width: 100%; }",
+      "select { width: 100%; }",
+    ];
+    const ignores: string[] = [
+      ".a { user-select: none; }",
+      ".a { -webkit-user-select: none; }",
+      ".select { color: red; }",
+      ".select-all { color: red; }",
+      "#select { color: red; }",
+      "::selection { background: red; }",
+      ".a:not(select) { color: red; }",
+      ".a:has(> select) { color: red; }",
+      ".form-field:has(select) { color: red; }",
+      "@supports selector(select) { .a { color: red; } }",
+      "@keyframes select { from { opacity: 0; } }",
+      "@media (width <= 640px) { .a { color: red; } }",
+      '.a::before { content: "select {"; }',
+      "/* select { color: red; } */",
+    ];
+    expect(
+      styles.filter((css) => !stylesSelect(css)),
+      "a rule that styles a select must be caught, wherever it is written",
+    ).toEqual([]);
+    expect(
+      ignores.filter(stylesSelect),
+      "only a rule that styles a select is an offence — a condition that names one is not",
     ).toEqual([]);
   });
 
