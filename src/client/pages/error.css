@@ -30,7 +30,7 @@
      filled-primary treatment here (it's an anchor, not a <button>). */
   .error-actions .btn-primary {
     align-items: center;
-    background: var(--color-primary);
+    background: var(--color-primary-fill);
     border-radius: var(--radius);
     color: #fff;
     display: inline-flex;
@@ -42,7 +42,7 @@
 
     &:hover,
     &:focus {
-      background: var(--color-primary-hover);
+      background: var(--color-primary-fill-hover);
       color: #fff;
       text-decoration: none;
     }

@@ -10,17 +10,19 @@
     margin-left: 0.75rem;
     gap: 0.75rem;
 
-    /* A signed-in header carries two auth actions rather than one, and at
-       375px that leaves the nav list too little room — it wrapped to three
-       stacked lines. Let the header wrap instead: the pages stay on one row
-       and the auth actions drop to their own.
-
-       This is the fallback path now. Once the toggle takes over the pages move
-       into the panel, one row is enough, and wrapping would only reintroduce
-       the stacked header the panel exists to remove. */
+    /* The no-JavaScript fallback: with no panel to open, the pages and the
+       auth actions share the header row and wrap only when they must — the
+       404 page's three links and a single Login fit one row at 390px. The
+       list reserves its content width before the auth actions get a look-in,
+       so a crowded header wraps the auth actions onto their own row rather
+       than squeezing the list and wrapping its links inside it. */
     &:not([data-nav-enhanced]) {
       flex-wrap: wrap;
-      row-gap: 0.25rem;
+      gap: 0.5rem;
+
+      ul {
+        flex: 1 auto;
+      }
     }
   }
 
@@ -91,15 +93,10 @@
     @media (width <= 640px) {
       justify-content: flex-end;
 
-      /* Claiming a whole row is what forces the break above. Without it the
-         list would shrink to share the first row and wrap internally instead.
-         Only the fallback needs it — the panel keeps the list out of the row. */
+      /* In the fallback the two actions sit in the header row itself, at the
+         same compact height as the pages they follow. In the panel they are
+         rows, and its own padding replaces this. */
       [data-component="nav"]:not([data-nav-enhanced]) & {
-        flex-basis: 100%;
-
-        /* With no JS there is no panel, so the two actions sit in the header
-           row itself, at the same compact height as the pages they follow. In
-           the panel they are rows, and its own padding replaces this. */
         .btn-ghost {
           padding: 4px 8px;
         }

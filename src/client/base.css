@@ -7,12 +7,24 @@
   --color-surface: #141415;
   --color-surface-hover: #1c1c1e;
   --color-border: #222224;
+  /* A field's edge is information, not decoration: WCAG 1.4.11 wants 3:1 for
+     the boundary that identifies a control, and the divider colour above is
+     1.16:1 on --color-surface. Inputs, selects and textareas draw this one;
+     --color-border stays for dividers, which nothing has to see. */
+  --color-border-strong: #6a6a6a;
   --color-text: #ededef;
   --color-text-secondary: #b4b5b9;
   --color-text-tertiary: #8a8b8e;
   --color-text-quaternary: #78797c;
+  /* The accent: link text, the focus ring, badges, accent borders. It has to
+     stay light enough to read as text on the dark surfaces (5.67:1 on
+     --color-surface), which leaves it too light for a white button label
+     (3.25:1). A filled primary control draws the same hue darkened — the fill
+     pair below — so the label reaches 4.5:1 in both states. */
   --color-primary: #7c85f0;
   --color-primary-hover: #9098f3;
+  --color-primary-fill: #4b58e7;
+  --color-primary-fill-hover: #5461e8;
   --color-success: #34d399;
   --color-danger: #f87171;
   --color-warning: #fbbf24;
@@ -166,14 +178,14 @@ button {
   /* Transparent rather than none, so a filled button is exactly as tall as a
      bordered input or .btn-ghost beside it. */
   border: var(--control-border-width) solid transparent;
-  background: var(--color-primary);
+  background: var(--color-primary-fill);
   color: #fff;
   cursor: pointer;
   transition: all 150ms ease;
 
   &:hover,
   &:focus {
-    background: var(--color-primary-hover);
+    background: var(--color-primary-fill-hover);
   }
 }
 
@@ -253,7 +265,7 @@ input,
 textarea,
 select {
   background-color: var(--color-surface);
-  border: var(--control-border-width) solid var(--color-border);
+  border: var(--control-border-width) solid var(--color-border-strong);
   border-radius: var(--control-radius);
   color: var(--color-text);
   font-family: inherit;
@@ -264,12 +276,21 @@ select {
   transition: border-color 150ms ease;
 
   &::placeholder {
-    color: var(--color-text-quaternary);
+    /* 4.23:1 on --color-surface was under the 4.5:1 AA floor for text. */
+    color: var(--color-text-tertiary);
   }
 
   &:focus-visible {
     border-color: var(--color-primary);
   }
+}
+
+/* Disabled controls looked enabled: a disabled input keeps its box and a
+   restyled control keeps its fill in Chromium and WebKit alike, so fade the
+   whole thing and say it with the cursor. */
+:is(input, select, textarea, button):disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* The one select style. Native selects size and pad differently in every
@@ -327,10 +348,10 @@ select {
   /* appearance: none took the platform's greyed text with it, so a disabled
      select looked exactly like an enabled one. Mute the value — and only the
      value: the arrow is baked into a data URI and can't be recoloured, and
-     dropping it would hide that the control is a select at all. */
+     dropping it would hide that the control is a select at all. The shared
+     `:disabled` rule above fades the box and sets the cursor. */
   &:disabled {
     color: var(--color-text-quaternary);
-    cursor: default;
   }
 
   /* A list box is a list, not a dropdown: no chevron, no space reserved for

@@ -25,6 +25,8 @@ These are handled in the framework layer and apply to every page automatically:
 | Native interactive elements | throughout | Real `<button>` / `<a>` / `<form>` — never `<div onclick>` |
 | Labelled form controls | `form-field.tsx`, templates | Every input has an associated `<label>` (see §3) |
 | Keyboard focus ring | `base.css` | Global `:focus-visible { outline }` — visible, keyboard-only |
+| Disabled controls | `base.css` | `:is(input, select, textarea, button):disabled` fades to 50% and shows `cursor: not-allowed` |
+| Field borders | `base.css` | Inputs, selects and textareas draw `--color-border-strong` — 3:1 on the surface (WCAG 1.4.11 non-text contrast) |
 | Reduced motion | `base.css`, `home.ts` | `prefers-reduced-motion` shrinks transitions and stops the hero animation looping |
 | Announced flash messages | `flash.tsx` | `role="alert"` for errors, `role="status"` for success |
 | Data tables | `data-table.tsx`, templates | `<caption>` + `scope="col"` header cells |
