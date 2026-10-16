@@ -183,8 +183,11 @@ button {
   cursor: pointer;
   transition: all 150ms ease;
 
-  &:hover,
-  &:focus {
+  /* :hover matches a disabled button — the engine doesn't consult the
+     attribute for it — so the shared :disabled fade can't be what keeps a
+     frozen control at its resting fill: the state has to exclude :disabled
+     itself. */
+  &:not(:disabled):is(:hover, :focus) {
     background: var(--color-primary-fill-hover);
   }
 }
@@ -215,8 +218,9 @@ img {
   border: var(--control-border-width) solid var(--color-border);
   color: var(--color-text-secondary);
 
-  &:hover,
-  &:focus {
+  /* Scoped the same way as the filled button: a disabled ghost button keeps
+     its transparent fill under the pointer. */
+  &:not(:disabled):is(:hover, :focus) {
     background: var(--color-surface);
     color: var(--color-text);
   }
@@ -361,9 +365,16 @@ select {
   &[multiple],
   &[size]:not([size="0"], [size="1"], [size=""]) {
     background-image: none;
-    cursor: default;
     height: auto;
     padding-inline-end: var(--control-padding-x);
+
+    /* The list cursor belongs to a list you can read. Scoping it to :enabled
+       keeps the shared :disabled rule's not-allowed cursor: this rule
+       out-specifies that one, so a frozen list box would otherwise still take
+       the cursor a usable one gets. */
+    &:enabled {
+      cursor: default;
+    }
   }
 
   /* The drawn chevron is a fixed colour the system palette can't recolour, so

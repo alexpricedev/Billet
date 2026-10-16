@@ -17,7 +17,8 @@ export const Nav = ({ page, user, csrfToken }: NavProps) => (
   <nav data-component="nav" aria-label="Main navigation">
     {/* Rendered hidden and unhidden by src/client/components/nav-menu.ts. Without
         that script — an error page ships none — the button would toggle nothing,
-        so the nav keeps wrapping onto two rows instead. */}
+        so nothing opens a panel: the pages and the auth actions stay in one row,
+        wrapping only when they run out of width. */}
     <button
       type="button"
       className="nav-toggle"

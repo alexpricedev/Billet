@@ -385,6 +385,7 @@ describe("browser smoke", () => {
       sizeEmpty: SelectBox;
       dropdown: SelectBoxWithChevron;
       disabled: { color: string; cursor: string };
+      disabledListBox: { cursor: string };
       enabled: { color: string };
       rtl: SelectBoxWithChevron;
       ltrInRtl: {
@@ -405,6 +406,7 @@ describe("browser smoke", () => {
         '<select aria-label="One row" size="1"><option>Member</option></select>' +
         '<select aria-label="Empty size" size=""><option>Member</option></select>' +
         '<select aria-label="Frozen" disabled><option>Member</option></select>' +
+        '<select aria-label="Frozen list" size="3" disabled><option>Member</option><option>Admin</option><option>Owner</option></select>' +
         '<select aria-label="Live"><option>Member</option></select>';
       document.querySelector("main").prepend(row);
       const host = document.createElement("div");
@@ -414,7 +416,7 @@ describe("browser smoke", () => {
         '<select aria-label="LTR in RTL" dir="ltr"><option>Member</option></select>' +
         '<div dir="ltr"><select aria-label="LTR subtree in RTL"><option>Member</option></select></div>';
       document.querySelector("main").prepend(host);
-      const [listBox, sizeBox, sizeZero, oneRow, sizeEmpty, disabled, enabled] = row.children;
+      const [listBox, sizeBox, sizeZero, oneRow, sizeEmpty, disabled, disabledListBox, enabled] = row.children;
       const rtl = host.querySelector('select[aria-label="RTL"]');
       const ltrInRtl = [
         host.querySelector('select[aria-label="LTR in RTL"]'),
@@ -448,6 +450,7 @@ describe("browser smoke", () => {
         sizeEmpty: box(sizeEmpty),
         dropdown: box(oneRow, true),
         disabled: { color: style(disabled).color, cursor: style(disabled).cursor },
+        disabledListBox: { cursor: style(disabledListBox).cursor },
         enabled: { color: style(enabled).color },
         rtl: box(rtl, true),
         ltrInRtl: ltrInRtl.map((el) => ({
@@ -488,6 +491,11 @@ describe("browser smoke", () => {
     // the control — the assertion means nothing if it is muted too.
     expect(report.disabled.color).not.toBe(report.enabled.color);
     expect(report.disabled.cursor).toBe("not-allowed");
+
+    // A disabled list box keeps the shared cursor too. The list-box rule sets
+    // its own cursor and out-specifies the :disabled rule, so without the
+    // exclusion a frozen list box would still read as one you can use.
+    expect(report.disabledListBox.cursor).toBe("not-allowed");
 
     // Right-to-left: the chevron moves to the inline-end edge (the left) and
     // the space reserved for it moves with it.
@@ -750,6 +758,89 @@ describe("browser smoke", () => {
     expect(report.enabled.cursor).toBe("pointer");
   });
 
+  test("a disabled button keeps its resting fill while hovered", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    // :hover matches a disabled button — the engine doesn't consult the
+    // attribute for it — so the fill rules exclude :disabled rather than
+    // leaning on the shared fade: a frozen control stays at its resting fill
+    // under the pointer. The enabled twins are the proof hover reached the
+    // page: "the disabled one didn't change" means nothing if nothing changed.
+    //
+    // A click at (1, 1) parks the pointer on the header's inert corner first —
+    // the previous test left it wherever it hovered last, and every resting
+    // read below would otherwise be a hovered one.
+    await view.click(1, 1);
+    await Bun.sleep(250);
+
+    const resting = await view.evaluate<
+      Record<string, { x: number; y: number; background: string }>
+    >(`(() => {
+      const row = document.createElement("div");
+      row.id = "smoke-hover-row";
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.innerHTML =
+        '<button id="smoke-h-primary" type="button">Save</button>' +
+        '<button id="smoke-h-primary-disabled" type="button" disabled>Save</button>' +
+        '<button id="smoke-h-ghost" type="button" class="btn-ghost">Cancel</button>' +
+        '<button id="smoke-h-ghost-disabled" type="button" class="btn-ghost" disabled>Cancel</button>';
+      document.querySelector("main").prepend(row);
+      const read = (id) => {
+        const el = document.getElementById(id);
+        const box = el.getBoundingClientRect();
+        return {
+          x: box.left + box.width / 2,
+          y: box.top + box.height / 2,
+          background: getComputedStyle(el).backgroundColor,
+        };
+      };
+      return {
+        primary: read("smoke-h-primary"),
+        primaryDisabled: read("smoke-h-primary-disabled"),
+        ghost: read("smoke-h-ghost"),
+        ghostDisabled: read("smoke-h-ghost-disabled"),
+      };
+    })()`);
+
+    const background = (id: string): Promise<string> =>
+      view.evaluate<string>(
+        `getComputedStyle(document.getElementById("${id}")).backgroundColor`,
+      );
+
+    // A native click parks the pointer on the disabled controls, which is how
+    // :hover comes to match them at all.
+    await view.click(resting.primaryDisabled.x, resting.primaryDisabled.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-h-primary-disabled")).toBe(
+      resting.primaryDisabled.background,
+    );
+
+    await view.click(resting.ghostDisabled.x, resting.ghostDisabled.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-h-ghost-disabled")).toBe(
+      resting.ghostDisabled.background,
+    );
+
+    // The same click on an enabled control changes its fill, so hover really
+    // applied to this page in this engine.
+    await view.click(resting.primary.x, resting.primary.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-h-primary")).not.toBe(
+      resting.primary.background,
+    );
+
+    await view.click(resting.ghost.x, resting.ghost.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-h-ghost")).not.toBe(
+      resting.ghost.background,
+    );
+
+    await view.evaluate(
+      `document.getElementById("smoke-hover-row")?.remove()`,
+    );
+  });
+
   test("a field's border and placeholder clear their contrast floors", async () => {
     await view.navigate(`${BASE}/forms`);
 
@@ -786,6 +877,10 @@ describe("browser smoke", () => {
   test("the site footer and login-footer links clear AA", async () => {
     // The two muted links the review called out. Reads them at rest; /login is
     // signed-out chrome, so this runs before the magic link signs in.
+    // Navigated to explicitly rather than inheriting whatever page the previous
+    // test left, which is how this used to read a footer that might not exist.
+    await view.navigate(`${BASE}/`);
+
     const site = await view.evaluate<{ link: string; background: string }>(
       `(() => {
         const footer = document.querySelector('[data-component="layout"] > footer');
