@@ -51,6 +51,15 @@ describe("Layout banner integration", () => {
     expect(layout(null)).not.toContain("Confirm your email address");
   });
 
+  test("renders the banner as a direct child of <body>", () => {
+    // The bar's stickiness depends on nothing between <body> and it that clips
+    // or scrolls — a wrapper would move the sticky containing block and unpin
+    // it. Assert the position, not just that the prompt is on the page.
+    expect(layout(user(null))).toMatch(
+      /<body[^>]*><div class="verify-banner">/,
+    );
+  });
+
   test("shows an Account link only when signed in", () => {
     expect(layout(user(new Date()))).toContain('href="/account"');
     expect(layout(null)).not.toContain('href="/account"');

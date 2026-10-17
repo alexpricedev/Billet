@@ -28,13 +28,27 @@
   }
 }
 
-/* A fragment jump scrolls the target to y=0 — straight under the sticky bar.
-   #verify-email is the banner's own link target and only exists while the
-   banner is showing, so it can carry the offset unconditionally. */
-#verify-email {
-  scroll-margin-top: 3.5rem;
+/* On a phone the message and its link wrap onto separate rows and the row gap
+   stacks on top of the wrapped height. Tighten the gap and the line-height
+   rather than the copy: at 320px the bar drops from ~100px to ~84px, and at
+   390px from ~78px to ~64px. It stays pinned. */
+@media (width <= 480px) {
+  .verify-banner {
+    gap: 0.25rem 0.75rem;
+    line-height: 1.4;
+  }
+}
+
+/* Any scroll-into-view — Tab focus landing in the header, or the banner's own
+   #verify-email jump — puts the target at the top of the scrollport, under the
+   sticky bar. scroll-padding-top on the scroll container keeps it clear. It is
+   scoped with :has to when the bar is actually rendered, so the reserved strip
+   appears and disappears with it; the layout test pins the banner as a direct
+   child of <body>, which is what the selector relies on. */
+html:has(.verify-banner) {
+  scroll-padding-top: 3.5rem;
 
   @media (width <= 480px) {
-    scroll-margin-top: 5.25rem;
+    scroll-padding-top: 6.75rem;
   }
 }

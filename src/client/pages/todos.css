@@ -144,12 +144,27 @@
     margin-top: 2.5rem;
 
     /* The endpoint table's monospace path cells can't shrink past their
-       content, so the three columns were 49px wider than a 320px screen and
-       pushed the whole document sideways. The table scrolls inside its own
-       card rather than the section or page, so the heading stays put and the
-       card's border frames the overflow. */
+       content, so the three columns were wider than a phone screen and pushed
+       the whole document sideways. The table scrolls inside its own card
+       rather than the section or page, so the heading stays put and the card's
+       border frames the overflow; the card is a focusable, labelled region in
+       the template, so a keyboard user can reach that scroll. */
     .card {
       overflow-x: auto;
+
+      /* Tighten the card and its cells on phones. At the default 24px of card
+         padding and 12px of cell padding the table stayed wider than the card
+         down to 360px (about 34px of scroll left at 320); at 8px and 5px it
+         fits the card from 360px up, and only the last sliver still scrolls at
+         320. 5px, not 8px, keeps the clearance when a desktop browser reserves
+         a scrollbar gutter the way the CI runner's Chrome does. */
+      @media (width <= 640px) {
+        padding: 8px;
+
+        .data-table td {
+          padding: 8px 5px;
+        }
+      }
     }
   }
 

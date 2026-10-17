@@ -222,7 +222,17 @@ export const Todos = (props: TodosProps): JSX.Element => {
           API below—adding an API is simple when business logic lives in one
           place.
         </p>
-        <div className="card">
+        {/* The endpoint table can't shrink past its monospace paths, so a phone
+            scrolls the card sideways. A scroll container only a pointer can
+            drive isn't keyboard reachable; the region is focusable so the tab
+            order reaches the scroll. (Also an implicit `region` landmark,
+            since it is a <section> with a name.) */}
+        <section
+          className="card"
+          aria-label="API endpoints"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be focusable — WCAG 2.1.1
+          tabIndex={0}
+        >
           <DataTable className="endpoint-table" caption="API endpoints">
             <tbody>
               <tr>
@@ -267,7 +277,7 @@ export const Todos = (props: TodosProps): JSX.Element => {
               </tr>
             </tbody>
           </DataTable>
-        </div>
+        </section>
       </section>
     </Layout>
   );

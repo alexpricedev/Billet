@@ -1360,34 +1360,101 @@ describe("browser smoke", () => {
     await view.resize(1280, 900);
   });
 
-  test("the /todos endpoint table fits a 320 screen without scrolling sideways", async () => {
+  test("the /todos endpoint table fits its card from 360px up, and 320px scrolls it", async () => {
     // The endpoint table's monospace path cells can't shrink past their
-    // content, so three columns were 49px wider than a 320px screen and pushed
-    // the whole document sideways. The table scrolls inside its card now. Same
+    // content, so three columns used to push the whole document sideways on a
+    // phone. The card scrolls inside itself now, and the phone padding is
+    // tightened so it only has to below 360px. The card is a labelled,
+    // focusable region, so the remainder is reachable without a pointer. Same
     // layout-viewport measurement as the /team check above.
     await view.navigate(`${BASE}/todos`);
-    await view.resize(320, 844);
 
-    const [content, layout, viewport] = await until(
-      () =>
-        view.evaluate<[number, number, number]>(
-          "[document.documentElement.scrollWidth, document.documentElement.clientWidth, window.innerWidth]",
-        ),
-      ([scroll, client, inner]) => inner === 320 && scroll <= client,
+    const region = await view.evaluate<{
+      tag: string;
+      label: string | null;
+      tabindex: string | null;
+      focusable: boolean;
+    }>(`(() => {
+      const card = document.querySelector('.api-section .card');
+      card.focus();
+      return {
+        tag: card.tagName.toLowerCase(),
+        label: card.getAttribute('aria-label'),
+        tabindex: card.getAttribute('tabindex'),
+        focusable: document.activeElement === card,
+      };
+    })()`);
+    // A name on a <section> makes it a `region` landmark; tabindex makes it
+    // reachable, so the keyboard can scroll the remainder.
+    expect(region.tag).toBe("section");
+    expect(region.label).toBe("API endpoints");
+    expect(region.tabindex).toBe("0");
+    expect(region.focusable).toBe(true);
+
+    const layout = () =>
+      view.evaluate<{
+        docScroll: number;
+        docClient: number;
+        inner: number;
+        cardScroll: number;
+        cardClient: number;
+      }>(`(() => {
+        const card = document.querySelector('.api-section .card');
+        return {
+          docScroll: document.documentElement.scrollWidth,
+          docClient: document.documentElement.clientWidth,
+          inner: window.innerWidth,
+          cardScroll: card.scrollWidth,
+          cardClient: card.clientWidth,
+        };
+      })()`);
+
+    // 390 and 360: the table fits the card, so nothing scrolls sideways.
+    for (const width of [390, 360]) {
+      await view.resize(width, 844);
+      const box = await until(layout, (value) => value.inner === width);
+      expect(box.docScroll, `document at ${width}px`).toBeLessThanOrEqual(
+        box.docClient,
+      );
+      expect(box.cardScroll, `card at ${width}px`).toBeLessThanOrEqual(
+        box.cardClient,
+      );
+    }
+
+    // Screenshots for the record, with the table in view.
+    const { mkdirSync } = await import("node:fs");
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    await view.scrollTo(".api-section .card", { block: "center" });
+    await Bun.write(
+      `${SCREENSHOT_DIR}/todos-endpoint-360.png`,
+      await view.screenshot(),
     );
-    expect(viewport).toBe(320);
-    expect(content).toBeLessThanOrEqual(layout);
+
+    // 320: the card carries the last sliver of scroll, not the document.
+    await view.resize(320, 844);
+    const narrow = await until(layout, (value) => value.inner === 320);
+    expect(narrow.docScroll).toBeLessThanOrEqual(narrow.docClient);
+    expect(narrow.cardScroll).toBeGreaterThan(narrow.cardClient);
+    await view.scrollTo(".api-section .card", { block: "center" });
+    await Bun.write(
+      `${SCREENSHOT_DIR}/todos-endpoint-320.png`,
+      await view.screenshot(),
+    );
     await view.resize(1280, 900);
   });
 
-  test("the sticky verify banner leaves the no-JS header links clear at 320px", async () => {
+  test("the sticky verify banner clears the header, reserves scroll padding, and shortens on a phone", async () => {
     // Signed in with an unverified address and JavaScript off, the banner
-    // wraps to three lines at 320px. It used to be `position: fixed` with a
-    // 72px body offset shorter than the wrapped bar, so it covered the header's
-    // page links. Sticky keeps it in flow, so the header is always below it.
-    // The banner is built in the page rather than found on one (the magic-link
-    // sign-in above stamps email_verified_at, so a real one cannot appear
-    // here); the CSS rule under test is the same one the server renders into.
+    // wraps at 320px. It used to be `position: fixed` with a 72px body offset
+    // shorter than the wrapped bar, so it covered the header's page links;
+    // sticky keeps it in flow, so the header is always below it. Any
+    // scroll-into-view — Tab focus or the #verify-email jump — still lands the
+    // target under the bar, so html reserves scroll-padding-top while it
+    // shows. On a phone the bar is also tightened (gap and line-height) so it
+    // takes less of the screen. The banner is built in the page rather than
+    // found on one (the magic-link sign-in above stamps email_verified_at, so
+    // a real one cannot appear here); the CSS under test is the same rules the
+    // server renders into.
     await view.navigate(`${BASE}/`);
     await view.resize(320, 844);
 
@@ -1395,9 +1462,13 @@ describe("browser smoke", () => {
       () =>
         view.evaluate<{
           bannerBottom: number;
+          bannerHeight: number;
           linkTop: number;
           linkBottom: number;
           position: string;
+          scrollPad: string;
+          lineHeight: string;
+          rowGap: string;
           scroll: number;
           client: number;
         }>(`(() => {
@@ -1409,13 +1480,18 @@ describe("browser smoke", () => {
           nav.removeAttribute("data-nav-enhanced");
           nav.querySelector(".nav-toggle")?.setAttribute("hidden", "");
           const banner = document.querySelector(".verify-banner");
+          const style = getComputedStyle(banner);
           const box = banner.getBoundingClientRect();
           const link = nav.querySelector("ul a").getBoundingClientRect();
           return {
             bannerBottom: box.bottom,
+            bannerHeight: box.height,
             linkTop: link.top,
             linkBottom: link.bottom,
-            position: getComputedStyle(banner).position,
+            position: style.position,
+            scrollPad: getComputedStyle(document.documentElement).scrollPaddingTop,
+            lineHeight: style.lineHeight,
+            rowGap: style.rowGap,
             scroll: document.documentElement.scrollWidth,
             client: document.documentElement.clientWidth,
           };
@@ -1428,6 +1504,38 @@ describe("browser smoke", () => {
     expect(report.linkTop).toBeGreaterThanOrEqual(report.bannerBottom);
     expect(report.linkBottom).toBeLessThanOrEqual(844);
     expect(report.scroll).toBeLessThanOrEqual(report.client);
+
+    // A focus or fragment jump scrolls its target to the top of the scrollport
+    // — under the bar. scroll-padding-top reserves the bar's height while it
+    // renders; 6.75rem is the phone value.
+    expect(report.scrollPad).toBe("108px");
+
+    // The phone bar is shortened with a tighter row gap and line-height rather
+    // than less copy.
+    expect(report.lineHeight).toBe("19.6px");
+    expect(report.rowGap).toBe("4px");
+    expect(report.bannerHeight).toBeLessThan(90);
+
+    const { mkdirSync } = await import("node:fs");
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    await Bun.write(
+      `${SCREENSHOT_DIR}/verify-banner-320.png`,
+      await view.screenshot(),
+    );
+    await view.resize(360, 844);
+    await Bun.sleep(150);
+    await Bun.write(
+      `${SCREENSHOT_DIR}/verify-banner-360.png`,
+      await view.screenshot(),
+    );
+
+    // With the bar gone the reserved strip goes with it.
+    await view.evaluate(`document.querySelector(".verify-banner")?.remove()`);
+    const cleared = await view.evaluate<string>(
+      `getComputedStyle(document.documentElement).scrollPaddingTop`,
+    );
+    expect(cleared).toBe("auto");
+
     await view.resize(1280, 900);
   });
 

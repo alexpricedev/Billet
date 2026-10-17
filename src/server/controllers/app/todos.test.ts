@@ -142,6 +142,27 @@ describe("Todos Controller", () => {
       expect(html).toContain("1 item left");
     });
 
+    test("arms the API endpoint card as a focusable, labelled scroll region", async () => {
+      const guestSessionId = await createGuestSession();
+
+      const response = await todos.index(
+        createBunRequest(`${ORIGIN}/todos`, {
+          headers: { Cookie: `session_id=${guestSessionId}` },
+        }),
+      );
+      const html = await response.text();
+
+      // The endpoint table can't shrink past its monospace paths, so on a phone
+      // the card scrolls sideways. A scroll container only a pointer can drive
+      // is not keyboard reachable; an aria-labelled <section> makes the card a
+      // named `region` landmark and tabindex puts it in the tab order.
+      expect(html).toContain('aria-label="API endpoints"');
+      expect(html).toContain('tabindex="0"');
+      expect(html).toMatch(
+        /<section[^>]*class="card"[^>]*aria-label="API endpoints"/,
+      );
+    });
+
     test("marks completed rows and arms every row's toggle form", async () => {
       const guestSessionId = await createGuestSession();
       mockGetTodos.mockResolvedValue([
