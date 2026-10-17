@@ -1,7 +1,11 @@
-/* Fixed reminder for a signed-in user with an unconfirmed email address.
-   Pinned to the top so it survives scrolling — the prompt is easy to forget and
-   easy to lose in a long page. Body offset lives on body[data-banner], set by
-   the layout from the same condition, so the two can't disagree. */
+/* Reminder for a signed-in user with an unconfirmed email address. Sticky to
+   the top edge so it survives scrolling — the prompt is easy to forget and easy
+   to lose in a long page — but still in the document flow, so it pushes the
+   header down rather than covering it. A fixed bar needed a matching body
+   offset, and any offset shorter than the wrapped bar hid the header under it;
+   at 320px the message wraps to three lines, taller than the 72px offset the
+   layout used, so the header's page links disappeared. In flow, the header is
+   always below it. */
 .verify-banner {
   align-items: center;
   background: var(--color-surface-hover);
@@ -12,10 +16,8 @@
   font-size: 14px;
   gap: 0.75rem;
   justify-content: center;
-  left: 0;
   padding: 0.625rem 1rem;
-  position: fixed;
-  right: 0;
+  position: sticky;
   text-align: center;
   top: 0;
   z-index: 10;
@@ -26,20 +28,9 @@
   }
 }
 
-/* Two lines' worth of room on narrow screens, where the message and the link
-   wrap onto separate rows. */
-body[data-banner] {
-  padding-top: 2.75rem;
-
-  @media (width <= 480px) {
-    padding-top: 4.5rem;
-  }
-}
-
-/* Body padding moves the whole document down, but a fragment jump scrolls the
-   target to y=0 — straight under the fixed bar. #verify-email is the banner's
-   own link target and only exists while the banner is showing, so it can carry
-   the offset unconditionally. */
+/* A fragment jump scrolls the target to y=0 — straight under the sticky bar.
+   #verify-email is the banner's own link target and only exists while the
+   banner is showing, so it can carry the offset unconditionally. */
 #verify-email {
   scroll-margin-top: 3.5rem;
 

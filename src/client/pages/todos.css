@@ -142,6 +142,15 @@
 
   .api-section {
     margin-top: 2.5rem;
+
+    /* The endpoint table's monospace path cells can't shrink past their
+       content, so the three columns were 49px wider than a 320px screen and
+       pushed the whole document sideways. The table scrolls inside its own
+       card rather than the section or page, so the heading stays put and the
+       card's border frames the overflow. */
+    .card {
+      overflow-x: auto;
+    }
   }
 
   .endpoint-path {

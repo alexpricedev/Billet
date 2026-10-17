@@ -6,7 +6,7 @@ interface VerifyBannerProps {
 }
 
 /**
- * Fixed reminder for a signed-in user who hasn't confirmed their email address.
+ * Sticky reminder for a signed-in user who hasn't confirmed their email address.
  *
  * No auth-mode check is needed. A magic-link sign-in stamps email_verified_at
  * because clicking the link proves ownership, and migration 007 backfilled

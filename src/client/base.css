@@ -353,14 +353,10 @@ select {
     background-position: right var(--select-chevron-inset) center;
   }
 
-  /* appearance: none took the platform's greyed text with it, so a disabled
-     select looked exactly like an enabled one. Mute the value — and only the
-     value: the arrow is baked into a data URI and can't be recoloured, and
-     dropping it would hide that the control is a select at all. The shared
-     `:disabled` rule above fades the box and sets the cursor. */
-  &:disabled {
-    color: var(--color-text-quaternary);
-  }
+  /* No :disabled rule of its own. The shared `:disabled` rule above fades the
+     whole control — the value, the box and the drawn chevron alike — so a
+     frozen select reads as one. Muting the value here as well faded it twice,
+     to about 1.9:1 effective, while a disabled input sits near 6:1. */
 
   /* A list box is a list, not a dropdown: no chevron, no space reserved for
      one, its own rows for a height, and the cursor a list is read with.

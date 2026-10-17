@@ -384,9 +384,9 @@ describe("browser smoke", () => {
       sizeZero: SelectBox;
       sizeEmpty: SelectBox;
       dropdown: SelectBoxWithChevron;
-      disabled: { color: string; cursor: string };
+      disabled: { opacity: string; cursor: string };
       disabledListBox: { cursor: string };
-      enabled: { color: string };
+      enabled: { opacity: string };
       rtl: SelectBoxWithChevron;
       ltrInRtl: {
         backgroundImage: string;
@@ -449,9 +449,9 @@ describe("browser smoke", () => {
         sizeZero: box(sizeZero),
         sizeEmpty: box(sizeEmpty),
         dropdown: box(oneRow, true),
-        disabled: { color: style(disabled).color, cursor: style(disabled).cursor },
+        disabled: { opacity: style(disabled).opacity, cursor: style(disabled).cursor },
         disabledListBox: { cursor: style(disabledListBox).cursor },
-        enabled: { color: style(enabled).color },
+        enabled: { opacity: style(enabled).opacity },
         rtl: box(rtl, true),
         ltrInRtl: ltrInRtl.map((el) => ({
           backgroundImage: style(el).backgroundImage,
@@ -487,9 +487,12 @@ describe("browser smoke", () => {
     expect(report.sizeEmpty.paddingRight).toBeGreaterThan(report.sizeEmpty.paddingLeft);
     expect(report.sizeEmpty.cursor).toBe("pointer");
 
-    // Disabled: muted, and not a usable cursor. The enabled select beside it is
-    // the control — the assertion means nothing if it is muted too.
-    expect(report.disabled.color).not.toBe(report.enabled.color);
+    // Disabled: faded by the shared rule — the whole control, chevron
+    // included — and not a usable cursor. Muting the value as well would fade
+    // it twice, to roughly 1.9:1 against a disabled input's 6:1, so the shared
+    // opacity is the only fade. The enabled select beside it is the control —
+    // the assertion means nothing if it is faded too.
+    expect(report.disabled.opacity).not.toBe(report.enabled.opacity);
     expect(report.disabled.cursor).toBe("not-allowed");
 
     // A disabled list box keeps the shared cursor too. The list-box rule sets
@@ -698,8 +701,12 @@ describe("browser smoke", () => {
       JSON.stringify(resting),
     ).toBeGreaterThanOrEqual(4.5);
 
-    // A native click parks the pointer on the button, so :hover matches it.
+    // A native click parks the pointer on the button, so :hover matches it —
+    // but it also focuses the button, and button:focus sets the same fill, so
+    // the assertion would pass with the :hover selector deleted. Blur first so
+    // the read below is the hover state alone.
     await view.click("#smoke-primary");
+    await view.evaluate("document.activeElement.blur()");
     await Bun.sleep(250);
     const hovered = await read();
     expect(hovered.background).not.toBe(resting.background);
@@ -1241,11 +1248,17 @@ describe("browser smoke", () => {
     // that treatment is, the two must agree in every state. The boxes are
     // compared against each other rather than against literals, so a fork can
     // resize the nav without the assertion becoming wrong.
-    const readNav = (): Promise<{ anchor: NavBox; button: NavBox }> =>
+    const readNav = (): Promise<{
+      anchor: NavBox;
+      button: NavBox;
+      page: NavBox;
+    }> =>
       view.evaluate(`(() => {
-        const auth = document.querySelector(".nav-auth");
+        const nav = document.querySelector('[data-component="nav"]');
+        const auth = nav.querySelector(".nav-auth");
         const anchor = auth.querySelector("a.btn-ghost");
         const button = auth.querySelector("button.btn-ghost");
+        const page = nav.querySelector("ul a");
         const box = (el) => {
           const s = getComputedStyle(el);
           const r = el.getBoundingClientRect();
@@ -1259,7 +1272,7 @@ describe("browser smoke", () => {
             lineHeight: s.lineHeight,
           };
         };
-        return { anchor: box(anchor), button: box(button) };
+        return { anchor: box(anchor), button: box(button), page: box(page) };
       })()`);
     const agree = ({ anchor, button }: { anchor: NavBox; button: NavBox }) =>
       anchor.height === button.height &&
@@ -1290,6 +1303,11 @@ describe("browser smoke", () => {
     // Stacked rows, so only the box is shared — the tops differ by design.
     expect(agree(panel), JSON.stringify(panel)).toBe(true);
     expect(panel.anchor.height).toBeGreaterThan(desktop.anchor.height);
+    // And the page links are rows of the same height as the auth actions. A
+    // page link inherits the body's line-height unless the panel's shared rule
+    // sets the control one, so it used to measure ~42.4px beside the 44px
+    // Account/Logout rows.
+    expect(panel.page.height).toBe(panel.anchor.height);
 
     // The no-JS fallback: no panel, so the pages and the auth actions share the
     // wrapped header row. Both still take the same box, top included. Poll for
@@ -1339,6 +1357,77 @@ describe("browser smoke", () => {
     );
     expect(viewport).toBe(390);
     expect(content).toBeLessThanOrEqual(layout);
+    await view.resize(1280, 900);
+  });
+
+  test("the /todos endpoint table fits a 320 screen without scrolling sideways", async () => {
+    // The endpoint table's monospace path cells can't shrink past their
+    // content, so three columns were 49px wider than a 320px screen and pushed
+    // the whole document sideways. The table scrolls inside its card now. Same
+    // layout-viewport measurement as the /team check above.
+    await view.navigate(`${BASE}/todos`);
+    await view.resize(320, 844);
+
+    const [content, layout, viewport] = await until(
+      () =>
+        view.evaluate<[number, number, number]>(
+          "[document.documentElement.scrollWidth, document.documentElement.clientWidth, window.innerWidth]",
+        ),
+      ([scroll, client, inner]) => inner === 320 && scroll <= client,
+    );
+    expect(viewport).toBe(320);
+    expect(content).toBeLessThanOrEqual(layout);
+    await view.resize(1280, 900);
+  });
+
+  test("the sticky verify banner leaves the no-JS header links clear at 320px", async () => {
+    // Signed in with an unverified address and JavaScript off, the banner
+    // wraps to three lines at 320px. It used to be `position: fixed` with a
+    // 72px body offset shorter than the wrapped bar, so it covered the header's
+    // page links. Sticky keeps it in flow, so the header is always below it.
+    // The banner is built in the page rather than found on one (the magic-link
+    // sign-in above stamps email_verified_at, so a real one cannot appear
+    // here); the CSS rule under test is the same one the server renders into.
+    await view.navigate(`${BASE}/`);
+    await view.resize(320, 844);
+
+    const report = await until(
+      () =>
+        view.evaluate<{
+          bannerBottom: number;
+          linkTop: number;
+          linkBottom: number;
+          position: string;
+          scroll: number;
+          client: number;
+        }>(`(() => {
+          if (!document.querySelector(".verify-banner")) {
+            document.body.insertAdjacentHTML("afterbegin",
+              '<div class="verify-banner"><span>Confirm your email address to secure your account.</span><a href="#">Resend the link</a></div>');
+          }
+          const nav = document.querySelector('[data-component="nav"]');
+          nav.removeAttribute("data-nav-enhanced");
+          nav.querySelector(".nav-toggle")?.setAttribute("hidden", "");
+          const banner = document.querySelector(".verify-banner");
+          const box = banner.getBoundingClientRect();
+          const link = nav.querySelector("ul a").getBoundingClientRect();
+          return {
+            bannerBottom: box.bottom,
+            linkTop: link.top,
+            linkBottom: link.bottom,
+            position: getComputedStyle(banner).position,
+            scroll: document.documentElement.scrollWidth,
+            client: document.documentElement.clientWidth,
+          };
+        })()`),
+      (value) => value.position === "sticky" && value.linkTop >= value.bannerBottom,
+    );
+
+    expect(report.position).toBe("sticky");
+    // The page link sits entirely below the banner rather than under it.
+    expect(report.linkTop).toBeGreaterThanOrEqual(report.bannerBottom);
+    expect(report.linkBottom).toBeLessThanOrEqual(844);
+    expect(report.scroll).toBeLessThanOrEqual(report.client);
     await view.resize(1280, 900);
   });
 
