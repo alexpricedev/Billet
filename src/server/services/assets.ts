@@ -113,7 +113,13 @@ export function handleAssetRequest(url: URL): Response | null {
   const expectedHash = assetHashes.get(filename);
 
   if (hash !== expectedHash) {
-    return new Response("Asset not found", { status: 404 });
+    // The body says text/plain for the reason /health does: a string with no
+    // Content-Type is served as application/octet-stream, which a browser
+    // downloads instead of showing.
+    return new Response("Asset not found", {
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
 
   const file = Bun.file(`${assetsDir()}/${filename}`);

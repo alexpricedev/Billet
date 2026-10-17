@@ -51,20 +51,30 @@ export const handleFallback = async (req: Request): Promise<Response> => {
     // own bundles going missing is a build-state problem the next `bun run
     // build` fixes — same class as the mid-rebuild empty read, so same answer:
     // 503 + Retry-After, uncached, never a 404 the browser treats as settled.
-    // Anything else under /assets/ really is not there: 404.
+    // Anything else under /assets/ really is not there: 404. Both bodies carry
+    // an explicit text/plain for the reason /health does above — a string with
+    // no Content-Type becomes application/octet-stream, which a browser
+    // downloads instead of showing.
     if (isBundleFilename(filename)) {
       return new Response(
         `Bundle ${filename} is not built — run \`bun run build\``,
         {
           status: 503,
-          headers: { "Retry-After": "1", "Cache-Control": "no-store" },
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Retry-After": "1",
+            "Cache-Control": "no-store",
+          },
         },
       );
     }
 
     return new Response("Asset not found", {
       status: 404,
-      headers: { "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
     });
   }
 

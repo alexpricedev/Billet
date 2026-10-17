@@ -25,6 +25,11 @@ describe("createRouteHandler", () => {
     // which ones the resource actually answers.
     expect(response.headers.get("Allow")).toBe("GET, HEAD, POST");
     expect(await response.text()).toBe("Method not allowed");
+    // Like /health: a string body with no Content-Type becomes
+    // application/octet-stream, which a browser downloads rather than shows.
+    expect(response.headers.get("Content-Type")).toBe(
+      "text/plain; charset=utf-8",
+    );
   });
 
   test("answers HEAD with GET's status and headers but no body", async () => {

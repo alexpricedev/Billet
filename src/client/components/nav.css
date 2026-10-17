@@ -150,7 +150,7 @@
         position: absolute;
         right: 0;
         top: 100%;
-        /* Under the verify banner's fixed bar (z-index 10), above <main>. */
+        /* Under the verify banner's sticky bar (z-index 10), above <main>. */
         z-index: 9;
       }
 
@@ -177,11 +177,15 @@
       }
 
       /* The auth actions drop the control box's 16px inset, which would indent
-         them out of line with the pages. */
+         them out of line with the pages. The control line-height keeps a page
+         link's row the same height as an auth action's — otherwise the 14px
+         links inherit the body's 1.6 (22.4px, a 42.4px row) and the
+         Account/Logout controls take 24px (a 44px row). */
       li a,
       .nav-auth .btn-ghost {
         border-radius: 0;
         display: block;
+        line-height: var(--control-line-height);
         padding: 0.625rem 0;
         text-align: left;
         width: 100%;

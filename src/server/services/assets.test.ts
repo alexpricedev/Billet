@@ -120,6 +120,11 @@ describe("assets (production)", () => {
 
     expect(response).not.toBeNull();
     expect(response?.status).toBe(404);
+    // Like the /health body: a string with no Content-Type is served as
+    // application/octet-stream, which a browser downloads instead of showing.
+    expect(response?.headers.get("Content-Type")).toBe(
+      "text/plain; charset=utf-8",
+    );
   });
 
   test("handleAssetRequest returns null for non-matching path", () => {
