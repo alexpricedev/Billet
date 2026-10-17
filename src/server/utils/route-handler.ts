@@ -43,14 +43,19 @@ const dispatch =
   };
 
 // HTML routes. The 405 body stays plain text — it is read by a person poking at
-// a URL, not by a program.
+// a URL, not by a program. The explicit text/plain keeps that true: a string
+// body with no Content-Type becomes application/octet-stream, which a browser
+// downloads instead of showing.
 export function createRouteHandler(handlers: MethodHandlers) {
   return dispatch(
     handlers,
     () =>
       new Response("Method not allowed", {
         status: 405,
-        headers: allowHeader(handlers),
+        headers: {
+          ...allowHeader(handlers),
+          "Content-Type": "text/plain; charset=utf-8",
+        },
       }),
   );
 }

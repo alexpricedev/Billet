@@ -87,6 +87,25 @@ describe("handleFallback", () => {
     }
   });
 
+  test("serves every plain-text fallback as text, not a download", async () => {
+    // Octet-stream arrives with no Content-Type of its own, so each of these
+    // has to name text/plain explicitly or the browser saves the file.
+    const notFound = await req("/assets/does-not-exist.js");
+    expect(notFound.headers.get("Content-Type")).toBe(
+      "text/plain; charset=utf-8",
+    );
+
+    setAssetsDirForTest("dist/.fallback-test-unbuilt");
+    try {
+      const notBuilt = await req("/assets/main.css");
+      expect(notBuilt.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
+    } finally {
+      setAssetsDirForTest(null);
+    }
+  });
+
   test("returns a styled HTML 404 page for an unknown path", async () => {
     const res = await req("/nope/not-a-real-file");
 

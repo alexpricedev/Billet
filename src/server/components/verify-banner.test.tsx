@@ -38,14 +38,17 @@ describe("Layout banner integration", () => {
       </Layout>,
     );
 
-  test("marks the body so the fixed banner gets its offset", () => {
-    expect(layout(user(null))).toContain('data-banner="verify-email"');
+  test("renders the banner inside the layout while the address is unverified", () => {
+    // The bar is sticky and in flow now, so there is no body offset attribute
+    // to assert; what matters is that the prompt reaches the page.
+    expect(layout(user(null))).toContain("Confirm your email address");
   });
 
-  test("omits the offset attribute whenever the banner is absent", () => {
-    // The padding must never outlive the bar it makes room for.
-    expect(layout(user(new Date()))).not.toContain("data-banner");
-    expect(layout(null)).not.toContain("data-banner");
+  test("leaves the banner out of the layout once the address is confirmed", () => {
+    expect(layout(user(new Date()))).not.toContain(
+      "Confirm your email address",
+    );
+    expect(layout(null)).not.toContain("Confirm your email address");
   });
 
   test("shows an Account link only when signed in", () => {
