@@ -375,7 +375,7 @@ curl -X POST http://localhost:3000/api/todos \
 A few small packages built alongside Billet that drop straight in:
 
 - **[billet-cookie-consent](https://github.com/alexpricedev/billet-cookie-consent)** — GDPR-friendly cookie consent banner. Lightweight, framework-agnostic, designed to slot into a server-rendered template.
-- **[billet-dialog](https://github.com/alexpricedev/billet-dialog)** — Accessible modals built on the native `<dialog>` element. Handles the focus, scroll and backdrop behaviour browsers leave to you, and slots into a server-rendered page without a client framework.
+- **[billet-dialog](https://github.com/alexpricedev/billet-dialog)** — Accessible confirm dialog for destructive actions. Vanilla DOM, zero dependencies, and progressive-enhancement form gating over `role="alertdialog"`.
 - **[log-digest](https://github.com/alexpricedev/log-digest)** — In-memory log buffer with a pluggable digest sink. Batches `error` / `warn` / `info` entries and hands them off on an interval to email, Slack, or any custom sink — a lightweight alternative to a full observability stack for a single Bun process.
 - **[billet-analytics](https://github.com/alexpricedev/billet-analytics)** — Privacy-first, self-hosted analytics for a Billet app. Page views and referrers land in your own PostgreSQL rather than a third party's dashboard, so the data stays yours and the page needs no tracker script.
 
