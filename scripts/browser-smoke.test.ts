@@ -384,9 +384,9 @@ describe("browser smoke", () => {
       sizeZero: SelectBox;
       sizeEmpty: SelectBox;
       dropdown: SelectBoxWithChevron;
-      disabled: { opacity: string; cursor: string };
+      disabled: { opacity: string; cursor: string; color: string };
       disabledListBox: { cursor: string };
-      enabled: { opacity: string };
+      enabled: { opacity: string; color: string };
       rtl: SelectBoxWithChevron;
       ltrInRtl: {
         backgroundImage: string;
@@ -449,9 +449,13 @@ describe("browser smoke", () => {
         sizeZero: box(sizeZero),
         sizeEmpty: box(sizeEmpty),
         dropdown: box(oneRow, true),
-        disabled: { opacity: style(disabled).opacity, cursor: style(disabled).cursor },
+        disabled: {
+          opacity: style(disabled).opacity,
+          cursor: style(disabled).cursor,
+          color: style(disabled).color,
+        },
         disabledListBox: { cursor: style(disabledListBox).cursor },
-        enabled: { opacity: style(enabled).opacity },
+        enabled: { opacity: style(enabled).opacity, color: style(enabled).color },
         rtl: box(rtl, true),
         ltrInRtl: ltrInRtl.map((el) => ({
           backgroundImage: style(el).backgroundImage,
@@ -490,9 +494,11 @@ describe("browser smoke", () => {
     // Disabled: faded by the shared rule — the whole control, chevron
     // included — and not a usable cursor. Muting the value as well would fade
     // it twice, to roughly 1.9:1 against a disabled input's 6:1, so the shared
-    // opacity is the only fade. The enabled select beside it is the control —
-    // the assertion means nothing if it is faded too.
+    // opacity is the only fade, so the two colours must match. The enabled
+    // select beside it is the control — the assertions mean nothing if it is
+    // faded too.
     expect(report.disabled.opacity).not.toBe(report.enabled.opacity);
+    expect(report.disabled.color).toBe(report.enabled.color);
     expect(report.disabled.cursor).toBe("not-allowed");
 
     // A disabled list box keeps the shared cursor too. The list-box rule sets

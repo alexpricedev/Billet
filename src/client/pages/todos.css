@@ -143,6 +143,11 @@
   .api-section {
     margin-top: 2.5rem;
 
+    /* Full width is about 110 characters a line at desktop; 70ch reads. */
+    > p {
+      max-width: 70ch;
+    }
+
     /* The endpoint table's monospace path cells can't shrink past their
        content, so the three columns were wider than a phone screen and pushed
        the whole document sideways. The table scrolls inside its own card
@@ -151,6 +156,24 @@
        the template, so a keyboard user can reach that scroll. */
     .card {
       overflow-x: auto;
+
+      /* A scroll hint: a shadow on the right edge while there is more to
+         scroll to. The `local` cover layers move with the content and hide the
+         `scroll` shadow once the end is reached, so it only shows where the
+         table still overflows. Stronger than a light surface would need — a
+         faint shadow disappears on the dark card. background-color stays the
+         card's own surface, from the shared .card rule. */
+      background-image:
+        linear-gradient(to left, var(--color-surface) 30%, transparent),
+        linear-gradient(to left, rgba(0, 0, 0, 0.9), transparent);
+      background-position:
+        right center,
+        right center;
+      background-repeat: no-repeat;
+      background-size:
+        24px 100%,
+        16px 100%;
+      background-attachment: local, scroll;
 
       /* Tighten the card and its cells on phones. At the default 24px of card
          padding and 12px of cell padding the table stayed wider than the card
@@ -166,6 +189,12 @@
         }
       }
     }
+  }
+
+  /* The data table draws a rule above every row; on the first it floats below
+     the card's padding with nothing above it. */
+  .endpoint-table tr:first-child td {
+    border-top: 0;
   }
 
   .endpoint-path {

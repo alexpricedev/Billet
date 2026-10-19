@@ -47,7 +47,10 @@ const server = Bun.serve({
     try {
       return withSecurityHeaders(render500());
     } catch {
-      return new Response("Internal Server Error", { status: 500 });
+      return new Response("Internal Server Error", {
+        status: 500,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
     }
   },
 });
