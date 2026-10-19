@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { SITE_NAME } from "../services/seo";
 import { createBunRequest } from "../test-utils/bun-request";
+import { render404 } from "./errors";
 import {
   handleGuarded,
   SECURITY_HEADERS,
@@ -121,6 +122,71 @@ describe("withSecurityHeaders", () => {
     const res = withSecurityHeaders(new Response("ok"));
 
     expect(res.headers.get("X-Redirect-By")).toBeNull();
+  });
+
+  describe("Cache-Control", () => {
+    const withType = (type: string, cacheControl?: string) =>
+      withSecurityHeaders(
+        new Response("x", {
+          headers: {
+            "Content-Type": type,
+            ...(cacheControl ? { "Cache-Control": cacheControl } : {}),
+          },
+        }),
+      );
+
+    test("defaults HTML to no-store", () => {
+      expect(withType("text/html").headers.get("Cache-Control")).toBe(
+        "no-store",
+      );
+      expect(
+        withType("text/html; charset=utf-8").headers.get("Cache-Control"),
+      ).toBe("no-store");
+    });
+
+    test("keeps the Cache-Control an HTML response set itself", () => {
+      const res = withType("text/html", "public, max-age=60");
+
+      expect(res.headers.get("Cache-Control")).toBe("public, max-age=60");
+    });
+
+    for (const type of [
+      "application/json",
+      "text/css",
+      "text/javascript",
+      "image/svg+xml",
+      "text/plain",
+    ]) {
+      test(`leaves ${type} untouched`, () => {
+        expect(withType(type).headers.get("Cache-Control")).toBeNull();
+        expect(
+          withType(type, "max-age=3600").headers.get("Cache-Control"),
+        ).toBe("max-age=3600");
+      });
+    }
+
+    test("a response with no Content-Type is left alone", () => {
+      expect(
+        withSecurityHeaders(new Response(null, { status: 204 })).headers.get(
+          "Cache-Control",
+        ),
+      ).toBeNull();
+    });
+
+    test("covers the 404 and 500 pages", async () => {
+      expect(
+        withSecurityHeaders(render404()).headers.get("Cache-Control"),
+      ).toBe("no-store");
+      const res = await handleGuarded(
+        createBunRequest("http://localhost:3000/boom"),
+        () => {
+          throw new Error("boom");
+        },
+      );
+
+      expect(res.status).toBe(500);
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+    });
   });
 });
 

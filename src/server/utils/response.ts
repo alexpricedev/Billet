@@ -10,8 +10,10 @@ export const redirect = (url: string, status = 303) =>
 
 export const render = (
   element: JSX.Element,
-  // Content-specific extras only, e.g. the `no-store` a page holding a live
-  // single-use token needs. Content-Type is set here and can't be overridden.
+  // Content-specific extras only. HTML gets `Cache-Control: no-store` from
+  // `withSecurityHeaders`, so an extra is only needed to *relax* it, e.g.
+  // `{ "Cache-Control": "public, max-age=60" }`. Content-Type is set here and
+  // can't be overridden.
   headers: Record<string, string> = {},
 ): Response =>
   new Response(`<!DOCTYPE html>${renderToString(element)}`, {

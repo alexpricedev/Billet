@@ -48,7 +48,6 @@ export const verify = {
         // browser that keeps no cookies. `AuthConfirm` has the reasoning.
         csrfToken={null}
       />,
-      { "Cache-Control": "no-store" },
     );
   },
 

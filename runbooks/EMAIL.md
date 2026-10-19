@@ -91,8 +91,9 @@ Two rules that are not symmetrical between them:
   nothing to forge; keeping it cookie-free is what lets the link work from a
   mail client's own browser. The rate limit is the guard there instead.
 
-Neither confirm page may be cached — both carry a live token, so both send
-`Cache-Control: no-store`.
+Neither confirm page may be cached — both carry a live token. Every HTML
+response gets `Cache-Control: no-store` from `withSecurityHeaders`, so neither
+controller sets it itself.
 
 ## 6. Non-goals
 

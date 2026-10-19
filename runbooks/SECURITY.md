@@ -25,6 +25,8 @@ wired in [`src/server/main.ts`](../src/server/main.ts) two ways:
 
 `withSecurityHeaders` only fills in headers a response hasn't already set, so a
 route can still override any single header (e.g. a relaxed CSP for one page).
+That includes the HTML caching default: `render(el, { "Cache-Control": "public,
+max-age=60" })` relaxes it for one page.
 
 | Header | Value | Notes |
 |---|---|---|
@@ -34,6 +36,7 @@ route can still override any single header (e.g. a relaxed CSP for one page).
 | `Cross-Origin-Opener-Policy` | `same-origin` | Isolates our browsing context |
 | `Permissions-Policy` | deny-all baseline, `fullscreen=(self)` | Turns off camera, mic, geolocation, USB, payment, etc. |
 | `X-Robots-Tag` | `noindex, nofollow` | **Only while `ALLOW_INDEXING` is unset** — see [SEO.md §1b](SEO.md). A route that sets its own is left alone |
+| `Cache-Control` | `no-store` | **HTML only, and only when the response set none.** HTML is session-aware (nav, flash, single-use CSRF tokens), and a back/forward or bfcache restore would otherwise serve it without a request, so analytics never sees the `page_view`. Assets, JSON and the machine-readable files keep their own |
 | `Content-Security-Policy` | see §3 | Source allowlist + clickjacking + https upgrade |
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | **Production only** (see §4) |
 

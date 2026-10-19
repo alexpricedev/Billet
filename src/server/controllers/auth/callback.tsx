@@ -42,9 +42,6 @@ export const callback = {
 
     return render(
       <AuthConfirm intent="sign-in" token={token} csrfToken={csrfToken} />,
-      // The page carries a live sign-in token: never store it, and never let a
-      // back button re-present a form whose token has since been spent.
-      { "Cache-Control": "no-store" },
     );
   },
 
