@@ -289,7 +289,7 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
           <span className="stack-layer">Security</span>
           <span className="stack-catches">
             Security headers on every response, a Content Security Policy, HSTS,
-            security.txt, Subresource Integrity, Clear-Site-Data
+            security.txt, Clear-Site-Data
           </span>
         </div>
         <div className="stack-row">
