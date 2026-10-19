@@ -2,8 +2,7 @@
 
 Billet ships a defensive HTTP baseline: a single set of security headers on
 **every** response, an enforcing Content Security Policy, HSTS in production,
-a `/.well-known/security.txt`, and Subresource Integrity on its one third-party
-script. Cookies and CSRF are covered separately in the root
+a `/.well-known/security.txt`, and every script served from its own origin. Cookies and CSRF are covered separately in the root
 [`SECURITY.md`](../SECURITY.md).
 
 This runbook covers what's applied automatically, the one required config step,
@@ -82,7 +81,7 @@ The policy is enforcing and host-allowlist based. Current directives:
 ```
 default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none';
 img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline';
-script-src 'self' 'unsafe-inline' https://unpkg.com;
+script-src 'self' 'unsafe-inline';
 connect-src 'self'; upgrade-insecure-requests
 ```
 
@@ -93,7 +92,7 @@ every asset off the page in local dev and under the browser smoke tests.
 What it buys today: no other site can frame our pages (`frame-ancestors 'none'`),
 no plugins (`object-src 'none'`), no `<base>` injection (`base-uri 'none'`), any
 stray `http://` subresource is auto-upgraded to HTTPS, and code/styles/images may
-only load from us plus the one named CDN.
+only load from us.
 
 **Adding a new external source.** If you pull a script, style, image, font, or
 API from a new origin, add that origin to the matching directive in
@@ -113,8 +112,8 @@ because the page ships inline JSON-LD in
 protection. The hardening path (a follow-up, not done here) is nonce +
 `'strict-dynamic'`: generate a per-request nonce, stamp it on every inline and
 first-party `<script>`, add `'nonce-…' 'strict-dynamic'` to `script-src`, and
-drop `'unsafe-inline'`. The cleanest enabler is self-hosting lottie so there is
-no CDN script to allow.
+drop `'unsafe-inline'`. Every script is already same-origin, so the inline
+JSON-LD is the only thing left to nonce.
 
 **No `'unsafe-eval'`, by design.** The client's reactive layer
 (`src/client/reactive/`) binds state to markup through `data-*` attributes that
@@ -159,30 +158,29 @@ cross-origin token gets no header — `isRecoverableCsrfFailure` is the gate, an
 widening it would turn the app into a token vending machine for
 attacker-initiated posts. The header names live in `src/shared/protocol.ts`.
 
-## 4. Subresource Integrity (third-party scripts)
+## 4. Third-party scripts
 
-The homepage loads the lottie animation library from unpkg with a pinned version
-and a cryptographic hash in
-[`layouts.tsx`](../src/server/components/layouts.tsx):
+Billet loads no third-party script. The homepage's Lottie player is the
+`lottie-web` package, pinned exactly in `package.json`; `bun run build:vendor`
+copies `lottie_light.min.js` byte-for-byte to `dist/assets/lottie.js`, which is
+fingerprinted and served from `/assets` like the other bundles, as a separate
+`async` script in [`layouts.tsx`](../src/server/components/layouts.tsx). No SRI
+hash applies to a same-origin file, and nothing needs recomputing on upgrade.
 
-```html
-<script async
-  src="https://unpkg.com/lottie-web@5.13.0/build/player/lottie_light.min.js"
-  integrity="sha384-…" crossorigin="anonymous"></script>
-```
-
-If unpkg ever serves a tampered file, the hash won't match and the browser
-refuses to run it. **SRI requires an exact version** — never point `integrity`
-at a floating range like `@5`.
-
-**Bumping the version.** Recompute the hash for the new file:
+**Upgrading Lottie.** Bump the package, then rebuild:
 
 ```bash
-curl -sL "https://unpkg.com/lottie-web@<NEW>/build/player/lottie_light.min.js" \
-  | openssl dgst -sha384 -binary | openssl base64 -A
+bun add lottie-web@<NEW> --exact
+bun run build
 ```
 
-Update both the `src` version and the `integrity` value.
+**If you add a CDN script.** Add its origin to `script-src` (§3), pin an exact
+version (never a floating range like `@5`), and add an `integrity` hash plus
+`crossorigin="anonymous"` so a tampered file is refused:
+
+```bash
+curl -sL "<URL>" | openssl dgst -sha384 -binary | openssl base64 -A
+```
 
 ## 5. Deploy & transport layer (host, not code)
 
@@ -260,8 +258,8 @@ want a spotless console.
 - **Reporting API (`Reporting-Endpoints` + CSP `report-to`)** — needs a collector
   endpoint to receive violation reports. Add one to observe CSP breakage in the
   wild before tightening the policy.
-- **COEP / CORP** — `Cross-Origin-Embedder-Policy` would break the unpkg
-  script, and a strict `Cross-Origin-Resource-Policy` would block social scrapers
+- **COEP / CORP** — `Cross-Origin-Embedder-Policy` would block any future
+  cross-origin script or image that doesn't send CORP/CORS headers, and a strict `Cross-Origin-Resource-Policy` would block social scrapers
   from fetching the OG image. Only `Cross-Origin-Opener-Policy` is set. Revisit
   COEP if you ever need cross-origin isolation (e.g. `SharedArrayBuffer`).
 - **Trusted Types** (`require-trusted-types-for 'script'`) — pairs naturally with

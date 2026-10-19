@@ -62,6 +62,13 @@ describe("withSecurityHeaders", () => {
     expect(csp).toContain("base-uri 'none'");
   });
 
+  test("allows scripts from self and inline only, with no third-party host", () => {
+    const res = withSecurityHeaders(new Response("ok"));
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+
+    expect(csp).toContain("script-src 'self' 'unsafe-inline';");
+  });
+
   test("omits upgrade-insecure-requests outside production", () => {
     // Production-only for the same reason as HSTS below — and unlike Chrome,
     // WebKit upgrades http://localhost subresources too, so shipping it in dev

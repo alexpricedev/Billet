@@ -231,6 +231,28 @@ describe("browser smoke", () => {
     expect(styleSheets).toBeGreaterThan(0);
   });
 
+  test("the home page plays its animation from a same-origin Lottie script", async () => {
+    await view.navigate(`${BASE}/`);
+
+    const hasLottie = await until(
+      () => view.evaluate<boolean>('typeof window.lottie === "object"'),
+      (loaded) => loaded,
+    );
+    expect(hasLottie).toBe(true);
+
+    const src = await view.evaluate<string>(
+      `new URL(document.querySelector("script[src*='lottie']").src).pathname`,
+    );
+    expect(src.startsWith("/assets/")).toBe(true);
+
+    const rendered = await until(
+      () =>
+        view.evaluate<boolean>(`!!document.querySelector("#hero-lottie svg")`),
+      (found) => found,
+    );
+    expect(rendered).toBe(true);
+  });
+
   test("the client bundle runs the forms page script", async () => {
     await view.navigate(`${BASE}/forms`);
 

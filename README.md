@@ -80,7 +80,7 @@ offering both at once would mean every account has two ways in, and the weaker o
 - **Session fixation prevention** — sessions are regenerated on login, and a password change or reset invalidates the other sessions
 - **Password storage** — argon2id with a per-hash salt, deliberately unpeppered so a `CRYPTO_PEPPER` rotation stays recoverable; password reset gives identical answers for known and unknown addresses, and so does sign-in except for accounts carried over from magic-link mode, which are told they have no password yet (see [SECURITY.md](SECURITY.md) for that trade-off)
 - **Environment validation** at startup — the server fails fast with clear error messages if required variables are missing
-- **Response hardening** — security headers on every response (nosniff, frame/clickjacking protection, an enforcing Content Security Policy, Permissions-Policy, HSTS in production), plus `/.well-known/security.txt` and Subresource Integrity on third-party scripts — see [runbooks/SECURITY.md](runbooks/SECURITY.md)
+- **Response hardening** — security headers on every response (nosniff, frame/clickjacking protection, an enforcing Content Security Policy, Permissions-Policy, HSTS in production), plus `/.well-known/security.txt`, with every script served from our own origin — see [runbooks/SECURITY.md](runbooks/SECURITY.md)
 
 ### Database
 
@@ -199,7 +199,7 @@ The other thing worktrees share is everything in `.env`. [`.conductor/settings.t
 | **Foundations** | Doctype, charset, viewport, canonical URLs, Open Graph, favicons, theme-color |
 | **SEO** | robots.txt, XML sitemap, JSON-LD, per-page metadata, an explicit indexing policy |
 | **Accessibility** | Semantic landmarks, labelled forms, focus rings, reduced motion, captioned tables, AA-checked contrast, disabled styling |
-| **Security** | Security headers on every response, a Content Security Policy, HSTS, security.txt, Subresource Integrity, Clear-Site-Data |
+| **Security** | Security headers on every response, a Content Security Policy, HSTS, security.txt, Clear-Site-Data |
 | **Agent readiness** | An llms.txt index, AI-crawler rules and Content-Signal in robots.txt, machine-readable Link headers, structured data, stable URLs |
 | **Performance** | Brotli and gzip compression, fingerprinted immutable assets, ETag revalidation with 304s, preconnect resource hints, minified bundles |
 
@@ -478,7 +478,7 @@ Prefer the dashboard? These are the same values, to set by hand in the service's
 
 > **SEO:** Canonicals, Open Graph tags, the sitemap, `robots.txt`, and JSON-LD all follow `APP_URL`'s origin, so pointing that at your production domain points them too. Set `SITE_URL` only if your canonical domain differs from your app domain (marketing site on the apex, app on a subdomain). One thing you **must** set on production: `ALLOW_INDEXING=true`. Without it every response and page says `noindex` and `robots.txt` drops its Sitemap line, so a preview or staging host can't be indexed by accident — set it on production only. See [runbooks/SEO.md](runbooks/SEO.md) for both, plus the sitemap, indexing policy, and verification steps.
 
-> **Security:** The HTTP hardening (security headers, CSP, HSTS, SRI) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
+> **Security:** The HTTP hardening (security headers, CSP, HSTS) works out of the box, but set `SECURITY_CONTACT` (the `security.txt` reporting address) and add the registrar-level records before launch — see [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC steps.
 
 > **Auth mode:** Leave `AUTH_MODE` unset for magic-link auth. Set `AUTH_MODE=password` for email-and-password instead — that enables `/forgot-password`, `/reset-password`, and the change-password form on `/account`, which all 404 in magic-link mode. Switching an existing app to `password` leaves current users with no password: `/account` offers those accounts a set-password form, and `/forgot-password` covers anyone already signed out — a failed sign-in tells them so and links them there, rather than leaving them to guess at "Invalid email or password" forever. `/signup` and `/account` exist in both modes.
 

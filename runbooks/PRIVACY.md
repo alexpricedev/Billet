@@ -199,8 +199,8 @@ you add one:
   [`security-headers.ts`](../src/server/utils/security-headers.ts) — keep the
   default `connect-src 'self'` as tight as possible.
 - **Prefer self-hosting** fonts, libraries, and icons over CDN loads.
-- **Pin with Subresource Integrity** on stable URLs (as Billet already does for
-  the Lottie script) so a compromised CDN can't swap the file.
+- **Pin with Subresource Integrity** on stable URLs so a compromised CDN can't
+  swap the file (see [SECURITY.md](SECURITY.md) §4).
 - **Gate non-essential scripts behind consent** (§3, Step 4).
 - **Re-audit periodically** — list every contacted domain in DevTools' network
   panel and justify each one.

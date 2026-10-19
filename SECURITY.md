@@ -184,8 +184,7 @@ also closes the race against a reset landing at the same moment.
 ## HTTP Headers, CSP & Transport
 
 The defensive HTTP baseline — security headers on every response, an enforcing
-Content Security Policy, HSTS, `/.well-known/security.txt`, Subresource
-Integrity, and the deploy/DNS steps — lives in
+Content Security Policy, HSTS, `/.well-known/security.txt`, and the deploy/DNS steps — lives in
 [`runbooks/SECURITY.md`](runbooks/SECURITY.md). Read it before your first deploy:
 the `security.txt` contact address needs setting, and TLS/HSTS-preload/CAA/DNSSEC
 are host- and registrar-level steps.
