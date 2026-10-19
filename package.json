@@ -39,17 +39,17 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
     "@happy-dom/global-registrator": "^20.14.6",
-    "@types/bun": "1.4.2",
+    "@types/bun": "1.4.3",
     "@types/node": "^26.6.5",
     "happy-dom": "^20.14.6",
     "husky": "9.1.7",
-    "railway": "^3.13.1",
+    "railway": "^3.16.0",
     "typescript": "^7.0.2"
   },
   "dependencies": {
     "lottie-web": "5.13.0",
     "preact": "^11.0.0",
-    "preact-render-to-string": "^6.8.0",
-    "resend": "^6.32.1"
+    "preact-render-to-string": "^6.8.1",
+    "resend": "^6.34.1"
   }
 }
