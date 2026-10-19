@@ -104,6 +104,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(403);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
       expect(await response?.text()).toBe("Invalid request origin");
     });
 
@@ -122,6 +125,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(403);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
       expect(await response?.text()).toBe("Invalid CSRF token");
     });
 
@@ -144,6 +150,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(403);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
       expect(await response?.text()).toBe("Invalid CSRF token");
     });
 
@@ -226,6 +235,9 @@ describe("CSRF Middleware", () => {
       if (!result.ok) {
         expect(result.reason).toBe("missing-token");
         expect(result.response.status).toBe(403);
+        expect(result.response.headers.get("Content-Type")).toBe(
+          "text/plain; charset=utf-8",
+        );
       }
     });
 
@@ -249,6 +261,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(403);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
       expect(await response?.text()).toBe("Invalid CSRF token");
     });
 
@@ -267,6 +282,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(403);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
     });
 
     test("protects PATCH requests", async () => {
@@ -284,6 +302,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(403);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
     });
 
     test("protects DELETE requests", async () => {
@@ -301,6 +322,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(403);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
     });
 
     test("uses custom expected origin", async () => {
@@ -345,6 +369,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(500);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
       expect(await response?.text()).toBe("Invalid request configuration");
     });
 
@@ -385,6 +412,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(500);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
       expect(await response?.text()).toBe("Invalid request configuration");
     });
 
@@ -435,6 +465,9 @@ describe("CSRF Middleware", () => {
 
       expect(response).toBeTruthy();
       expect(response?.status).toBe(403);
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/plain; charset=utf-8",
+      );
       expect(await response?.text()).toBe("Invalid CSRF token");
     });
   });

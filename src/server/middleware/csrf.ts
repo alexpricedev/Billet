@@ -67,7 +67,10 @@ export const checkCsrf = async (
   ): CsrfCheckResult => ({
     ok: false,
     reason,
-    response: new Response(body, { status }),
+    response: new Response(body, {
+      status,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    }),
   });
 
   // Assert method matches if provided (catch misconfigurations)
