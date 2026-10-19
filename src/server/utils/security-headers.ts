@@ -128,6 +128,17 @@ export const withSecurityHeaders = (res: Response): Response => {
   if (!indexingAllowed() && !res.headers.has(ROBOTS_TAG)) {
     res.headers.set(ROBOTS_TAG, BLOCK_INDEXING);
   }
+  // HTML is session-aware (nav, flash, single-use CSRF tokens) and a page view
+  // is only counted when the request arrives, so keep the back button, the
+  // back-forward cache and intermediaries from answering a navigation
+  // themselves. Gated on Content-Type, not a file extension; a route that sets
+  // its own Cache-Control keeps it.
+  if (
+    !res.headers.has("Cache-Control") &&
+    res.headers.get("Content-Type")?.includes("text/html")
+  ) {
+    res.headers.set("Cache-Control", "no-store");
+  }
   return res;
 };
 

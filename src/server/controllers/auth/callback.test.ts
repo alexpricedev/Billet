@@ -15,6 +15,7 @@ import { createMagicLink } from "../../services/auth";
 import { db } from "../../services/database";
 import { createOrganizationForUser } from "../../services/organizations";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
+import { handleGuarded } from "../../utils/security-headers";
 import { callback } from "./callback";
 
 const ORIGIN = process.env.APP_URL as string;
@@ -135,7 +136,10 @@ describe("Callback Controller", () => {
     test("is never cached", async () => {
       const { rawToken } = await createMagicLink("nocache@example.com");
 
-      const { res } = await openLink(rawToken);
+      const res = await handleGuarded(
+        createBunRequest(`${ORIGIN}/auth/callback?token=${rawToken}`),
+        callback.index,
+      );
 
       expect(res.headers.get("cache-control")).toBe("no-store");
     });

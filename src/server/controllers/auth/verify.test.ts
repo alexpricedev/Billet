@@ -17,6 +17,7 @@ import { createCsrfToken } from "../../services/csrf";
 import { db } from "../../services/database";
 import { signUpWithPassword } from "../../services/passwords";
 import { createAuthenticatedSession } from "../../services/sessions";
+import { handleGuarded } from "../../utils/security-headers";
 import { verify } from "./verify";
 
 const PASSWORD = "correct-horse-battery";
@@ -120,7 +121,10 @@ describe("Verify Controller", () => {
     });
 
     test("is never cached", async () => {
-      const response = await verify.index(getVerify("some-token"));
+      const response = await handleGuarded(
+        getVerify("some-token"),
+        verify.index,
+      );
 
       expect(response.headers.get("cache-control")).toBe("no-store");
     });
