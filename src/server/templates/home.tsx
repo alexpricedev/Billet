@@ -19,7 +19,7 @@ interface HomeProps {
 export const Home = ({ user, csrfToken, message }: HomeProps) => (
   <Layout
     title="Billet—The AI-native TypeScript starter"
-    description="Give your AI coding agents guardrails: server-rendered JSX, PostgreSQL via Bun, auth, security and 900+ tests in a single deploy target."
+    description="Let your AI coding agents ship, safely: server-rendered JSX, PostgreSQL via Bun, auth, security and 900+ tests in a single deploy target."
     canonicalPath="/"
     name="home"
     user={user}
@@ -62,7 +62,7 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
         </span>
       </a>
       <p className="hero-tag">Full-stack TypeScript starter</p>
-      <h1>Give your agents guardrails</h1>
+      <h1>Let your agents ship, safely</h1>
       <p className="hero-sub">
         Auth, security, migrations and 900+ tests come as standard.
         Server-rendered JSX on Bun and PostgreSQL, reactive without a virtual
