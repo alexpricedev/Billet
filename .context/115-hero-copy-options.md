@@ -1,6 +1,6 @@
-# #115 Hero copy options (proposal, not applied)
+# #115 Hero copy options (option 2 applied)
 
-`src/server/templates/home.tsx` is unchanged. Each option is tag / h1 / sub; screenshots are in the PR.
+Option 2 is now live in `src/server/templates/home.tsx`. Each option is tag / h1 / sub; screenshots are in the PR.
 
 **Current (baseline)** — tag: Full-stack TypeScript starter · h1: Give your agents guardrails
 

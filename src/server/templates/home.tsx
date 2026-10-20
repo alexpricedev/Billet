@@ -61,13 +61,12 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
           →
         </span>
       </a>
-      <p className="hero-tag">Full-stack TypeScript starter</p>
-      <h1>Give your agents guardrails</h1>
+      <p className="hero-tag">Built for agent throughput</p>
+      <h1>Let your agents ship, safely</h1>
       <p className="hero-sub">
-        Auth, security, migrations and 900+ tests come as standard.
-        Server-rendered JSX on Bun and PostgreSQL, reactive without a virtual
-        DOM—one codebase, one test runner, one deploy target. Your agent starts
-        on your product, not on the parts every app needs.
+        Every agent run starts on a tested base: auth, security, migrations and
+        900+ tests, with checks that fail loudly when a change breaks the rules.
+        One runner, one database, one deploy target.
       </p>
       <div className="hero-actions">
         <a
