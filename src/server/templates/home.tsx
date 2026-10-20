@@ -61,13 +61,12 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
           →
         </span>
       </a>
-      <p className="hero-tag">Full-stack TypeScript starter</p>
-      <h1>Give your agents guardrails</h1>
+      <p className="hero-tag">Built for agent-run teams</p>
+      <h1>Put your agents on the factory floor</h1>
       <p className="hero-sub">
-        Auth, security, migrations and 900+ tests come as standard.
-        Server-rendered JSX on Bun and PostgreSQL, reactive without a virtual
-        DOM—one codebase, one test runner, one deploy target. Your agent starts
-        on your product, not on the parts every app needs.
+        Every factory needs fixtures before the line runs. Billet ships auth,
+        security, migrations and 900+ tests, so agents build on solid ground,
+        one codebase and one deploy target.
       </p>
       <div className="hero-actions">
         <a
