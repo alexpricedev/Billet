@@ -5,7 +5,7 @@
 <h1 align="center">Billet</h1>
 
 <p align="center">
-  <b>Give your AI coding agents guardrails</b>
+  <b>Let your AI coding agents ship, safely</b>
   <br />
   Server-rendered JSX, light-touch JS, custom CSS — one codebase, one deploy target.<br />
   Deterministic templates with strong types that AI agents can reason about and test with confidence.
