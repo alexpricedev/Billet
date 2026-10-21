@@ -89,6 +89,7 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 - **Auto-migrations on startup** — pending migrations run before the server accepts requests; if one fails, the server won't start
 - **Migration CLI** for manual operations (`migrate:up`, `migrate:status`, `migrate:create`)
 - **Seed script** scaffold for development data (`bun run seed`)
+- **Persona fixtures** — a deterministic cast (`bun run fixtures`) and a session for any persona (`scripts/persona-session.ts`) — see [runbooks/FIXTURES.md](runbooks/FIXTURES.md)
 - **Parameterised queries** throughout — no string concatenation, no SQL injection surface
 
 ### Testing
@@ -283,6 +284,8 @@ src/
 scripts/
 ├── wip                         # Per-worktree WIP snapshots (safe `git stash` replacement)
 ├── qa-session.ts               # Mints a QA session cookie so an agent never borrows a human's
+├── fixtures.ts                 # `bun run fixtures` — loads the persona fixture set (runbooks/FIXTURES.md)
+├── persona-session.ts          # Mints a session cookie for a fixture persona
 ├── benchmark.ts                # Times the suite, checks and build; saves/compares records
 ├── browser-smoke.test.ts       # Real-browser smoke test — `bun run test:browser`, its own CI job
 └── workspace.ts                # Per-workspace port + dev/test databases (provision/destroy)

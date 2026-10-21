@@ -38,7 +38,10 @@
       }
     },
     {
-      "includes": ["src/server/services/logger.ts"],
+      "includes": [
+        "src/server/services/logger.ts",
+        "src/server/fixtures/guard.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
