@@ -381,6 +381,7 @@ A few small packages built alongside Billet that drop straight in:
 - **[billet-dialog](https://github.com/alexpricedev/billet-dialog)** — Accessible confirm dialog for destructive actions. Vanilla DOM, zero dependencies, and progressive-enhancement form gating over `role="alertdialog"`.
 - **[log-digest](https://github.com/alexpricedev/log-digest)** — In-memory log buffer with a pluggable digest sink. Batches `error` / `warn` / `info` entries and hands them off on an interval to email, Slack, or any custom sink — a lightweight alternative to a full observability stack for a single Bun process.
 - **[billet-analytics](https://github.com/alexpricedev/billet-analytics)** — Privacy-first, self-hosted analytics for a Billet app. Page views and referrers land in your own PostgreSQL rather than a third party's dashboard, so the data stays yours and the page needs no tracker script.
+- **[billet-storage](https://github.com/alexpricedev/billet-storage)** — File storage for a Billet app: an S3-compatible bucket in production and a local directory in development, behind one interface, so a dev environment needs no bucket. Ships a route handler that serves the disk store with traversal refused and a fixed content-type allowlist.
 
 ---
 
