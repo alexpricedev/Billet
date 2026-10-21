@@ -353,3 +353,7 @@ Detail lives in skills so it loads only when it's relevant:
 `ACCESSIBILITY.md`, `SEO.md`, `EMAIL.md`, `CI.md`, `TEAMS.md`, `RELEASE.md`. Read the relevant one
 before changing headers, cookies, metadata, email delivery, anything on the team surface, or
 cutting a release.
+
+`HEADLESS.md` is the one that is not a standard: it is a recipe for forking this project into a
+JSON API behind a React SPA, deleting the server-rendered layer. Nothing in it is implemented.
+Read it only when that fork is the task — it describes a project this one deliberately isn't.
