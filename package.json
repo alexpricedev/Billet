@@ -30,6 +30,7 @@
     "check": "bun run lint && bun run typecheck",
     "audit": "bun audit --audit-level=high",
     "generate:pepper": "bun -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+    "fixtures": "bun run scripts/fixtures.ts",
     "seed": "bun run src/server/database/seed.ts",
     "migrate:up": "bun run src/server/database/cli.ts up",
     "migrate:status": "bun run src/server/database/cli.ts status",
