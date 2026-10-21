@@ -17,7 +17,9 @@ and one with no owner. It runs in one transaction, and ids and timestamps are fi
 produce identical rows.
 
 The dev database is shared with whoever has the browser open: loading signs them out and replaces
-their rows. It refuses to run with `NODE_ENV=production`.
+their rows. It refuses to run with `NODE_ENV=production`, and unless the `DATABASE_URL` host is
+`localhost`, `127.0.0.1` or `::1` — `NODE_ENV` is usually unset on a laptop, so a `.env` pointing at
+a hosted database would otherwise be wiped. `FIXTURES_ALLOW_REMOTE=1` is the explicit override.
 
 Zofia has no account — she is invited, not joined, and starts signed out (story 06). The command
 prints her accept link; it is the same after every load.
@@ -30,7 +32,7 @@ bun run scripts/persona-session.ts priya     # priya | ade | tom | jo | morgan
 
 Prints `<cookie>=<session>` on stdout, like `scripts/qa-session.ts`, for a browser or `curl`.
 Run `fixtures` first; a persona that isn't loaded says so. `sam` (guest) and `zofia` have no
-account and so no session. Same production refusal.
+account and so no session. Same production and remote-database refusals.
 
 ## Password mode
 

@@ -8,12 +8,16 @@
  * Truncates every app table, so anyone signed in against this DATABASE_URL is signed
  * out and loses their rows. Dev and test only — see runbooks/FIXTURES.md.
  */
-import { assertNotProduction } from "../src/server/fixtures/guard";
+import {
+  assertLocalDatabase,
+  assertNotProduction,
+} from "../src/server/fixtures/guard";
 
 assertNotProduction(
   "fixtures",
   "it truncates every table and creates accounts with a published password.",
 );
+assertLocalDatabase("fixtures");
 
 // Imported after the guard: the database module throws at import without DATABASE_URL.
 const { db } = await import("../src/server/services/database");

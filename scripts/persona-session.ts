@@ -9,12 +9,16 @@
  * `qa-session.ts`, so a browser can open as the persona without the login flow.
  * Dev and test only — see runbooks/FIXTURES.md.
  */
-import { assertNotProduction } from "../src/server/fixtures/guard";
+import {
+  assertLocalDatabase,
+  assertNotProduction,
+} from "../src/server/fixtures/guard";
 
 assertNotProduction(
   "persona-session",
   "it signs in as a fixed, publicly documented account.",
 );
+assertLocalDatabase("persona-session");
 
 const { GUESTS, PERSONAS } = await import("../src/server/fixtures/personas");
 
