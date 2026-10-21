@@ -350,7 +350,7 @@ Detail lives in skills so it loads only when it's relevant:
 ## Runbooks
 
 `runbooks/` holds the operational standards this project is held to — `SECURITY.md`, `PRIVACY.md`,
-`ACCESSIBILITY.md`, `SEO.md`, `EMAIL.md`, `CI.md`, `TEAMS.md`, `RELEASE.md`. Read the relevant one
+`ACCESSIBILITY.md`, `SEO.md`, `EMAIL.md`, `CI.md`, `TEAMS.md`, `FIXTURES.md`, `RELEASE.md`. Read the relevant one
 before changing headers, cookies, metadata, email delivery, anything on the team surface, or
 cutting a release.
 
