@@ -409,4 +409,48 @@
       }
     }
   }
+
+  /* ── Add-on packages ─────────────────────────────────── */
+  /* Link cards: the feature-card box, made clickable. */
+
+  .addons {
+    padding-bottom: 4rem;
+
+    h2 {
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .addon-card {
+    display: block;
+    text-decoration: none;
+    transition:
+      border-color 150ms ease,
+      background 150ms ease;
+
+    h3 {
+      color: var(--color-text);
+
+      /* biome-ignore lint/style/noDescendingSpecificity: paired with the
+         `span` inside `.spec-cta:hover` — a selector that can never match
+         this element. Same upstream Biome bug noted on `.spec-cta`. */
+      span {
+        display: inline-block;
+        color: var(--color-primary);
+        transition: transform 150ms ease;
+      }
+    }
+
+    /* biome-ignore lint/style/noDescendingSpecificity: paired with
+       `.hero-actions .btn-primary:hover`, which can never match a link card.
+       Same upstream Biome bug noted on `.spec-cta`. */
+    &:hover {
+      border-color: var(--color-primary);
+      text-decoration: none;
+
+      h3 span {
+        transform: translateX(3px);
+      }
+    }
+  }
 }
