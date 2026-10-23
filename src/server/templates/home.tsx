@@ -317,5 +317,105 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
         Read the full standard <span aria-hidden="true">→</span>
       </a>
     </section>
+
+    <section className="addons">
+      <h2>Works well with</h2>
+      <p className="features-lead text-secondary">
+        Small packages built alongside Billet. None are bundled—add the ones
+        your product needs.
+      </p>
+      <div className="feature-grid">
+        <a
+          className="feature-card addon-card"
+          href="https://github.com/alexpricedev/billet-cookie-consent"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h3>
+            billet-cookie-consent <span aria-hidden="true">→</span>
+          </h3>
+          <p>
+            GDPR-friendly cookie consent banner. Lightweight,
+            framework-agnostic, designed to slot into a server-rendered
+            template.
+          </p>
+        </a>
+        <a
+          className="feature-card addon-card"
+          href="https://github.com/alexpricedev/billet-dialog"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h3>
+            billet-dialog <span aria-hidden="true">→</span>
+          </h3>
+          <p>
+            Accessible confirm dialog for destructive actions. Vanilla DOM, zero
+            dependencies, and progressive-enhancement form gating over an
+            alertdialog role
+          </p>
+        </a>
+        <a
+          className="feature-card addon-card"
+          href="https://github.com/alexpricedev/billet-analytics"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h3>
+            billet-analytics <span aria-hidden="true">→</span>
+          </h3>
+          <p>
+            Privacy-first, self-hosted analytics. Page views and referrers land
+            in your own PostgreSQL rather than a third party's dashboard, and
+            the page needs no tracker script
+          </p>
+        </a>
+        <a
+          className="feature-card addon-card"
+          href="https://github.com/alexpricedev/billet-storage"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h3>
+            billet-storage <span aria-hidden="true">→</span>
+          </h3>
+          <p>
+            File storage behind one interface: an S3-compatible bucket in
+            production, a local directory in development, so a dev environment
+            needs no bucket
+          </p>
+        </a>
+        <a
+          className="feature-card addon-card"
+          href="https://github.com/alexpricedev/log-digest"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h3>
+            log-digest <span aria-hidden="true">→</span>
+          </h3>
+          <p>
+            In-memory log buffer with a pluggable digest sink. Batches error,
+            warn and info entries and hands them off on an interval to email,
+            Slack, or a sink of your own
+          </p>
+        </a>
+        <a
+          className="feature-card addon-card"
+          href="https://conductor.build"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h3>
+            Conductor <span aria-hidden="true">→</span>
+          </h3>
+          <p>
+            Runs several coding agents in parallel, one git worktree each.
+            Billet ships settings that give every workspace its own port, dev
+            database, test database and session cookie
+          </p>
+        </a>
+      </div>
+    </section>
   </Layout>
 );
