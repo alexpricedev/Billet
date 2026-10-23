@@ -7,6 +7,92 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.4.0
+
+Billet gained a cast. `ux/personas.md` names five people and a guest, `ux/stories/` holds the first
+ten paths they walk, and `bun run fixtures` loads exactly those people into the database — one
+transaction, fixed ids and timestamps, so two loads produce identical rows.
+`scripts/persona-session.ts` prints a session cookie for any of them, the way `qa-session.ts`
+already did for its own accounts. The point is repeatability: an agent walking story 05 twice sees
+the same state both times, which a seed with generated data cannot promise. The commands refuse to
+run against anything but a local database, because loading truncates every app table.
+`runbooks/FIXTURES.md` is the standard.
+
+The rest of the release is edges. Lottie is copied into `dist/assets` at build time instead of
+loaded from unpkg, which lets the CSP `script-src` drop its third-party entry and makes every
+script on the page same-origin. HTML responses now say `Cache-Control: no-store` unless a route
+sets its own, so the back button and the bfcache stop answering a navigation with a page rendered
+for a session that may have ended. Five string-bodied responses — the 405, a CSRF rejection, the
+backstop 500, the asset 404 and the unbuilt-bundle 503 — carry an explicit `text/plain`, because
+Bun answers a bare string with `application/octet-stream` and a browser downloads that rather than
+showing it. And an accessibility pass gave filled primary controls a darker colour pair of their
+own, so the accent can stay legible as link text without dragging button labels under 4.5:1.
+
+### Breaking changes
+
+- **A fork that rebranded by setting `--color-primary` must now set
+  `--color-primary-fill` and `--color-primary-fill-hover` as well.** A single colour cannot be both
+  a fill a white label sits on and link text on a dark surface — the luminance ranges don't
+  overlap — so filled buttons draw their own same-hue pair in `src/client/base.css`.
+  `--color-primary` keeps the link, badge and focus-ring job. A fork that changes only
+  `--color-primary` keeps its brand on links and loses it on every button, with nothing failing.
+  Retune the three together; `runbooks/ACCESSIBILITY.md` has the ratios each has to clear.
+- **A production build must produce `dist/assets/lottie.js`.** `bun run build` now also runs
+  `build:vendor`, which copies `lottie-web` out of `node_modules`. A fork with its own build
+  command has to add that step or `initAssets()` throws at boot. Forks that edited the unpkg
+  `<script>` tag in `src/server/components/layouts.tsx`, or added their own origins to
+  `script-src`, should re-apply on top of the new tag.
+- **HTML responses default to `Cache-Control: no-store`.** `withSecurityHeaders`
+  (`src/server/utils/security-headers.ts`) sets it when the response is `text/html` and carries no
+  `Cache-Control` of its own; a route that sets one keeps it. A fork relying on an HTML page being
+  cached — a marketing page behind a CDN, say — has to set the header on that route explicitly, and
+  will otherwise see cache hit rates drop with no error anywhere.
+
+### Added
+
+- **A deterministic fixture set.** `src/server/fixtures/` builds the Northwind org (Priya owner,
+  Ade admin, Tom member), Jo with no team, Morgan as a platform admin, Zofia's pending invite and
+  four todos chosen for their edges — done, 200 characters, emoji, unowned. `bun run fixtures`
+  loads it, `scripts/persona-session.ts <name>` signs in as one. `src/server/fixtures/guard.ts`
+  refuses both unless `DATABASE_URL` points at localhost and `NODE_ENV` isn't production;
+  `FIXTURES_ALLOW_REMOTE=1` is the explicit override.
+- **Personas and the first ten user stories**, in `ux/`. `personas.test.ts` fails if
+  `personas.ts` and `ux/personas.md` disagree, so the prose can't drift from the rows.
+- **`runbooks/HEADLESS.md`** — a recipe for forking Billet into a JSON API behind a React SPA,
+  deleting the server-rendered layer. Nothing in it is implemented, and `CLAUDE.md` marks it as the
+  one runbook that isn't an operational standard. It records the decision that gates the rest
+  (cookie sessions served same-origin, not bearer tokens) and notes that `/api` is currently
+  unauthenticated.
+- **A "Works well with" card grid on the home page**, listing the optional packages a fork can drop
+  in — analytics, cookie consent, storage, dialog — matching the README section.
+
+### Changed
+
+- **Lottie is self-hosted.** `lottie-web` is a dependency, `build:vendor` copies its light player
+  to `dist/assets/lottie.js`, and `lottie.js` joined `BUNDLE_FILENAMES` so a missing build answers
+  503 rather than 404. `script-src` is `'self' 'unsafe-inline'` with no third-party origin.
+- **Six dependencies bumped**: happy-dom and its global-registrator 20.14.6 → 21.0.3 (the major and
+  its registrator land together on purpose), `@types/bun` 1.4.3, railway 3.16.0,
+  preact-render-to-string 6.8.1, resend 6.34.1.
+
+### Fixed
+
+- **Primary button contrast.** White 14px on `#7c85f0` was 3.25:1, and 2.63:1 hovered.
+  `--color-primary-fill` is 5.46:1 and `--color-primary-fill-hover` 4.94:1; `--color-primary` stays
+  the accent at 5.67:1 on the surface.
+- **Disabled controls look disabled.** Inputs, selects and buttons rendered as enabled in Chromium
+  and WebKit; one `:disabled` rule fades them to 50% with `cursor: not-allowed`.
+- **Field borders clear WCAG 1.4.11.** The `#222224` divider border was 1.16:1 against the surface,
+  under the 3:1 floor for the boundary that identifies a field. Inputs, selects and textareas draw
+  `--color-border-strong` (3.4:1); placeholders move to `--color-text-tertiary` (5.4:1).
+- **String bodies are labelled.** `/health`, the 405 from `createRouteHandler`, CSRF rejections,
+  the backstop 500 in `main.ts`, the asset 404 and the unbuilt-bundle 503 all send
+  `text/plain; charset=utf-8` instead of being downloaded as `application/octet-stream`.
+- **The error page's mobile nav** stopped forcing the auth actions onto a second row; a crowded
+  header wraps them instead. The 404 keeps its no-client-JavaScript posture.
+- **Footer and login-footer links** move from `--color-text-quaternary` to `--color-text-tertiary`
+  (5.81:1).
+
 ## 5.3.1
 
 The shared form controls from 5.2.0 got the cases a page can hand them. A disabled `select` looked
