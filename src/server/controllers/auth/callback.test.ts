@@ -17,6 +17,7 @@ import { createOrganizationForUser } from "../../services/organizations";
 import { createBunRequest, findSetCookie } from "../../test-utils/bun-request";
 import { handleGuarded } from "../../utils/security-headers";
 import { callback } from "./callback";
+import { login } from "./login";
 
 const ORIGIN = process.env.APP_URL as string;
 
@@ -80,6 +81,9 @@ const signIn = async (rawToken: string) => {
 
 const errorFrom = (res: Response): string =>
   decodeURIComponent(res.headers.get("location") ?? "");
+
+const SPENT_LINK =
+  "This link has already been used or has expired. Enter your email and we'll send a new one.";
 
 describe("Callback Controller", () => {
   beforeEach(async () => {
@@ -284,17 +288,29 @@ describe("Callback Controller", () => {
       });
 
       expect(res.status).toBe(303);
-      expect(errorFrom(res)).toContain("Invalid or expired token");
+      expect(errorFrom(res)).toContain(SPENT_LINK);
     });
 
-    test("redirects with error for already used token", async () => {
+    test("an already used token lands on /login with the address filled in", async () => {
       const { rawToken } = await createMagicLink("reuse@example.com");
 
       await signIn(rawToken);
-      const { res } = await signIn(rawToken);
+      const { req, res } = await signIn(rawToken);
 
       expect(res.status).toBe(303);
-      expect(errorFrom(res)).toContain("Invalid or expired token");
+      expect(res.headers.get("location")).toBe("/login");
+
+      // The flash set on the callback response is what /login reads next.
+      const flash = cookieValue(req, "flash_state");
+      expect(flash).toBeDefined();
+      const loginReq = createBunRequest(`${ORIGIN}/login`, {
+        method: "GET",
+        headers: { cookie: `flash_state=${flash}` },
+      });
+      const html = await (await login.index(loginReq)).text();
+
+      expect(html).toContain("This link has already been used or has expired.");
+      expect(html).toContain('value="reuse@example.com"');
     });
 
     test("redirects with error for expired token", async () => {
@@ -307,14 +323,17 @@ describe("Callback Controller", () => {
         WHERE user_id = ${user.id} AND type = 'magic_link'
       `;
 
-      const { res } = await submitConfirm({
+      const { req, res } = await submitConfirm({
         token: rawToken,
         csrfToken: opened.csrfToken,
         sessionId: cookieValue(opened.req, "session_id"),
       });
 
       expect(res.status).toBe(303);
-      expect(errorFrom(res)).toContain("expired");
+      expect(res.headers.get("location")).toBe("/login");
+      expect(findSetCookie(req, "flash_state")).toContain(
+        "expired@example.com",
+      );
     });
 
     test("handles database errors gracefully", async () => {
@@ -331,7 +350,7 @@ describe("Callback Controller", () => {
       });
 
       expect(res.status).toBe(303);
-      expect(errorFrom(res)).toContain("Invalid or expired token");
+      expect(errorFrom(res)).toContain(SPENT_LINK);
     });
   });
 

@@ -68,7 +68,7 @@ export const EMAIL_VERIFICATION_EXPIRY_HOURS =
 
 export type AuthResult =
   | { success: true; user: User; sessionId: string }
-  | { success: false; error: string };
+  | { success: false; error: string; email?: string };
 
 // Every query that selects a user goes through this, so a row from the driver
 // can never reach a template with a timestamp still typed as a string.
@@ -225,6 +225,27 @@ export const createMagicLink = async (
 };
 
 /**
+ * The address a magic link was sent to, whether or not it can still be spent.
+ *
+ * Only for a link that has just failed to redeem, so the login page can
+ * pre-fill the address. An unknown token matches no row and returns nothing —
+ * never call it ahead of `consumeUserToken`, or a guess becomes an oracle.
+ */
+const findMagicLinkEmail = async (
+  rawToken: string,
+): Promise<string | undefined> => {
+  const results = await db`
+    SELECT u.email
+    FROM user_tokens t
+    JOIN users u ON u.id = t.user_id
+    WHERE t.type = 'magic_link'
+      AND t.token_hash = ${computeHMAC(rawToken)}
+  `;
+
+  return results.length > 0 ? (results[0].email as string) : undefined;
+};
+
+/**
  * Verify a magic link token and consume it
  * Uses atomic UPDATE to prevent race conditions - only unused, valid tokens are consumed
  * Returns user data and creates new session on success
@@ -237,7 +258,12 @@ export const verifyMagicLink = async (
 
   // No row claimed means the token was invalid, expired, or already used
   if (!userId) {
-    return { success: false, error: "Invalid or expired token" };
+    return {
+      success: false,
+      error:
+        "This link has already been used or has expired. Enter your email and we'll send a new one.",
+      email: await findMagicLinkEmail(rawToken),
+    };
   }
 
   // Clicking a link sent to the address proves the user owns it, so the magic

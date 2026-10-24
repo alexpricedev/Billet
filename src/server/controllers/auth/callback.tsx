@@ -8,8 +8,12 @@ import {
   setSessionCookie,
 } from "../../services/sessions";
 import { AuthConfirm, CALLBACK_PATH } from "../../templates/auth-confirm";
+import type { LoginState } from "../../templates/login";
 import { redirect, render } from "../../utils/response";
+import { stateHelpers } from "../../utils/state";
 import { landingAfterAuth } from "./landing";
+
+const { setFlash } = stateHelpers<LoginState>();
 
 /**
  * Where a magic link lands, in two halves: the GET shows a confirm step and
@@ -63,6 +67,17 @@ export const callback = {
       const result = await verifyMagicLink(token, getSessionIdFromRequest(req));
 
       if (!result.success) {
+        // The address rides the flash cookie rather than the query string, so
+        // it stays out of URLs and logs.
+        if (result.email) {
+          setFlash(req, {
+            state: "validation-error",
+            error: result.error,
+            email: result.email,
+          });
+          return redirect("/login");
+        }
+
         return redirect(`/login?error=${encodeURIComponent(result.error)}`);
       }
 
