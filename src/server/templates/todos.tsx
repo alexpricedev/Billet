@@ -216,7 +216,7 @@ export const Todos = (props: TodosProps): JSX.Element => {
       </div>
 
       <section className="api-section">
-        <h2>API Endpoints</h2>
+        <h2 id="api-endpoints-heading">API Endpoints</h2>
         <p className="text-tertiary">
           The same service layer backs both the HTML forms above and the JSON
           API below—adding an API is simple when business logic lives in one
@@ -226,14 +226,17 @@ export const Todos = (props: TodosProps): JSX.Element => {
             scrolls the card sideways. A scroll container only a pointer can
             drive isn't keyboard reachable; the region is focusable so the tab
             order reaches the scroll. (Also an implicit `region` landmark,
-            since it is a <section> with a name.) */}
+            since it is a <section> named by the heading via aria-labelledby.) */}
         <section
           className="card"
-          aria-label="API endpoints"
+          aria-labelledby="api-endpoints-heading"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be focusable — WCAG 2.1.1
           tabIndex={0}
         >
-          <DataTable className="endpoint-table" caption="API endpoints">
+          <DataTable
+            className="endpoint-table"
+            caption="Endpoint, path and description"
+          >
             <tbody>
               <tr>
                 <td>
