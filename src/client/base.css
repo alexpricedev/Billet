@@ -238,8 +238,9 @@ img {
   border: var(--control-border-width) solid transparent;
   color: var(--color-danger);
 
-  &:hover,
-  &:focus {
+  /* Scoped the same way as .btn-ghost: a disabled danger button keeps its
+     transparent fill under the pointer. */
+  &:where(:not(:disabled)):is(:hover, :focus) {
     background: rgba(248, 113, 113, 0.1);
     /* The global a:hover/a:focus colour is more specific than a lone
        .btn-danger rule, so a danger link turned indigo on hover unless the
