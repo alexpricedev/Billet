@@ -176,10 +176,7 @@ beforeAll(async () => {
   // Bun.fetch, not fetch: the happy-dom preload replaces global fetch with
   // one that enforces the Same Origin Policy against its fake window.
   const ready = await until(
-    () =>
-      Bun.fetch(BASE)
-        .then((res) => res.ok)
-        .catch(() => false),
+    () => Bun.fetch(BASE).then((res) => res.ok).catch(() => false),
     (ok) => ok === true,
     15_000,
   );
@@ -501,25 +498,19 @@ describe("browser smoke", () => {
 
     // size="1" is a dropdown like any other.
     expect(report.dropdown.backgroundImage).not.toBe("none");
-    expect(report.dropdown.paddingRight).toBeGreaterThan(
-      report.dropdown.paddingLeft,
-    );
+    expect(report.dropdown.paddingRight).toBeGreaterThan(report.dropdown.paddingLeft);
     expect(report.dropdown.cursor).toBe("pointer");
 
     // size="0" is a dropdown too: the browser treats it like an absent size
     // rather than a list box, so it keeps the chevron and the reserved edge.
     expect(report.sizeZero.backgroundImage).not.toBe("none");
-    expect(report.sizeZero.paddingRight).toBeGreaterThan(
-      report.sizeZero.paddingLeft,
-    );
+    expect(report.sizeZero.paddingRight).toBeGreaterThan(report.sizeZero.paddingLeft);
     expect(report.sizeZero.cursor).toBe("pointer");
 
     // size="" is an invalid size the same way size="0" is an invalid number of
     // rows, so it reads as an absent size — a dropdown — and not as a list box.
     expect(report.sizeEmpty.backgroundImage).not.toBe("none");
-    expect(report.sizeEmpty.paddingRight).toBeGreaterThan(
-      report.sizeEmpty.paddingLeft,
-    );
+    expect(report.sizeEmpty.paddingRight).toBeGreaterThan(report.sizeEmpty.paddingLeft);
     expect(report.sizeEmpty.cursor).toBe("pointer");
 
     // Disabled: faded by the shared rule — the whole control, chevron
@@ -542,9 +533,7 @@ describe("browser smoke", () => {
     expect(report.rtl.chevronFromLeft).not.toBeNull();
     expect(report.rtl.paddingLeft).toBe(report.dropdown.paddingRight);
     expect(report.rtl.paddingRight).toBe(report.dropdown.paddingLeft);
-    expect(report.rtl.chevronFromLeft as number).toBeLessThan(
-      report.rtl.paddingLeft,
-    );
+    expect(report.rtl.chevronFromLeft as number).toBeLessThan(report.rtl.paddingLeft);
 
     // A left-to-right select inside that right-to-left ancestor is back on the
     // right — whether it carries dir="ltr" itself or sits in an LTR subtree: it
@@ -603,9 +592,7 @@ describe("browser smoke", () => {
     expect(report.hero.border).toBe(report.plain.border);
     expect(report.hero.fontWeight).toBe(report.plain.fontWeight);
     // The hero's own box is what makes it the bigger CTA.
-    expect(Number(report.hero.height)).toBeGreaterThan(
-      Number(report.plain.height),
-    );
+    expect(Number(report.hero.height)).toBeGreaterThan(Number(report.plain.height));
     expect(report.hero.padding).not.toBe(report.plain.padding);
 
     // And the hover: the surface fills in and the link does not sprout the
@@ -627,9 +614,7 @@ describe("browser smoke", () => {
     expect(hovered.background).not.toBe(report.hero.background);
     expect(hovered.color).not.toBe(report.hero.color);
     expect(hovered.decoration).toBe("none");
-    await view.evaluate(
-      `document.querySelector("#smoke-hero-ghost")?.remove()`,
-    );
+    await view.evaluate(`document.querySelector("#smoke-hero-ghost")?.remove()`);
   });
 
   test("a link styled as a button takes the button's box", async () => {
@@ -932,7 +917,9 @@ describe("browser smoke", () => {
       resting.ghost.background,
     );
 
-    await view.evaluate(`document.getElementById("smoke-hover-row")?.remove()`);
+    await view.evaluate(
+      `document.getElementById("smoke-hover-row")?.remove()`,
+    );
   });
 
   test("a page's own button state survives the shared hover fill", async () => {
@@ -1016,7 +1003,9 @@ describe("browser smoke", () => {
     expect(danger.background).not.toBe(primary.background);
     expect(toggle.background).not.toBe(primary.background);
 
-    await view.evaluate(`document.getElementById("smoke-state-row")?.remove()`);
+    await view.evaluate(
+      `document.getElementById("smoke-state-row")?.remove()`,
+    );
   });
 
   test("a field's border and placeholder clear their contrast floors", async () => {
@@ -1132,8 +1121,9 @@ describe("browser smoke", () => {
     await clickThrough(".form-card button[type='submit']");
 
     // The POST redirects back to /forms with the flash cookie set.
-    const flash = await until(bodyText, (text) =>
-      text.includes("Submitted successfully"),
+    const flash = await until(
+      bodyText,
+      (text) => text.includes("Submitted successfully"),
     );
     expect(flash).toContain("Submitted successfully");
 
@@ -1279,7 +1269,10 @@ describe("browser smoke", () => {
     await view.type(email);
     await clickThrough("button.login-submit");
 
-    await until(bodyText, (text) => text.includes("Check your email"));
+    await until(
+      bodyText,
+      (text) => text.includes("Check your email"),
+    );
 
     // The console email provider prints the message to the server's stdout;
     // scrape the emailed URL from there, like a developer would in local dev.
@@ -1295,7 +1288,8 @@ describe("browser smoke", () => {
     // load the link — a navigate() that starts mid-load is cancelled
     // (net::ERR_ABORTED), which `goto` also absorbs.
     await until(
-      () => view.evaluate<string>("document.readyState").catch(() => "loading"),
+      () =>
+        view.evaluate<string>("document.readyState").catch(() => "loading"),
       (state) => state === "complete",
       5_000,
     );
@@ -1313,7 +1307,10 @@ describe("browser smoke", () => {
     expect(confirm).toBe(true);
 
     await clickThrough("form button.login-submit");
-    const signedIn = await until(bodyText, (text) => text.includes("Logout"));
+    const signedIn = await until(
+      bodyText,
+      (text) => text.includes("Logout"),
+    );
     expect(signedIn).toContain("Logout");
   });
 
@@ -1573,8 +1570,7 @@ describe("browser smoke", () => {
             client: document.documentElement.clientWidth,
           };
         })()`),
-      (value) =>
-        value.position === "sticky" && value.linkTop >= value.bannerBottom,
+      (value) => value.position === "sticky" && value.linkTop >= value.bannerBottom,
     );
 
     expect(report.position).toBe("sticky");
