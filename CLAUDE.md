@@ -21,6 +21,7 @@ spec for everything else. This file is for the things you can't learn by reading
   `runbooks/RELEASE.md`. Park changelog prose in `.context/` until then; a version heading written
   on a feature branch claims a version that doesn't exist yet.
 - Never `git stash`. Use `bun run wip` — see "The stash is shared, the worktrees are not".
+- Reviewing a change? `REVIEW.md` says what matters and what to skip.
 
 ## Gotchas
 
