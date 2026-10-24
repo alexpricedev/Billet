@@ -702,6 +702,52 @@ describe("browser smoke", () => {
     expect(plainHovered).not.toBe(plainResting);
   });
 
+  test("a disabled danger button ignores hover", async () => {
+    await view.navigate(`${BASE}/forms`);
+
+    // The enabled button is the control: it must tint on hover, or :hover
+    // never applied and the disabled assertion would pass for the wrong reason.
+    // A click at (1, 1) parks the pointer on an inert corner first.
+    await view.click(1, 1);
+    await Bun.sleep(250);
+
+    const [enabled, disabled] = await view.evaluate<
+      { x: number; y: number }[]
+    >(`(() => {
+      const row = document.createElement("div");
+      row.id = "smoke-disabled-row";
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.innerHTML =
+        '<button id="smoke-d-on" type="button" class="btn-danger">Remove</button>' +
+        '<button id="smoke-d-off" type="button" class="btn-danger" disabled>Remove</button>';
+      document.querySelector("main").prepend(row);
+      return ["smoke-d-on", "smoke-d-off"].map((id) => {
+        const box = document.getElementById(id).getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+      });
+    })()`);
+
+    const background = (id: string): Promise<string> =>
+      view.evaluate<string>(
+        `getComputedStyle(document.getElementById("${id}")).backgroundColor`,
+      );
+
+    const enabledResting = await background("smoke-d-on");
+
+    await view.click(enabled.x, enabled.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-d-on")).not.toBe(enabledResting);
+
+    await view.click(disabled.x, disabled.y);
+    await Bun.sleep(250);
+    expect(await background("smoke-d-off")).toBe("rgba(0, 0, 0, 0)");
+
+    await view.evaluate(
+      `document.getElementById("smoke-disabled-row")?.remove()`,
+    );
+  });
+
   test("the primary button's white label clears AA resting and hovered", async () => {
     await view.navigate(`${BASE}/`);
 
