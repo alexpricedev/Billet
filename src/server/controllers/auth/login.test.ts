@@ -122,13 +122,13 @@ describe("Login Controller", () => {
     // ?error=; for a while the page dropped it and showed a pristine form.
     test("renders the error a redirect left in the query string", async () => {
       const request = createBunRequest(
-        "http://localhost:3000/login?error=Invalid%20or%20expired%20token",
+        "http://localhost:3000/login?error=Missing%20authentication%20token",
         { method: "GET" },
       );
 
       const html = await (await login.index(request)).text();
 
-      expect(html).toContain("Invalid or expired token");
+      expect(html).toContain("Missing authentication token");
     });
 
     test("prefers flash state over the query string", async () => {

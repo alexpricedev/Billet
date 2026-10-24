@@ -151,7 +151,10 @@ describe("Auth Service with PostgreSQL", () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe("Invalid or expired token");
+        expect(result.email).toBe("reuse@example.com");
+        expect(result.error).toBe(
+          "This link has already been used or has expired. Enter your email and we'll send a new one.",
+        );
       }
     });
 
@@ -174,7 +177,9 @@ describe("Auth Service with PostgreSQL", () => {
       // The failure should be due to token already being used
       expect(failures[0].success).toBe(false);
       if (!failures[0].success) {
-        expect(failures[0].error).toBe("Invalid or expired token");
+        expect(failures[0].error).toBe(
+          "This link has already been used or has expired. Enter your email and we'll send a new one.",
+        );
       }
     });
 
@@ -183,7 +188,10 @@ describe("Auth Service with PostgreSQL", () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe("Invalid or expired token");
+        expect(result.email).toBeUndefined();
+        expect(result.error).toBe(
+          "This link has already been used or has expired. Enter your email and we'll send a new one.",
+        );
       }
     });
 
@@ -201,7 +209,10 @@ describe("Auth Service with PostgreSQL", () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe("Invalid or expired token");
+        expect(result.email).toBe("expired@example.com");
+        expect(result.error).toBe(
+          "This link has already been used or has expired. Enter your email and we'll send a new one.",
+        );
       }
     });
   });
@@ -469,7 +480,9 @@ describe("Auth Service with PostgreSQL", () => {
       // The failure should be due to token already being used
       expect(failures[0].success).toBe(false);
       if (!failures[0].success) {
-        expect(failures[0].error).toBe("Invalid or expired token");
+        expect(failures[0].error).toBe(
+          "This link has already been used or has expired. Enter your email and we'll send a new one.",
+        );
       }
     });
   });
