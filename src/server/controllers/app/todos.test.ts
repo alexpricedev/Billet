@@ -154,12 +154,12 @@ describe("Todos Controller", () => {
 
       // The endpoint table can't shrink past its monospace paths, so on a phone
       // the card scrolls sideways. A scroll container only a pointer can drive
-      // is not keyboard reachable; an aria-labelled <section> makes the card a
+      // is not keyboard reachable; a <section> named by its heading makes the card a
       // named `region` landmark and tabindex puts it in the tab order.
-      expect(html).toContain('aria-label="API endpoints"');
+      expect(html).toContain('<h2 id="api-endpoints-heading">');
       expect(html).toContain('tabindex="0"');
       expect(html).toMatch(
-        /<section[^>]*class="card"[^>]*aria-label="API endpoints"/,
+        /<section[^>]*class="card"[^>]*aria-labelledby="api-endpoints-heading"/,
       );
     });
 
