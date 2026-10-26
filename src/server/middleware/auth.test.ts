@@ -220,6 +220,42 @@ describe("Auth Middleware", () => {
       expect(result.redirect.headers.get("location")).toBe("/");
     });
 
+    // A link that says where to go after signing in, opened by someone who is
+    // already signed in, should continue rather than dump them on the home page.
+    test("continues to the destination a signed-in visitor asked for", async () => {
+      const user = await findOrCreateUser("continue@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      const request = createBunRequest(
+        "http://localhost:3000/login?next=%2Fcms%2Fsign-in",
+        { headers: { cookie: `session_id=${sessionId}` } },
+      );
+
+      const result = await guestPageContext(request);
+
+      expect("redirect" in result).toBe(true);
+      if (!("redirect" in result)) return;
+      expect(result.redirect.headers.get("location")).toBe("/cms/sign-in");
+    });
+
+    // The loop the exclusion list exists for: sign-in redirects to `next`,
+    // which is sign-in, which redirects to `next`…
+    test("refuses a destination that is the page it came from", async () => {
+      const user = await findOrCreateUser("loop@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      const request = createBunRequest(
+        "http://localhost:3000/login?next=%2Flogin",
+        { headers: { cookie: `session_id=${sessionId}` } },
+      );
+
+      const result = await guestPageContext(request);
+
+      expect("redirect" in result).toBe(true);
+      if (!("redirect" in result)) return;
+      expect(result.redirect.headers.get("location")).toBe("/");
+    });
+
     test("returns a context for an unauthenticated visitor", async () => {
       const request = createBunRequest("http://localhost:3000/login");
 

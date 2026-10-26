@@ -7,6 +7,7 @@ import { Honeypot } from "../components/honeypot";
 import type { AuthMode } from "../services/auth-mode";
 import type { CaptchaChallenge } from "../services/captcha";
 import type { FlashMessage } from "../utils/flash";
+import { withNext } from "../utils/next-path";
 
 export interface LoginState {
   // "no-password" is a failed sign-in against an account carried over from
@@ -34,6 +35,12 @@ export interface LoginProps {
   // Only true under the console email provider. Anywhere else the link really
   // is in an inbox, and the hint sends people to a terminal they can't see.
   showConsoleHint?: boolean;
+  /**
+   * Where to go once signed in, already validated by the controller. Rendered
+   * as a hidden field rather than kept in the form's action, so it stays out of
+   * the Referer header when a browser follows a link off this page.
+   */
+  next?: string | null;
 }
 
 export const Login = ({
@@ -43,6 +50,7 @@ export const Login = ({
   challenge,
   message,
   showConsoleHint,
+  next,
 }: LoginProps) => {
   const password = mode === "password";
 
@@ -63,7 +71,9 @@ export const Login = ({
       }
       footer={
         <>
-          <a href="/signup">Create an account</a>
+          {/* The two signed-out pages share a destination: someone who bounces
+              between them should not lose where they were going. */}
+          <a href={withNext("/signup", next)}>Create an account</a>
           {" · "}
           <a href="/">Back to home</a>
         </>
@@ -90,6 +100,7 @@ export const Login = ({
       ) : (
         <form method="POST" action="/login">
           <CsrfField token={csrfToken} />
+          {next && <input type="hidden" name="next" value={next} />}
           {(state?.state === "validation-error" ||
             state?.state === "no-password") &&
             state.error && (

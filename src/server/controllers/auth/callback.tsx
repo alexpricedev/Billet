@@ -9,6 +9,7 @@ import {
 } from "../../services/sessions";
 import { AuthConfirm, CALLBACK_PATH } from "../../templates/auth-confirm";
 import type { LoginState } from "../../templates/login";
+import { safeNextPath, withNext } from "../../utils/next-path";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { landingAfterAuth } from "./landing";
@@ -44,8 +45,17 @@ export const callback = {
       ? await createCsrfToken(ctx.sessionId, "POST", CALLBACK_PATH)
       : null;
 
+    // Carried from the login form into the emailed URL, and validated again
+    // here: it has been through a mail client since the site last saw it.
+    const next = safeNextPath(url.searchParams.get("next"));
+
     return render(
-      <AuthConfirm intent="sign-in" token={token} csrfToken={csrfToken} />,
+      <AuthConfirm
+        intent="sign-in"
+        token={token}
+        csrfToken={csrfToken}
+        next={next}
+      />,
     );
   },
 
@@ -58,9 +68,12 @@ export const callback = {
 
     const formData = await req.formData();
     const token = formData.get("token");
+    const next = safeNextPath(formData.get("next"));
 
     if (typeof token !== "string" || !token) {
-      return redirect("/login?error=Missing authentication token");
+      return redirect(
+        withNext("/login?error=Missing authentication token", next),
+      );
     }
 
     try {
@@ -75,20 +88,24 @@ export const callback = {
             error: result.error,
             email: result.email,
           });
-          return redirect("/login");
+          return redirect(withNext("/login", next));
         }
 
-        return redirect(`/login?error=${encodeURIComponent(result.error)}`);
+        return redirect(
+          withNext(`/login?error=${encodeURIComponent(result.error)}`, next),
+        );
       }
 
       setSessionCookie(req, result.sessionId);
 
       return new Response("", {
         status: 303,
-        headers: { Location: await landingAfterAuth(result.user.id) },
+        headers: { Location: await landingAfterAuth(result.user.id, next) },
       });
     } catch {
-      return redirect("/login?error=Authentication failed. Please try again.");
+      return redirect(
+        withNext("/login?error=Authentication failed. Please try again.", next),
+      );
     }
   },
 };

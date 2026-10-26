@@ -1,4 +1,12 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterAll,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from "bun:test";
 import { createHash } from "node:crypto";
 import { clearRateLimitLog } from "../../middleware/rate-limit";
 import {
@@ -47,6 +55,7 @@ mock.module("../../services/database", () => ({
 
 import { findOrCreateUser } from "../../services/auth";
 import { db } from "../../services/database";
+import { log } from "../../services/logger";
 import { signUpWithPassword } from "../../services/passwords";
 import {
   createAuthenticatedSession,
@@ -763,6 +772,131 @@ describe("Login Controller", () => {
           )
         ).status,
       ).toBe(429);
+    });
+  });
+
+  // A page that asks for sign-in after the fact — the CMS's bounce is the one
+  // this exists for — carries the destination as `?next=`. It is attacker
+  // controlled, so each hop validates it and nothing else trusts it.
+  describe("next after sign-in", () => {
+    const get = async (path: string) =>
+      (
+        await login.index(
+          createBunRequest(`http://localhost:3000${path}`, { method: "GET" }),
+        )
+      ).text();
+
+    /** A GET as an already signed-in visitor. */
+    const getSignedIn = async (path: string, sessionId: string) =>
+      login.index(
+        createBunRequest(`http://localhost:3000${path}`, {
+          method: "GET",
+          headers: { cookie: `session_id=${sessionId}` },
+        }),
+      );
+
+    test("renders the destination into the form", async () => {
+      expect(await get("/login?next=%2Fcms%2Fsign-in")).toContain(
+        'name="next" value="/cms/sign-in"',
+      );
+    });
+
+    test("renders no field when there is no destination", async () => {
+      expect(await get("/login")).not.toContain('name="next"');
+    });
+
+    test("sends a signed-in visitor on to the destination", async () => {
+      const user = await findOrCreateUser("continue@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      const response = await getSignedIn("/login?next=%2Fstack", sessionId);
+
+      expect(response.headers.get("location")).toBe("/stack");
+    });
+
+    test("refuses a destination that would loop back to sign-in", async () => {
+      const user = await findOrCreateUser("loop@example.com");
+      const sessionId = await createAuthenticatedSession(user.id);
+
+      const response = await getSignedIn("/login?next=%2Flogin", sessionId);
+
+      expect(response.headers.get("location")).toBe("/");
+    });
+
+    test("carries the destination into the magic link and the retry", async () => {
+      const info = spyOn(log, "info");
+      try {
+        const formData = new FormData();
+        formData.append("email", "carry@example.com");
+        formData.append("next", "/cms/sign-in");
+
+        const request = await authFormPost("/login", formData);
+        const response = await login.create(request);
+
+        expect(response.headers.get("location")).toBe(
+          "/login?next=%2Fcms%2Fsign-in",
+        );
+
+        // The emailed URL is the only thing that survives the trip through an
+        // inbox, so the destination has to ride it.
+        const sent = info.mock.calls.map((call) => String(call[1])).join("\n");
+        expect(sent).toContain("next=%2Fcms%2Fsign-in");
+      } finally {
+        info.mockRestore();
+      }
+    });
+
+    test("keeps the destination when the submission fails", async () => {
+      const formData = new FormData();
+      formData.append("email", "not-an-email");
+      formData.append("next", "/cms/sign-in");
+
+      const response = await login.create(
+        await authFormPost("/login", formData),
+      );
+
+      expect(response.headers.get("location")).toBe(
+        "/login?next=%2Fcms%2Fsign-in",
+      );
+    });
+
+    test("drops a destination from another origin", async () => {
+      const formData = new FormData();
+      formData.append("email", "hostile@example.com");
+      formData.append("next", "//evil.example/cms");
+
+      const response = await login.create(
+        await authFormPost("/login", formData),
+      );
+
+      expect(response.headers.get("location")).toBe("/login");
+    });
+
+    test("lands on the destination after a password sign-in", async () => {
+      const originalMode = process.env.AUTH_MODE;
+      process.env.AUTH_MODE = "password";
+      try {
+        const PASSWORD = "correct-horse-battery";
+        const signUp = await signUpWithPassword(
+          "next-password@example.com",
+          PASSWORD,
+        );
+        expect(signUp.success).toBe(true);
+
+        const formData = new FormData();
+        formData.append("email", "next-password@example.com");
+        formData.append("password", PASSWORD);
+        formData.append("next", "/cms/sign-in");
+
+        const response = await login.create(
+          await authFormPost("/login", formData),
+        );
+
+        expect(response.headers.get("location")).toBe("/cms/sign-in");
+      } finally {
+        if (originalMode === undefined) delete process.env.AUTH_MODE;
+        else process.env.AUTH_MODE = originalMode;
+      }
     });
   });
 });

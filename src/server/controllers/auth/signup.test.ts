@@ -116,6 +116,35 @@ describe("Signup Controller", () => {
       );
       expect(await db`SELECT id FROM users`).toHaveLength(0);
     });
+
+    // Signing up is the other way into a page that asked for sign-in, so the
+    // destination travels the same route as login's: form, email, confirm page.
+    test("renders the destination into the form", async () => {
+      const html = await (
+        await signup.index(
+          createBunRequest(
+            "http://localhost:3000/signup?next=%2Fcms%2Fsign-in",
+            {
+              method: "GET",
+            },
+          ),
+        )
+      ).text();
+
+      expect(html).toContain('name="next" value="/cms/sign-in"');
+    });
+
+    test("keeps the destination on the sent-link page", async () => {
+      const request = await post({
+        email: "carry@example.com",
+        next: "/cms/sign-in",
+      });
+      const response = await signup.create(request);
+
+      expect(response.headers.get("location")).toBe(
+        "/signup?next=%2Fcms%2Fsign-in",
+      );
+    });
   });
 
   describe("password mode", () => {
@@ -137,6 +166,20 @@ describe("Signup Controller", () => {
       expect(html).toContain('autocomplete="new-password"');
       expect(html).toContain('minlength="12"');
       expect(html).toContain("Create account");
+    });
+
+    // Password mode signs the account in during the POST, so there is no email
+    // round trip to carry the destination through.
+    test("lands on the destination the sign-up asked for", async () => {
+      const request = await post({
+        email: "next-signup@example.com",
+        password: PASSWORD,
+        next: "/cms/sign-in",
+      });
+      const response = await signup.create(request);
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe("/cms/sign-in");
     });
 
     // Claiming a link was sent would strand a human who tripped the honeypot at

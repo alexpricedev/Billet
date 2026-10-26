@@ -28,9 +28,14 @@ const cookieValue = (req: BunRequest, name: string): string => {
 };
 
 /** The confirm page the link lands on, plus what it hands the browser. */
-const openLink = async (rawToken?: string) => {
+const openLink = async (rawToken?: string, next?: string) => {
+  const query = new URLSearchParams();
+  if (rawToken) query.set("token", rawToken);
+  if (next) query.set("next", next);
+  const search = query.toString();
+
   const req = createBunRequest(
-    `${ORIGIN}/auth/callback${rawToken ? `?token=${rawToken}` : ""}`,
+    `${ORIGIN}/auth/callback${search ? `?${search}` : ""}`,
     { method: "GET" },
   );
   const res = await callback.index(req);
@@ -50,6 +55,7 @@ const submitConfirm = async (opts: {
   csrfToken?: string;
   sessionId?: string;
   origin?: string;
+  next?: string;
 }) => {
   const req = createBunRequest(`${ORIGIN}/auth/callback`, {
     method: "POST",
@@ -61,6 +67,7 @@ const submitConfirm = async (opts: {
     body: new URLSearchParams({
       _csrf: opts.csrfToken ?? "",
       token: opts.token,
+      ...(opts.next ? { next: opts.next } : {}),
     }).toString(),
   });
 
@@ -291,6 +298,47 @@ describe("Callback Controller", () => {
       expect(errorFrom(res)).toContain(SPENT_LINK);
     });
 
+    // The destination rode the emailed URL, and the confirm page hands it back
+    // in the form. Validated again here for the same reason the login form
+    // validates it: it has been through a mail client since the site saw it.
+    describe("next", () => {
+      test("carries the destination into the confirm form", async () => {
+        const { rawToken } = await createMagicLink("next-form@example.com");
+
+        const { html } = await openLink(rawToken, "/cms/sign-in");
+
+        expect(html).toContain('name="next" value="/cms/sign-in"');
+      });
+
+      test("lands on the destination after spending the link", async () => {
+        const { rawToken } = await createMagicLink("next-land@example.com");
+        const opened = await openLink(rawToken, "/cms/sign-in");
+
+        const { res } = await submitConfirm({
+          token: rawToken,
+          csrfToken: opened.csrfToken,
+          sessionId: cookieValue(opened.req, "session_id"),
+          next: "/cms/sign-in",
+        });
+
+        expect(res.headers.get("location")).toBe("/cms/sign-in");
+      });
+
+      test("drops a destination from another origin", async () => {
+        const { rawToken } = await createMagicLink("next-evil@example.com");
+        const opened = await openLink(rawToken, "//evil.example/cms");
+
+        const { res } = await submitConfirm({
+          token: rawToken,
+          csrfToken: opened.csrfToken,
+          sessionId: cookieValue(opened.req, "session_id"),
+          next: "//evil.example/cms",
+        });
+
+        expect(res.headers.get("location")).toBe("/");
+      });
+    });
+
     test("an already used token lands on /login with the address filled in", async () => {
       const { rawToken } = await createMagicLink("reuse@example.com");
 
@@ -389,6 +437,23 @@ describe("Callback Controller", () => {
       const { location } = await signInAs("member@example.com");
 
       expect(location).toBe("/");
+    });
+
+    // The visitor asked for somewhere to be returned to, so that request beats
+    // the onboarding default — otherwise the CMS's sign-in bounce would land a
+    // new editor on /team instead of the editor.
+    test("a destination wins over the onboarding redirect", async () => {
+      const { rawToken } = await createMagicLink("next-team@example.com");
+      const opened = await openLink(rawToken, "/cms/sign-in");
+
+      const { res } = await submitConfirm({
+        token: rawToken,
+        csrfToken: opened.csrfToken,
+        sessionId: cookieValue(opened.req, "session_id"),
+        next: "/cms/sign-in",
+      });
+
+      expect(res.headers.get("location")).toBe("/cms/sign-in");
     });
   });
 });
