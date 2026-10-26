@@ -7,6 +7,46 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 5.5.0
+
+Signing in can now return you to the page that asked for it. `?next=` on `/login` or `/signup` is
+carried through the password path, through a magic link's trip through an inbox and its confirm
+page, and out the other side as the redirect after sign-in. A visitor who is already signed in and
+opens `/login?next=…` continues to the destination instead of the home page. The CMS's sign-in
+bounce is the case that made the gap visible — an editor sent to the site to sign in landed on `/`
+and had to find their way back — but nothing about the mechanism is CMS-specific.
+
+The value is only ever a same-origin path. `src/server/utils/next-path.ts` refuses absolute URLs,
+`//host`, backslashes and control characters, normalises what it accepts before it reaches a
+`Location:`, and refuses the signed-out pages themselves, because `/login?next=/login` would loop
+once the visitor is signed in.
+
+The rest is small fixes that have been sitting on `main` since 5.4.0:
+
+### Changed
+
+- **A magic link that has been used or has expired says so in plain words, and the sign-in page
+  arrives with the address filled in.** The failure used to hand the reason over in the query
+  string with no email, so the next step was typing it again; when the link can still name its
+  address, the reason now rides the flash cookie with it. (`controllers/auth/callback.tsx`,
+  `services/auth.ts`.)
+- **The todos page's endpoint region is named by its heading** instead of being a bare `region`
+  landmark, so a screen reader announces what the list is. (`templates/todos.tsx`.)
+
+### Fixed
+
+- **A disabled danger button no longer reacts to hover.** `.btn-danger`'s hover and focus fill is
+  scoped to enabled buttons, the same way `.btn-ghost`'s already was; before, the pointer changed
+  a control that could not be pressed. (`client/base.css`.)
+- **`happy-dom` is 21.0.4**, which clears a high-severity audit advisory. Development-only.
+
+### Docs
+
+- `REVIEW.md` — what matters when reviewing Billet — with `CLAUDE.md` pointing at it.
+
+**No migration, and no fork has code to change.** The new template props are optional, and every
+flow behaves identically when no `next` is given.
+
 ## 5.4.0
 
 Billet gained a cast. `ux/personas.md` names five people and a guest, `ux/stories/` holds the first
