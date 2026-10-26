@@ -60,6 +60,11 @@ export const safeNextPath = (value: unknown): string | null => {
   // survived the checks above.
   if (url.origin !== "http://next.invalid") return null;
 
+  // Normalisation can collapse "/.//host" into "//host", which a browser reads
+  // as scheme-relative in a `Location:`. The raw-input check above can't see
+  // it, so the result is checked too.
+  if (url.pathname.startsWith("//")) return null;
+
   // Compare the pathname alone: a fragment never reaches the server, so
   // "/login#x" would loop forever with the hash reattached on every hop.
   if (
