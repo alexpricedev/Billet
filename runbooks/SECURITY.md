@@ -47,6 +47,17 @@ One route sets an extra header of its own: **logout**
 sends `Clear-Site-Data: "cookies", "storage"` so the browser wipes cookies and
 client storage on sign-out — defence in depth beyond deleting the session cookie.
 
+**Redirects after sign-in** read a `?next=` path, and
+[`src/server/utils/next-path.ts`](../src/server/utils/next-path.ts) is the only
+thing that decides whether one is usable. It accepts same-origin paths only:
+absolute URLs, `//host`, backslashes (which browsers read as separators) and
+control characters are refused, the value is normalised before it reaches a
+`Location:` header, and the signed-out pages themselves are refused because
+`/login?next=/login` would loop once the visitor is signed in. Sign-in, sign-up,
+the magic-link confirm page and the signed-in bounce from a guest page all use
+it, so a page that wants to send someone back after sign-in does not need its
+own validation.
+
 ## 2. Set the security.txt contact (required before launch)
 
 [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116) `security.txt` tells

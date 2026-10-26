@@ -6,6 +6,7 @@ import {
   renewSession,
   type SessionContext,
 } from "../services/sessions";
+import { safeNextPath } from "../utils/next-path";
 
 export type { SessionContext };
 
@@ -88,15 +89,21 @@ export type GuestPage = { redirect: Response } | { ctx: SessionContext };
  * session as a side effect, so a caller that only wanted the redirect was
  * writing a session row per request and then dropping the id — which left the
  * auth forms with no session to bind a token to, and no cookie to prove it.
+ *
+ * The bounce honours `?next=`: someone who followed a link to sign in and found
+ * themselves already signed in should continue to where the link was going, not
+ * to the home page. `safeNextPath` refuses the page itself, so
+ * "/login?next=/login" cannot become a loop.
  */
 export const guestPageContext = async (req: BunRequest): Promise<GuestPage> => {
   const ctx = await getSessionContext(req);
 
   if (ctx.isAuthenticated) {
+    const next = safeNextPath(new URL(req.url).searchParams.get("next"));
     return {
       redirect: new Response("", {
         status: 303,
-        headers: { Location: "/" },
+        headers: { Location: next ?? "/" },
       }),
     };
   }

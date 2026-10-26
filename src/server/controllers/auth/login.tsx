@@ -19,6 +19,7 @@ import { Login } from "../../templates/login";
 import { appUrl } from "../../utils/app-url";
 import { csrfTokens } from "../../utils/csrf-tokens";
 import { type FlashMessage, getFlashCookie } from "../../utils/flash";
+import { safeNextPath, withNext } from "../../utils/next-path";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { guardAuthForm, readEmail, readPassword } from "./form-guard";
@@ -58,6 +59,11 @@ export const login = {
         ? state
         : { state: "validation-error", error: queryError.slice(0, 200) };
 
+    // Where to return after signing in. Validated here as well as on the way
+    // out: the value is attacker-controlled, and the form renders it back into
+    // the page.
+    const next = safeNextPath(new URL(req.url).searchParams.get("next"));
+
     return render(
       <Login
         mode={authMode()}
@@ -66,6 +72,7 @@ export const login = {
         challenge={challenge}
         message={message.text ? (message as FlashMessage) : undefined}
         showConsoleHint={consoleEmailProvider()}
+        next={next}
       />,
     );
   },
@@ -78,10 +85,14 @@ export const login = {
         return guard.response;
       }
 
+      // Whatever went wrong, the destination survives the trip back to the
+      // form: a retry after a typo should not forget where they were going.
+      const next = safeNextPath(guard.formData.get("next"));
+
       if (guard.reason === "honeypot") {
         log.warn("login", "honeypot tripped, dropping submission");
         setFlash(req, feignedFailure(guard.formData));
-        return redirect("/login");
+        return redirect(withNext("/login", next));
       }
 
       // A stale token is an old tab, not an attack. The address survives so
@@ -93,29 +104,30 @@ export const login = {
           error: "This page expired while it was open. Please try again.",
           email: readEmail(guard.formData),
         });
-        return redirect("/login");
+        return redirect(withNext("/login", next));
       }
 
       setFlash(req, {
         state: "validation-error",
         error: "Verification failed. Please try again.",
       });
-      return redirect("/login");
+      return redirect(withNext("/login", next));
     }
 
     const email = readEmail(guard.formData);
+    const next = safeNextPath(guard.formData.get("next"));
 
     if (!email?.includes("@")) {
       setFlash(req, {
         state: "validation-error",
         error: "Invalid email address",
       });
-      return redirect("/login");
+      return redirect(withNext("/login", next));
     }
 
     return passwordAuthEnabled()
-      ? signInWithPasswordAndRedirect(req, email, guard.formData)
-      : sendMagicLinkAndRedirect(req, email);
+      ? signInWithPasswordAndRedirect(req, email, guard.formData, next)
+      : sendMagicLinkAndRedirect(req, email, next);
   },
 };
 
@@ -141,24 +153,28 @@ const feignedFailure = (formData: FormData): LoginState =>
 const sendMagicLinkAndRedirect = async (
   req: BunRequest,
   email: string,
+  next: string | null,
 ): Promise<Response> => {
   try {
     const { user, rawToken } = await createMagicLink(email.toLowerCase());
 
     await getEmailService().sendMagicLink({
       to: { email: user.email },
-      magicLinkUrl: appUrl(`/auth/callback?token=${rawToken}`),
+      // `next` rides the emailed URL: the confirm page renders it into its own
+      // form, and that form's POST is what finally redirects. The link is the
+      // only thing that survives the trip through an inbox.
+      magicLinkUrl: appUrl(withNext(`/auth/callback?token=${rawToken}`, next)),
       expiryMinutes: MAGIC_LINK_EXPIRY_MINUTES,
     });
 
     setFlash(req, { state: "email-sent" });
-    return redirect("/login");
+    return redirect(withNext("/login", next));
   } catch {
     setFlash(req, {
       state: "validation-error",
       error: "Something went wrong. Please try again.",
     });
-    return redirect("/login");
+    return redirect(withNext("/login", next));
   }
 };
 
@@ -166,6 +182,7 @@ const signInWithPasswordAndRedirect = async (
   req: BunRequest,
   email: string,
   formData: FormData,
+  next: string | null,
 ): Promise<Response> => {
   const password = readPassword(formData, "password");
 
@@ -195,7 +212,7 @@ const signInWithPasswordAndRedirect = async (
               email,
             },
       );
-      return redirect("/login");
+      return redirect(withNext("/login", next));
     }
 
     const sessionId = await regenerateSession(
@@ -204,13 +221,13 @@ const signInWithPasswordAndRedirect = async (
     );
     setSessionCookie(req, sessionId);
 
-    return redirect(await landingAfterAuth(result.user.id));
+    return redirect(await landingAfterAuth(result.user.id, next));
   } catch {
     setFlash(req, {
       state: "validation-error",
       error: "Something went wrong. Please try again.",
       email,
     });
-    return redirect("/login");
+    return redirect(withNext("/login", next));
   }
 };

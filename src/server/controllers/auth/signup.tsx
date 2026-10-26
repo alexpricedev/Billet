@@ -19,6 +19,7 @@ import type { SignupState } from "../../templates/signup";
 import { Signup } from "../../templates/signup";
 import { appUrl } from "../../utils/app-url";
 import { csrfTokens } from "../../utils/csrf-tokens";
+import { safeNextPath, withNext } from "../../utils/next-path";
 import { redirect, render } from "../../utils/response";
 import { stateHelpers } from "../../utils/state";
 import { guardAuthForm, readEmail, readPassword } from "./form-guard";
@@ -47,6 +48,9 @@ export const signup = {
     const state = getFlash(req);
     const challenge = captchaEnabled() ? issueChallenge() : null;
 
+    // See login.index: the same value, rendered into the same hidden field.
+    const next = safeNextPath(new URL(req.url).searchParams.get("next"));
+
     return render(
       <Signup
         mode={authMode()}
@@ -54,6 +58,7 @@ export const signup = {
         state={state}
         challenge={challenge}
         showConsoleHint={consoleEmailProvider()}
+        next={next}
       />,
     );
   },
@@ -66,10 +71,13 @@ export const signup = {
         return guard.response;
       }
 
+      // See login.tsx: the destination survives the trip back to the form.
+      const next = safeNextPath(guard.formData.get("next"));
+
       if (guard.reason === "honeypot") {
         log.warn("signup", "honeypot tripped, dropping submission");
         setFlash(req, feignedFailure(guard.formData));
-        return redirect("/signup");
+        return redirect(withNext("/signup", next));
       }
 
       // Stale token, not an attack — the twin of the branch in login.tsx.
@@ -79,29 +87,30 @@ export const signup = {
           error: "This page expired while it was open. Please try again.",
           email: readEmail(guard.formData),
         });
-        return redirect("/signup");
+        return redirect(withNext("/signup", next));
       }
 
       setFlash(req, {
         state: "validation-error",
         error: "Verification failed. Please try again.",
       });
-      return redirect("/signup");
+      return redirect(withNext("/signup", next));
     }
 
     const email = readEmail(guard.formData);
+    const next = safeNextPath(guard.formData.get("next"));
 
     if (!email?.includes("@")) {
       setFlash(req, {
         state: "validation-error",
         error: "Invalid email address",
       });
-      return redirect("/signup");
+      return redirect(withNext("/signup", next));
     }
 
     return passwordAuthEnabled()
-      ? createPasswordAccount(req, email, guard.formData)
-      : sendSignupLink(req, email);
+      ? createPasswordAccount(req, email, guard.formData, next)
+      : sendSignupLink(req, email, next);
   },
 };
 
@@ -123,24 +132,27 @@ const feignedFailure = (formData: FormData): SignupState =>
 const sendSignupLink = async (
   req: BunRequest,
   email: string,
+  next: string | null,
 ): Promise<Response> => {
   try {
     const { user, rawToken } = await createMagicLink(email.toLowerCase());
 
     await getEmailService().sendMagicLink({
       to: { email: user.email },
-      magicLinkUrl: appUrl(`/auth/callback?token=${rawToken}`),
+      // The same hand-off as login: `next` rides the emailed URL, the confirm
+      // page puts it in its form, and the form's POST redirects.
+      magicLinkUrl: appUrl(withNext(`/auth/callback?token=${rawToken}`, next)),
       expiryMinutes: MAGIC_LINK_EXPIRY_MINUTES,
     });
 
     setFlash(req, { state: "email-sent" });
-    return redirect("/signup");
+    return redirect(withNext("/signup", next));
   } catch {
     setFlash(req, {
       state: "validation-error",
       error: "Something went wrong. Please try again.",
     });
-    return redirect("/signup");
+    return redirect(withNext("/signup", next));
   }
 };
 
@@ -148,6 +160,7 @@ const createPasswordAccount = async (
   req: BunRequest,
   email: string,
   formData: FormData,
+  next: string | null,
 ): Promise<Response> => {
   const password = readPassword(formData, "password");
 
@@ -158,7 +171,7 @@ const createPasswordAccount = async (
       error: passwordError,
       email,
     });
-    return redirect("/signup");
+    return redirect(withNext("/signup", next));
   }
 
   try {
@@ -176,7 +189,7 @@ const createPasswordAccount = async (
             : "That password isn't valid. Please try another.",
         email,
       });
-      return redirect("/signup");
+      return redirect(withNext("/signup", next));
     }
 
     const sessionId = await regenerateSession(
@@ -198,13 +211,13 @@ const createPasswordAccount = async (
       log.error("signup", `failed to send verification email: ${error}`);
     }
 
-    return redirect(await landingAfterAuth(result.user.id));
+    return redirect(await landingAfterAuth(result.user.id, next));
   } catch {
     setFlash(req, {
       state: "validation-error",
       error: "Something went wrong. Please try again.",
       email,
     });
-    return redirect("/signup");
+    return redirect(withNext("/signup", next));
   }
 };

@@ -7,6 +7,7 @@ import { Honeypot } from "../components/honeypot";
 import type { AuthMode } from "../services/auth-mode";
 import type { CaptchaChallenge } from "../services/captcha";
 import { MIN_PASSWORD_LENGTH } from "../services/passwords";
+import { withNext } from "../utils/next-path";
 
 export interface SignupState {
   state?: "email-sent" | "validation-error";
@@ -25,6 +26,12 @@ export interface SignupProps {
   // Only true under the console email provider. Anywhere else the link really
   // is in an inbox, and the hint sends people to a terminal they can't see.
   showConsoleHint?: boolean;
+  /**
+   * Where to go once the account exists, already validated by the controller.
+   * In the body rather than the action URL, so it stays out of the Referer
+   * header when a browser follows a link off this page.
+   */
+  next?: string | null;
 }
 
 export const Signup = ({
@@ -33,6 +40,7 @@ export const Signup = ({
   state,
   challenge,
   showConsoleHint,
+  next,
 }: SignupProps) => {
   const password = mode === "password";
 
@@ -53,7 +61,9 @@ export const Signup = ({
       }
       footer={
         <>
-          <a href="/login">Already have an account?</a>
+          {/* See login.tsx: the destination survives a switch to the other
+              signed-out form. */}
+          <a href={withNext("/login", next)}>Already have an account?</a>
           {" · "}
           <a href="/">Back to home</a>
         </>
@@ -70,6 +80,7 @@ export const Signup = ({
       ) : (
         <form method="POST" action="/signup">
           <CsrfField token={csrfToken} />
+          {next && <input type="hidden" name="next" value={next} />}
           {state?.state === "validation-error" && state.error && (
             <Flash type="error">
               <span>{state.error}</span>

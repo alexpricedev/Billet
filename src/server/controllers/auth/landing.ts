@@ -4,6 +4,14 @@ import { teamsEnabled } from "../../services/teams-mode";
 /**
  * Where a freshly authenticated user lands.
  *
+ * `next` wins when the flow carried one: the visitor asked to be returned to a
+ * page — the CMS's sign-in bounce is the case it exists for — and answering
+ * that request is more useful than any default. It has already been validated
+ * by `safeNextPath` at the boundary that read it, so this only decides
+ * precedence.
+ *
+ * Without one:
+ *
  * `/team` is in no navigation — not the nav bar, and the `/account` section
  * only appears once you're already in a team — so a user without one has no
  * link to the create-a-team page anywhere in the app. Sending them there on
@@ -17,7 +25,12 @@ import { teamsEnabled } from "../../services/teams-mode";
  * `/team` renders a 404, so a fork that never turned teams on would be sending
  * every sign-in to a dead page — and it pays for no lookup either.
  */
-export const landingAfterAuth = async (userId: string): Promise<string> => {
+export const landingAfterAuth = async (
+  userId: string,
+  next?: string | null,
+): Promise<string> => {
+  if (next) return next;
+
   if (!teamsEnabled()) return "/";
 
   return (await getMembership(userId)) ? "/" : "/team";

@@ -57,3 +57,37 @@ describe("signed-out auth forms", () => {
     });
   }
 });
+
+// `next` is where a page sends a visitor after they sign in. It is rendered as
+// a hidden field inside the form — not in the action URL — so the destination
+// stays out of the Referer header when a link is followed off the page.
+describe("next after sign-in", () => {
+  test("renders the destination into the form", () => {
+    for (const html of [
+      render(<Login mode="magic-link" csrfToken={null} next="/cms/sign-in" />),
+      render(<Signup mode="magic-link" csrfToken={null} next="/cms/sign-in" />),
+    ]) {
+      expect(html).toContain('name="next" value="/cms/sign-in"');
+    }
+  });
+
+  test("renders no field when there is no destination", () => {
+    for (const html of [
+      render(<Login mode="magic-link" csrfToken={null} />),
+      render(<Signup mode="magic-link" csrfToken={null} />),
+    ]) {
+      expect(html).not.toContain('name="next"');
+    }
+  });
+
+  // The login and signup pages link to each other, and someone switching
+  // between them still wants to land where the first link was going.
+  test("carries the destination to the other signed-out form", () => {
+    expect(
+      render(<Login mode="magic-link" csrfToken={null} next="/cms/sign-in" />),
+    ).toContain('href="/signup?next=%2Fcms%2Fsign-in"');
+    expect(
+      render(<Signup mode="magic-link" csrfToken={null} next="/cms/sign-in" />),
+    ).toContain('href="/login?next=%2Fcms%2Fsign-in"');
+  });
+});

@@ -15,6 +15,12 @@ export interface AuthConfirmProps {
   // Null in the sign-in case means no session could be started, which is a
   // dead end worth naming. Email confirmation submits without one — see below.
   csrfToken: string | null;
+  /**
+   * Where to go once the link is spent, already validated by the controller.
+   * Only sign-in passes one: email confirmation ends on its own page. In the
+   * body with the token, so it stays out of the URL.
+   */
+  next?: string | null;
 }
 
 const COPY = {
@@ -51,7 +57,12 @@ const COPY = {
  * being presented, so that form is deliberately submittable without one; it has
  * to work from a mail client's browser that keeps no cookies at all.
  */
-export const AuthConfirm = ({ intent, token, csrfToken }: AuthConfirmProps) => {
+export const AuthConfirm = ({
+  intent,
+  token,
+  csrfToken,
+  next,
+}: AuthConfirmProps) => {
   const copy = COPY[intent];
   const needsCsrf = intent === "sign-in";
 
@@ -77,6 +88,7 @@ export const AuthConfirm = ({ intent, token, csrfToken }: AuthConfirmProps) => {
           {/* In the body rather than the action URL, so it stays out of the
               Referer header when a browser follows a link off this page. */}
           <input type="hidden" name="token" value={token} />
+          {next && <input type="hidden" name="next" value={next} />}
 
           <button type="submit" className="login-submit">
             {copy.submit}
