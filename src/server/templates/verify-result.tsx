@@ -36,19 +36,15 @@ export const VerifyResult = ({ status }: VerifyResultProps) => (
     footer={<a href="/">Back to home</a>}
   >
     {status === "verified" ? (
-      <Flash type="success">
-        <span>
-          Thanks — we've confirmed this is your email address. You can close
-          this tab.
-        </span>
-      </Flash>
+      <Flash
+        tone="success"
+        title="Thanks — we've confirmed this is your email address. You can close this tab."
+      />
     ) : (
-      <Flash type="error">
-        <span>
-          This confirmation link is invalid, already used, or expired. Sign in
-          and send yourself a new one from your account page.
-        </span>
-      </Flash>
+      <Flash
+        tone="error"
+        title="This confirmation link is invalid, already used, or expired. Sign in and send yourself a new one from your account page."
+      />
     )}
 
     <p className="login-aside">

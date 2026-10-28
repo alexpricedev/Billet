@@ -47,12 +47,11 @@ export const ForgotPassword = ({
     {state?.state === "email-sent" ? (
       // Shown whether or not the address is registered — a different message
       // for "no such account" would turn this form into an account checker.
-      <Flash type="success">
-        <p>Check your email!</p>
-        <p>
-          If an account exists for that address, we've sent a link to reset the
-          password.
-        </p>
+      <Flash
+        tone="success"
+        title="Check your email!"
+        detail="If an account exists for that address, we've sent a link to reset the password."
+      >
         {showConsoleHint && (
           <p>For testing: Check the server console for the link.</p>
         )}
@@ -61,9 +60,7 @@ export const ForgotPassword = ({
       <form method="POST" action="/forgot-password">
         <CsrfField token={csrfToken} />
         {state?.state === "validation-error" && state.error && (
-          <Flash type="error">
-            <span>{state.error}</span>
-          </Flash>
+          <Flash tone="error" title={state.error} />
         )}
 
         <FormField label="Email address" id="email">

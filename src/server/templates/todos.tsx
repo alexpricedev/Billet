@@ -63,29 +63,32 @@ export const Todos = (props: TodosProps): JSX.Element => {
 
       {(props.state?.state === "submission-success" ||
         props.state?.state === "deletion-success") && (
-        <Flash type="success">
-          {props.state.state === "submission-success" &&
-            "Todo added successfully."}
-          {props.state.state === "deletion-success" &&
-            "Todo deleted successfully."}
-        </Flash>
+        <Flash
+          tone="success"
+          title={
+            props.state.state === "submission-success"
+              ? "Todo added successfully."
+              : "Todo deleted successfully."
+          }
+        />
       )}
 
       {props.state?.state === "csrf-expired" && (
-        <Flash type="warning">
-          Your session timed out—nothing was saved. Check the title and add it
-          again.
-        </Flash>
+        <Flash
+          tone="warning"
+          title="Your session timed out—nothing was saved. Check the title and add it again."
+        />
       )}
 
       {props.state?.state === "action-csrf-expired" && (
-        <Flash type="warning">
-          Your session timed out—nothing changed. Try again.
-        </Flash>
+        <Flash
+          tone="warning"
+          title="Your session timed out—nothing changed. Try again."
+        />
       )}
 
       {props.state?.state === "validation-error" && (
-        <Flash type="error">A todo must be at least 2 characters.</Flash>
+        <Flash tone="error" title="A todo must be at least 2 characters." />
       )}
 
       <div {...list.root}>

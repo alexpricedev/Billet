@@ -144,11 +144,7 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
     user={user}
     csrfToken={csrfToken}
   >
-    {message && (
-      <Flash type={message.type}>
-        <span>{message.text}</span>
-      </Flash>
-    )}
+    {message && <Flash tone={message.type} title={message.text} />}
 
     <PageHeader
       title="See Billet running"

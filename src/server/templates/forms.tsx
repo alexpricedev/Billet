@@ -49,23 +49,28 @@ export const Forms = ({
       />
 
       {state?.state === "submission-success" && (
-        <Flash type="success">
-          Submitted successfully
-          {state.name && <> — {state.name}</>}
-          {state.email && <> ({state.email})</>}
-          {state.message && <>: &ldquo;{state.message}&rdquo;</>}
-        </Flash>
+        <Flash
+          tone="success"
+          title={
+            <>
+              Submitted successfully
+              {state.name && <> — {state.name}</>}
+              {state.email && <> ({state.email})</>}
+              {state.message && <>: &ldquo;{state.message}&rdquo;</>}
+            </>
+          }
+        />
       )}
 
       {state?.state === "csrf-expired" && (
-        <Flash type="warning">
-          Your session timed out — nothing was saved. Check your details and
-          submit again.
-        </Flash>
+        <Flash
+          tone="warning"
+          title="Your session timed out — nothing was saved. Check your details and submit again."
+        />
       )}
 
       {state?.state === "validation-error" && (
-        <Flash type="error">Name must be at least 3 characters.</Flash>
+        <Flash tone="error" title="Name must be at least 3 characters." />
       )}
 
       <div className="forms-layout">

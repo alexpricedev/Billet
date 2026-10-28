@@ -358,24 +358,12 @@ const TeamFlash = ({ state }: { state?: TeamState }) => {
   };
 
   if (success[state.state]) {
-    return (
-      <Flash type="success">
-        <span>{success[state.state]}</span>
-      </Flash>
-    );
+    return <Flash tone="success" title={success[state.state]} />;
   }
 
   if (warning[state.state]) {
-    return (
-      <Flash type="warning">
-        <span>{warning[state.state]}</span>
-      </Flash>
-    );
+    return <Flash tone="warning" title={warning[state.state]} />;
   }
 
-  return (
-    <Flash type="error">
-      <span>{error[state.state]}</span>
-    </Flash>
-  );
+  return <Flash tone="error" title={error[state.state]} />;
 };

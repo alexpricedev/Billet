@@ -54,27 +54,11 @@
   text-align: center;
 }
 
-.login-card .flash-success p:first-child {
-  color: var(--text);
-  font-weight: 500;
-  margin: 0;
-}
-
-.login-card .flash-success p:nth-child(2) {
-  color: var(--text-secondary);
-  font-size: 13px;
-  margin: var(--space-1) 0 0;
-}
-
-.login-card .flash-success p:last-child {
-  color: var(--text-muted);
-  font-size: 12px;
-  margin: var(--space-2) 0 0;
-}
-
-.login-card .flash-error span {
-  color: var(--text-secondary);
-  font-size: 13px;
+/* The banner styles its own title and detail now — these used to re-style the
+   two bare <p>s the old flash wrapped. The one thing left to say is that a
+   banner inside the card runs edge to edge with the form below it. */
+.login-card .flash {
+  text-align: left;
 }
 
 .login-card .form-field {

@@ -1,3 +1,4 @@
+import { init as initFlashDismiss } from "@client/components/flash-dismiss";
 import { init as initNavMenu } from "@client/components/nav-menu";
 import { init as initThemeToggle } from "@client/components/theme-toggle";
 import { todoList } from "@client/components/todo-list";
@@ -17,6 +18,7 @@ ui.registerComponent(todoList);
 // outside the per-data-page registry.
 initNavMenu();
 initThemeToggle();
+initFlashDismiss();
 
 initializePage(document.body.dataset.page);
 ui.mount();

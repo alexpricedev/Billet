@@ -51,6 +51,22 @@
   --danger-soft: #fef3f2;
   --danger-border: #fda29b;
 
+  /* Banners — one tint per tone, used by the shared flash component. Title and
+     detail text stay on --text / --text-secondary; the tone shows in the tint,
+     the border and the icon, never in the words. */
+  --banner-success-bg: #f0faf3;
+  --banner-success-border: #bfe3cb;
+  --banner-success-icon: #15803d;
+  --banner-info-bg: #f2f6fd;
+  --banner-info-border: #c9d7f2;
+  --banner-info-icon: #1d4ed8;
+  --banner-warning-bg: #fff8eb;
+  --banner-warning-border: #f0d9a8;
+  --banner-warning-icon: #b45309;
+  --banner-error-bg: #fef3f2;
+  --banner-error-border: #f3c4c0;
+  --banner-error-icon: #b91c1c;
+
   /* Buttons */
   --button-primary-bg: #171717;
   --button-primary-fg: #ffffff;
@@ -165,6 +181,19 @@
   --danger-soft: #2a1110;
   --danger-border: #5a2320;
 
+  --banner-success-bg: #0d231a;
+  --banner-success-border: #1d4b37;
+  --banner-success-icon: #3dd68c;
+  --banner-info-bg: #0e1a2e;
+  --banner-info-border: #1e3a66;
+  --banner-info-icon: #6ea8fe;
+  --banner-warning-bg: #241a08;
+  --banner-warning-border: #4d3a12;
+  --banner-warning-icon: #f5b544;
+  --banner-error-bg: #2a1110;
+  --banner-error-border: #5a2320;
+  --banner-error-icon: #ff6b6b;
+
   --button-primary-bg: #ededed;
   --button-primary-fg: #0a0a0a;
   --button-primary-bg-hover: #ffffff;
@@ -212,6 +241,19 @@
     --danger: #ff6b6b;
     --danger-soft: #2a1110;
     --danger-border: #5a2320;
+
+    --banner-success-bg: #0d231a;
+    --banner-success-border: #1d4b37;
+    --banner-success-icon: #3dd68c;
+    --banner-info-bg: #0e1a2e;
+    --banner-info-border: #1e3a66;
+    --banner-info-icon: #6ea8fe;
+    --banner-warning-bg: #241a08;
+    --banner-warning-border: #4d3a12;
+    --banner-warning-icon: #f5b544;
+    --banner-error-bg: #2a1110;
+    --banner-error-border: #5a2320;
+    --banner-error-icon: #ff6b6b;
 
     --button-primary-bg: #ededed;
     --button-primary-fg: #0a0a0a;

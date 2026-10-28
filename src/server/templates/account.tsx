@@ -67,41 +67,37 @@ export const Account = ({
     <PageHeader title="Account" />
 
     {state?.state === "verified" && (
-      <Flash type="success">
-        <span>Your email address is confirmed.</span>
-      </Flash>
+      <Flash tone="success" title="Your email address is confirmed." />
     )}
 
     {state?.state === "verification-sent" && (
-      <Flash type="success">
-        <span>
-          Confirmation link sent to {user.email}.
-          {showConsoleHint && " For testing: check the server console."}
-        </span>
-      </Flash>
+      <Flash
+        tone="success"
+        title={
+          <>
+            Confirmation link sent to {user.email}.
+            {showConsoleHint && " For testing: check the server console."}
+          </>
+        }
+      />
     )}
 
     {state?.state === "password-changed" && (
-      <Flash type="success">
-        <span>Password updated. You've been signed out everywhere else.</span>
-      </Flash>
+      <Flash
+        tone="success"
+        title="Password updated. You've been signed out everywhere else."
+      />
     )}
 
     {state?.state === "password-set" && (
-      <Flash type="success">
-        <span>
-          Password set. You can now sign in with your email and password. You've
-          been signed out everywhere else.
-        </span>
-      </Flash>
+      <Flash
+        tone="success"
+        title="Password set. You can now sign in with your email and password. You've been signed out everywhere else."
+      />
     )}
 
     {(state?.state === "verify-failed" || state?.state === "password-error") &&
-      state.error && (
-        <Flash type="error">
-          <span>{state.error}</span>
-        </Flash>
-      )}
+      state.error && <Flash tone="error" title={state.error} />}
 
     <section className="account-section card">
       <h2>Email address</h2>

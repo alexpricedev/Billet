@@ -181,10 +181,37 @@ bordered container or reflows to stacked rows (`/team` does the latter, via `dat
 `.badge` with `data-tone="success" | "warning" | "danger" | "accent" | "neutral"`. Soft surface,
 hairline border, 11.5px medium, and a leading dot so the tone is never colour alone.
 
-### Alerts
+### Banners
 
-`.flash-success`, `.flash-warning`, `.flash-error`: a soft surface, a matching border, a 3px
-leading bar and a bold status word. No shadow. They appear directly under the page header.
+`Flash` (`src/server/components/flash.tsx`) is one shape in four tones, selected by
+`data-tone="success | info | warning | error"`. A tinted surface, a hairline border, a 20px line
+icon, and a body of up to four parts: a bold **title**, a **detail** line, **action** links, and a
+**field list** whose entries link to the controls they name. No shadow. They appear directly under
+the page header, inline — never floating.
+
+| Tone | Background | Border | Icon | Icon shape | Role |
+|---|---|---|---|---|---|
+| Success | `--banner-success-bg` | `--banner-success-border` | `--banner-success-icon` | circle + check | `status` |
+| Info | `--banner-info-bg` | `--banner-info-border` | `--banner-info-icon` | circle + i | `status` |
+| Warning | `--banner-warning-bg` | `--banner-warning-border` | `--banner-warning-icon` | triangle + ! | `status` |
+| Error | `--banner-error-bg` | `--banner-error-border` | `--banner-error-icon` | circle + ! | `alert` |
+
+Three rules make it accessible rather than merely tinted:
+
+- **The icon's shape changes with the tone**, not just its colour — so the four states stay apart
+  for a reader who cannot tell the tints apart. `flash.test.tsx` asserts the four icons differ.
+- **The words never carry the tone.** Title and detail stay on `--text` / `--text-secondary`, which
+  is what lets one pair of text colours pass AA on all four tints in both themes.
+- **Only an error interrupts.** Error is `role="alert"`; the other three are `role="status"`, so a
+  success message is announced without cutting a screen-reader user off mid-sentence.
+
+The × is an enhancement: it ships `hidden` and `src/client/components/flash-dismiss.ts` reveals it,
+so a page with no bundle shows the banner and no control that does nothing. Closing it removes the
+banner from that page view only — there is no storage and no request, so a reload brings it back.
+Its hit area is 44×44 with a negative block margin, so WCAG 2.2's target size costs no height.
+
+Prefer `title` and `detail` to children: a banner whose body is a sentence should say so in props,
+and `children` exists for the few whose body is markup.
 
 ### Empty states
 
