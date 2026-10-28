@@ -203,9 +203,24 @@ The two dark lists are physically duplicated, because plain CSS cannot put one d
 under both a media query and an attribute selector. `src/client/base-css.test.ts` compares them and
 fails the suite if they drift.
 
-Billet ships **no theme picker** — nothing writes `data-theme`. The attribute scope exists so that
-adding one is only the server half of the work. (The CMS has the other half: a `user_preferences`
-table, a preferences service, and a radio group on its account page.)
+The toggle in the top bar cycles System → Light → Dark and writes `data-theme` on `<html>`. The
+choice is kept in `localStorage` under `billet-theme`, **not** on the server: it belongs to a
+browser rather than an account, and a signed-out reader has no session to put it in. (The CMS
+stores it per user instead — a `user_preferences` table and a radio group on its account page.
+Either is reasonable; this is the one that needs no migration.)
+
+**System is the absence of the attribute, not a value for it.** The OS media query is scoped to
+`:root:not([data-theme])`, so writing `data-theme="system"` would match neither rule and strand the
+page on the light palette. Going back to System removes the attribute and the storage key.
+
+A small inline script in `<head>` (`layouts.tsx`) applies a stored choice **before the first
+paint** — the bundle is deferred, so without it the reader would see the OS theme and watch it
+swap. It is the one inline script in the project, which is why `script-src` keeps `'unsafe-inline'`.
+The storage key is spelled in two places for that reason; `theme-toggle.test.tsx` pins both.
+
+The control ships `hidden` and is revealed by its script, the same way the nav's menu button is: a
+page with no bundle — every error page — must not render a control that does nothing. The theme
+*itself* still applies there, because the inline script runs regardless.
 
 The select chevron is a data URI, and a data URI cannot read a custom property — so the whole
 `url()` is the token (`--select-chevron`) and each theme overrides it. Baking one theme's stroke

@@ -34,7 +34,13 @@ const sources = (root: string): string[] =>
     .map((file) => `${root}/${file}`)
     .sort();
 
-type Rule = { name: string; pattern: RegExp; why: string };
+type Rule = {
+  name: string;
+  pattern: RegExp;
+  why: string;
+  /** Files this rule does not apply to, each with its reason in a comment. */
+  allow?: Set<string>;
+};
 
 const FORBIDDEN_IN_CLIENT: Rule[] = [
   {
@@ -63,6 +69,13 @@ const FORBIDDEN_IN_CLIENT: Rule[] = [
     name: "client storage",
     pattern: /localStorage|sessionStorage|indexedDB/,
     why: "state lives on the server; signals hold interface state for one page view",
+    // The theme override is the one thing the server cannot hold: it belongs to
+    // a browser, not an account, and there is no session for a signed-out
+    // reader to put it in. It is also not domain data — with storage blocked
+    // the page still renders correctly from `prefers-color-scheme`, it just
+    // can't be overridden. Anything else reaching for storage is the fourth
+    // tier this file exists to prevent.
+    allow: new Set([`${CLIENT}/components/theme-toggle.ts`]),
   },
 ];
 
@@ -137,6 +150,7 @@ describe("client boundaries", () => {
       const offenders: string[] = [];
       for (const file of clientFiles) {
         if (NETWORK_AND_MARKUP_ALLOWED.has(file)) continue;
+        if (rule.allow?.has(file)) continue;
         const source = await Bun.file(file).text();
         const match = source.match(rule.pattern);
         if (match) offenders.push(`${file}: ${match[0]}`);

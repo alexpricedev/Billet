@@ -102,13 +102,22 @@ stops a page growing a private palette.
 `:root[data-theme="dark"]` and once under `@media (prefers-color-scheme: dark) { :root:not([data-theme]) }`
 — because plain CSS cannot put one declaration block under both a media query and an attribute
 selector. `src/client/base-css.test.ts` compares the two lists and fails the suite if they drift.
-Nothing writes `data-theme`: Billet ships no theme picker, and the attribute scope exists so that
-adding one is only the server half of the work.
+`data-theme` is written by the toggle in the top bar (System → Light → Dark), which keeps the
+choice in `localStorage` — the one place client storage is allowed, with the exemption and its
+reason in `boundaries.test.ts`. **System is the absence of the attribute**, not a value for it, so
+going back to it removes the attribute. A small inline script in `<head>` applies a stored choice
+before the first paint; it is the only inline script in the project, and the storage key is
+deliberately spelled in both it and `src/client/components/theme-toggle.ts`.
 
 The button box is on the bare `button` element **and on every variant class** (`.btn-ghost`,
 `.btn-danger`, …), because templates write `class="btn-ghost"` on its own. A variant added to the
 stylesheet but left out of that selector list silently loses its box — an `<a>` carrying it
 collapses to the height of its text.
+
+That base sets `display: inline-flex`, and an author `display` **beats** the user agent's
+`[hidden] { display: none }` — so a button shipped `hidden` would render anyway. Two are (the nav's
+menu button and the theme toggle), so `base.css` restores `display: none` for `[hidden]` across the
+button selectors. Drop that rule and every no-JS page grows controls that do nothing.
 
 **A design change with a green `bun run test` has not been checked.** The client fixtures lift
 markup into happy-dom with no stylesheet, on purpose, so no unit test can see a visual regression.

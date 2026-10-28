@@ -45,6 +45,44 @@
     }
   }
 
+  /* The theme control sits at the end of the bar, outside the nav, so it stays
+     reachable at phone width instead of collapsing into the menu panel. */
+  & > header > .theme-toggle {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-secondary);
+    flex: 0 0 auto;
+    height: var(--control-height);
+    margin-left: var(--space-2);
+    padding: 0;
+    width: var(--control-height);
+
+    &:hover,
+    &:focus {
+      background: var(--surface-hover);
+      border-color: transparent;
+      color: var(--text);
+    }
+
+    .theme-icon {
+      height: 16px;
+      width: 16px;
+    }
+
+    /* The UA's `[hidden] { display: none }` is a (0,1,0) author-beatable rule
+       and the sizing above sets no display, but state this anyway: the icons
+       are swapped by that attribute and nothing else should decide it. */
+    .theme-icon[hidden] {
+      display: none;
+    }
+
+    @media (width <= 640px) {
+      /* WCAG 2.2 enhanced target, matching the nav's menu button. */
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
   & > main {
     margin: 0 auto;
     max-width: var(--content-max);

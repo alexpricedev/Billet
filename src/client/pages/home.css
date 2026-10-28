@@ -37,6 +37,23 @@
     }
   }
 
+  /* The icon is a marker, not an illustration: muted at rest so the title
+     stays the loudest thing in the card, and it takes the accent only when
+     the whole card is being pointed at. */
+  .demo-card-icon {
+    color: var(--text-muted);
+    height: 20px;
+    margin-bottom: var(--space-1);
+    transition: color 120ms ease;
+    width: 20px;
+  }
+
+  /* Written after the base rule rather than nested inside .demo-card, so the
+     specificity order on the page matches the order in the file. */
+  .demo-card:is(:hover, :focus-visible) .demo-card-icon {
+    color: var(--text);
+  }
+
   .demo-card-tag {
     color: var(--text-muted);
     font-family: var(--font-mono);
@@ -58,13 +75,58 @@
     line-height: 1.6;
   }
 
-  .home-next {
+  .home-section {
     border-top: 1px solid var(--border);
     margin-top: var(--space-10);
     padding-top: var(--space-6);
 
-    p {
+    > p {
       max-width: 68ch;
     }
+  }
+
+  /* The companions are a signpost, not a product grid — rows with a hairline
+     between them, so they read as a list and don't compete with the demo
+     cards above. */
+  .companion-list {
+    display: grid;
+    gap: 0;
+    list-style: none;
+    margin: var(--space-4) 0 0;
+    padding: 0;
+  }
+
+  .companion-list li + li {
+    border-top: 1px solid var(--border);
+  }
+
+  .companion {
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-2);
+    text-decoration: none;
+    transition: background-color 120ms ease;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--surface-hover);
+      text-decoration: none;
+    }
+  }
+
+  .companion-name {
+    color: var(--text);
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+
+  .companion-body {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 72ch;
   }
 }

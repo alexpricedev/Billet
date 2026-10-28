@@ -429,6 +429,25 @@ button,
   }
 }
 
+/* The base rule above sets `display: inline-flex`, and an author `display`
+   beats the user agent's `[hidden] { display: none }` — so a button shipped
+   `hidden` would render anyway. Two of them are: the nav's menu button and the
+   theme toggle, both revealed only once their script runs. Without this they
+   appear on every page with no bundle, including every error page.
+   `scripts/browser-smoke.test.ts` pins the error page's nav as one row, which
+   is what fails when this goes. */
+:is(
+  button,
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger,
+  .btn-danger-solid
+)[hidden] {
+  display: none;
+}
+
 .btn-primary {
   background: var(--button-primary-bg);
   border-color: var(--button-primary-bg);

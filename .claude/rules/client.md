@@ -159,7 +159,9 @@ means it is server work. Slower is the only case where enhancement is a candidat
 
 `src/client/boundaries.test.ts` is the fence, and it fails the suite rather than a review: no
 `fetch`, markup building, `JSON.parse`, routing or storage in client code outside
-`reactive/request.ts`; no runtime imports across the server/client line in either direction (types
+`reactive/request.ts` (the theme toggle is the one storage exemption, named in the rule with its
+reason — a theme belongs to a browser, not an account, and a signed-out reader has no session to
+hold it); no runtime imports across the server/client line in either direction (types
 cross freely); nothing in `src/shared/` touches the DOM or `node:`; and the built `main.js` stays
 under a byte budget. Raise the budget or add an exemption only with the reason written next to it —
 the number moving is the signal that something is being built on the client that belongs on the
@@ -203,6 +205,11 @@ row gets a class rule like `.role-picker { width: 100% }`, not `select.role-pick
 `boundaries.test.ts` fails the suite if a component or page stylesheet has a `select` rule, and
 `bun run test:browser` checks the row, the chevron and the list-box and disabled cases in a real
 engine.
+
+A button that ships `hidden` needs `base.css`'s `[hidden]` rule to stay: the shared box sets
+`display: inline-flex`, which beats the user agent's `[hidden] { display: none }`. The nav's menu
+button and the theme toggle both rely on it, and both are revealed only once their script runs —
+a page with no bundle must not render a control that does nothing.
 
 A control that steps off the shared box says why where it does it. The template's two are the
 compact todo filters and delete buttons (the 28px step, because they are a segmented control inside
