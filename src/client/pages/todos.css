@@ -1,8 +1,8 @@
 [data-page="todos"] {
   .todo-form {
-    display: flex;
-    gap: 0.75rem;
     align-items: center;
+    display: flex;
+    gap: var(--space-2);
 
     input {
       flex: 1;
@@ -26,9 +26,9 @@
   .todos-header {
     align-items: center;
     display: flex;
-    gap: 1rem;
+    gap: var(--space-4);
     justify-content: space-between;
-    margin: 1.5rem 0 1rem;
+    margin: var(--space-6) 0 var(--space-3);
 
     @media (width <= 640px) {
       align-items: flex-start;
@@ -37,7 +37,8 @@
   }
 
   .todo-count {
-    font-size: 13px;
+    color: var(--text-muted);
+    font-size: 12px;
     margin: 0;
     white-space: nowrap;
   }
@@ -45,28 +46,22 @@
   .todo-filters {
     border: 0;
     display: flex;
-    gap: 0.25rem;
+    gap: var(--space-1);
     margin: 0;
     padding: 0;
   }
 
+  /* Compact by design — the filters are a segmented control, not page
+     actions, so they take the 28px step rather than the default height. */
   .filter-btn {
-    background: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-text-secondary);
-    font-size: 12px;
-    /* Compact by design: opt out of the control line-height in base.css. */
-    line-height: normal;
-    padding: 4px 10px;
-
-    &:hover,
-    &:focus {
-      background: var(--color-surface-hover);
-    }
+    font-size: 12.5px;
+    height: 28px;
+    padding: 0 var(--space-2);
 
     &.active {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+      background: var(--surface-selected);
+      border-color: var(--border-strong);
+      color: var(--text);
     }
   }
 
@@ -76,13 +71,9 @@
     display: none;
   }
 
-  .todo-list tr:hover td {
-    background: var(--color-surface-hover);
-  }
-
   .toggle-cell {
-    width: 1%;
     white-space: nowrap;
+    width: 1%;
   }
 
   .toggle-form,
@@ -98,7 +89,7 @@
     align-items: center;
     background: transparent;
     border: none;
-    color: var(--color-text-quaternary);
+    color: var(--text-muted);
     display: inline-flex;
     height: 24px;
     justify-content: center;
@@ -108,16 +99,19 @@
 
     &:hover,
     &:focus {
-      color: var(--color-primary);
+      background: transparent;
+      color: var(--accent);
     }
 
     &[aria-pressed="true"] {
-      color: var(--color-success);
+      color: var(--success);
     }
   }
 
+  /* The strike-through is the state; the muted colour only reinforces it, so
+     a done row still reads with colour off. */
   tr.done .todo-title {
-    color: var(--color-text-tertiary);
+    color: var(--text-muted);
     text-decoration: line-through;
   }
 
@@ -126,22 +120,13 @@
   }
 
   .delete-btn {
-    background: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-danger);
-    font-size: 12px;
-    /* Compact by design: opt out of the control line-height in base.css. */
-    line-height: normal;
-    padding: 4px 10px;
-
-    &:hover,
-    &:focus {
-      background: rgba(248, 113, 113, 0.1);
-    }
+    font-size: 12.5px;
+    height: 28px;
+    padding: 0 var(--space-2);
   }
 
   .api-section {
-    margin-top: 2.5rem;
+    margin-top: var(--space-10);
 
     /* Full width is about 110 characters a line at desktop; 70ch reads. */
     > p {
@@ -157,15 +142,15 @@
     .card {
       overflow-x: auto;
 
-      /* A scroll hint: a shadow on the right edge while there is more to
-         scroll to. The `local` cover layers move with the content and hide the
-         `scroll` shadow once the end is reached, so it only shows where the
-         table still overflows. Stronger than a light surface would need — a
-         faint shadow disappears on the dark card. background-color stays the
-         card's own surface, from the shared .card rule. */
+      /* A scroll hint: a soft edge on the right while there is more to scroll
+         to. The `local` cover layer moves with the content and hides the
+         `scroll` edge once the end is reached, so it only shows where the
+         table still overflows. The edge is drawn in --border-strong rather
+         than a black shadow, so it reads on the light canvas and the dark one
+         alike. background-color stays the card's own surface, from .card. */
       background-image:
-        linear-gradient(to left, var(--color-surface) 30%, transparent),
-        linear-gradient(to left, rgba(0, 0, 0, 0.9), transparent);
+        linear-gradient(to left, var(--surface) 30%, transparent),
+        linear-gradient(to left, var(--border-strong), transparent);
       background-position:
         right center,
         right center;
@@ -175,12 +160,12 @@
         16px 100%;
       background-attachment: local, scroll;
 
-      /* Tighten the card and its cells on phones. At the default 24px of card
-         padding and 12px of cell padding the table stayed wider than the card
-         down to 360px (about 34px of scroll left at 320); at 8px and 5px it
-         fits the card from 360px up, and only the last sliver still scrolls at
-         320. 5px, not 8px, keeps the clearance when a desktop browser reserves
-         a scrollbar gutter the way the CI runner's Chrome does. */
+      /* Tighten the card and its cells on phones. At the default card padding
+         and 12px of cell padding the table stayed wider than the card down to
+         360px; at 8px and 5px it fits the card from 360px up, and only the
+         last sliver still scrolls at 320. 5px, not 8px, keeps the clearance
+         when a desktop browser reserves a scrollbar gutter the way the CI
+         runner's Chrome does. */
       @media (width <= 640px) {
         padding: 8px;
 
@@ -191,30 +176,30 @@
     }
   }
 
-  /* The data table draws a rule above every row; on the first it floats below
-     the card's padding with nothing above it. */
-  .endpoint-table tr:first-child td {
-    border-top: 0;
-  }
-
+  /* No overflow-wrap here on purpose: breaking a path mid-token reads worse
+     than scrolling, and the card above is already built to scroll with a
+     visible hint at its right edge. */
   .endpoint-path {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
   }
 
+  /* The method is spelled out in the cell, so the colour is a second channel
+     on top of the word rather than the only one carrying it. */
   .method-get {
-    color: var(--color-success);
+    color: var(--success);
   }
 
   .method-post {
-    color: var(--color-primary);
+    color: var(--accent);
   }
 
   .method-put {
-    color: var(--color-warning);
+    color: var(--warning);
   }
 
   .method-delete {
-    color: var(--color-danger);
+    color: var(--danger);
   }
 }

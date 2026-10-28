@@ -1,5 +1,6 @@
 import { DataTable } from "@server/components/data-table";
 import { Layout } from "@server/components/layouts";
+import { PageHeader } from "@server/components/page-header";
 import type { User } from "@server/services/users";
 
 interface StackProps {
@@ -16,14 +17,10 @@ export const Stack = ({ user, csrfToken }: StackProps) => (
     user={user}
     csrfToken={csrfToken}
   >
-    <h1>The Stack</h1>
-    <p className="lead">
-      Billet is a server-rendered TypeScript starter built on Bun. Templates are
-      JSX, compiled by Bun and rendered to HTML in the same process that answers
-      the request—no client framework, no virtual DOM, no hydration step. Pages
-      arrive as plain HTML, and a few hundred lines of signals bind
-      interactivity to that markup where a page needs it.
-    </p>
+    <PageHeader
+      title="The Stack"
+      description="Billet is a server-rendered TypeScript starter built on Bun. Templates are JSX, compiled by Bun and rendered to HTML in the same process that answers the request—no client framework, no virtual DOM, no hydration step. Pages arrive as plain HTML, and a few hundred lines of signals bind interactivity to that markup where a page needs it."
+    />
 
     <section>
       <h2>How data flows</h2>

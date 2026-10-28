@@ -14,9 +14,11 @@ import { Logo } from "./logo";
 import { Nav } from "./nav";
 import { VerifyBanner } from "./verify-banner";
 
-// The site is dark-only (see `colorScheme: "dark"` on <html>), so theme-color
-// matches --color-bg from style.css rather than shipping light/dark variants.
-const THEME_COLOR = "#0a0a0b";
+// The palette follows the OS: `color-scheme: light dark` lets the browser pick,
+// and base.css carries both token sets. theme-color has no var() of its own, so
+// each theme ships its own meta — keep these in step with --canvas.
+const THEME_COLOR_LIGHT = "#fafafa";
+const THEME_COLOR_DARK = "#090909";
 
 const canonicalUrl = (path?: string): string =>
   path ? absolute(path) : siteUrl();
@@ -56,8 +58,17 @@ function HeadMeta({
       {blocksIndexing(noindex) && (
         <meta name="robots" content="noindex, nofollow" />
       )}
-      <meta name="color-scheme" content="dark" />
-      <meta name="theme-color" content={THEME_COLOR} />
+      <meta name="color-scheme" content="light dark" />
+      <meta
+        name="theme-color"
+        media="(prefers-color-scheme: light)"
+        content={THEME_COLOR_LIGHT}
+      />
+      <meta
+        name="theme-color"
+        media="(prefers-color-scheme: dark)"
+        content={THEME_COLOR_DARK}
+      />
       <link rel="canonical" href={canonicalUrl(canonicalPath)} />
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       <link
@@ -105,7 +116,7 @@ export function Layout({
   noindex,
 }: LayoutProps) {
   return (
-    <html lang="en" style={{ colorScheme: "dark" }}>
+    <html lang="en" style={{ colorScheme: "light dark" }}>
       <head>
         <HeadMeta
           title={title}
@@ -140,7 +151,6 @@ export function Layout({
         </header>
         <main>{children}</main>
         <SiteFooter />
-        <script async src={getAssetUrl("/assets/lottie.js")} />
         <script type="module" src={getAssetUrl("/assets/main.js")} />
       </body>
     </html>
@@ -167,14 +177,14 @@ interface ErrorLayoutProps {
 }
 
 // Layout for error and maintenance pages (404, 500, 503). Deliberately ships NO
-// client JavaScript — no Lottie, no main bundle — so the page renders
+// client JavaScript — no main bundle — so the page renders
 // instantly and stays legible even when the app is degraded or offline, the
 // spec's resilience baseline for error and 503 responses. Reuses the same
 // header/footer chrome as `Layout` for continuity, and is always noindex so
 // crawlers never treat an error body as real content.
 export function ErrorLayout({ title, children, nav = true }: ErrorLayoutProps) {
   return (
-    <html lang="en" style={{ colorScheme: "dark" }}>
+    <html lang="en" style={{ colorScheme: "light dark" }}>
       <head>
         <HeadMeta title={title} description={SITE_DESCRIPTION} noindex />
       </head>
@@ -209,7 +219,7 @@ export function BaseLayout({
   noindex,
 }: BaseLayoutProps) {
   return (
-    <html lang="en" style={{ colorScheme: "dark" }}>
+    <html lang="en" style={{ colorScheme: "light dark" }}>
       <head>
         <HeadMeta
           title={title}

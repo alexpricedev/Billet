@@ -117,7 +117,7 @@ export const Signup = ({
 
           <CaptchaWidget challenge={challenge} />
 
-          <button type="submit" className="login-submit">
+          <button type="submit" className="login-submit btn-primary">
             {password ? "Create account" : "Send sign-up link"}
           </button>
         </form>

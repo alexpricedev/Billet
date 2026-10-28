@@ -5,12 +5,7 @@ const assetHashes = new Map<string, string>();
 // The bundles `bun run build` produces. In production they get fingerprinted and
 // hashed at boot; in development they are served un-hashed straight off disk, so
 // the same list is what tells a missing dev bundle apart from a typo'd URL.
-export const BUNDLE_FILENAMES = [
-  "main.js",
-  "captcha.js",
-  "lottie.js",
-  "main.css",
-];
+export const BUNDLE_FILENAMES = ["main.js", "captcha.js", "main.css"];
 // Where the built bundles live. Deliberately not an env var: `--outdir
 // ./dist/assets` is fixed in package.json, so an operator pointing this
 // somewhere else would only break boot. The override exists for tests, which

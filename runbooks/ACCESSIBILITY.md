@@ -58,11 +58,11 @@ you:
   [`contrast-color()`](https://specification.website/spec/accessibility/contrast-color/)
   function for dynamic backgrounds.
 - **Focus ring visibility** — the global `:focus-visible` outline uses
-  `--color-primary`. If you change the palette, confirm the ring stays clearly
-  visible against every surface it can appear on. Never reintroduce
+  `--focus-ring` (the accent). If you change the palette, confirm the ring stays
+  clearly visible against every surface it can appear on, **in both themes**. Never reintroduce
   `outline: none` without an equally visible replacement.
-- **Forced colours mode** — Billet is dark-only, so there is almost nothing here
-  to hand over: the platform replaces the palette wholesale, and the one rule
+- **Forced colours mode** — the platform replaces the palette wholesale, so
+  there is little here to hand over: the one rule
   that draws a colour the system can't replace is the base `select`'s SVG
   chevron, which turns itself off in `forced-colors: active` and lets the
   platform draw its arrow instead. Everything else is yours. If your design

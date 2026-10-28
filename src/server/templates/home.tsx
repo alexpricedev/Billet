@@ -1,5 +1,6 @@
 import { Flash } from "@server/components/flash";
 import { Layout } from "@server/components/layouts";
+import { PageHeader } from "@server/components/page-header";
 import type { User } from "@server/services/users";
 import type { FlashMessage } from "@server/utils/flash";
 
@@ -10,16 +11,44 @@ interface HomeProps {
   // "message" flash, and so do the flows that finish elsewhere — accepting an
   // invitation lands here. Rendering it is what makes requireAdmin and
   // requireOrgRole say anything at all — without this the user lands on the
-  // homepage with no idea why, which is the "announce dynamic updates" rule in
-  // runbooks/ACCESSIBILITY.md going unmet. The writer picks the type: a guard's
-  // refusal and "You've joined Acme" both arrive on this key.
+  // home page with no idea why, which is the "announce dynamic updates" rule
+  // in runbooks/ACCESSIBILITY.md going unmet. The writer picks the type: a
+  // guard's refusal and "You've joined Acme" both arrive on this key.
   message?: FlashMessage;
 }
 
+/** The demo surfaces, in the order they're worth reading. */
+const demos = [
+  {
+    href: "/todos",
+    title: "Todos",
+    body: "A list backed by a service layer: plain forms that work with JavaScript off, in-place fragments when it's on, and the same data over a JSON API.",
+    tag: "Forms · fragments · API",
+  },
+  {
+    href: "/forms",
+    title: "Forms",
+    body: "One form, the whole round trip — validation, CSRF, the redirect-and-flash that follows a POST, and what each step is protecting you from.",
+    tag: "Validation · CSRF · PRG",
+  },
+  {
+    href: "/stack",
+    title: "The stack",
+    body: "What this is built on and how the layers fit: Bun, server-rendered JSX, PostgreSQL, and the small reactive layer that enhances a page without taking it over.",
+    tag: "Architecture",
+  },
+  {
+    href: "/api/stats",
+    title: "JSON API",
+    body: "The same todo service behind a JSON envelope, with the request guard that keeps a malformed body from becoming an HTML error page.",
+    tag: "GET /api/stats",
+  },
+];
+
 export const Home = ({ user, csrfToken, message }: HomeProps) => (
   <Layout
-    title="Billet—The AI-native TypeScript starter"
-    description="Let your AI coding agents ship, safely: server-rendered JSX, PostgreSQL via Bun, auth, security and 900+ tests in a single deploy target."
+    title="Billet"
+    description="A server-rendered full-stack TypeScript starter on Bun and PostgreSQL. This is the demo that ships with it."
     canonicalPath="/"
     name="home"
     user={user}
@@ -31,391 +60,38 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
       </Flash>
     )}
 
-    <section className="hero">
-      <div className="hero-lottie" id="hero-lottie" />
-      <a
-        className="hero-announce"
-        href="https://specification.website"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <svg
-          className="hero-announce-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
-        </svg>
-        <span className="hero-announce-text">
-          New: now built to the <u>specification.website</u> standard
-        </span>
-        <span className="hero-announce-arrow" aria-hidden="true">
-          →
-        </span>
-      </a>
-      <p className="hero-tag">Full-stack TypeScript starter</p>
-      <h1>Let your agents ship, safely</h1>
-      <p className="hero-sub">
-        Auth, security, migrations and 900+ tests come as standard.
-        Server-rendered JSX on Bun and PostgreSQL, reactive without a virtual
-        DOM—one codebase, one test runner, one deploy target. Your agent starts
-        on your product, not on the parts every app needs.
+    <PageHeader
+      title="Billet"
+      description="A server-rendered full-stack TypeScript starter on Bun and PostgreSQL. Everything below is running in this app — read the page, then read the code that rendered it."
+    />
+
+    <ul className="demo-grid">
+      {demos.map((demo) => (
+        <li key={demo.href}>
+          <a className="demo-card" href={demo.href}>
+            <span className="demo-card-tag">{demo.tag}</span>
+            <span className="demo-card-title">{demo.title}</span>
+            <span className="demo-card-body">{demo.body}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <section className="home-next">
+      <h2>Making it yours</h2>
+      <p className="text-secondary">
+        These pages are a demo, not a foundation to build on — they exist so the
+        stack is legible before you delete them. <code>START_PROMPT.md</code>{" "}
+        walks through renaming the project and stripping the parts you don't
+        want.
       </p>
-      <div className="hero-actions">
-        <a
-          href="https://github.com/alexpricedev/Billet?tab=readme-ov-file#quick-start"
-          className="btn-primary"
-        >
-          Get Started
-        </a>
-        <a href="/stack" className="btn-ghost">
-          View Stack
-        </a>
-      </div>
-    </section>
-
-    <section className="story">
-      <aside className="etymology">
-        <strong>Billet</strong> <span className="text-quaternary">(noun)</span>
-        —A semi-finished piece of steel, shaped and ready to be worked into
-        something specific. Named for Sheffield—the Steel City, where crucible
-        steel was invented.
-      </aside>
-      <div className="story-grid">
-        <div>
-          <h2 className="section-label">The problem</h2>
-          <p className="text-secondary">
-            Left to their own choices, AI coding agents reach for what they know
-            best: React with Next.js. The result is a thick-frontend app split
-            across client and server, locked into a specific ecosystem,
-            requiring multiple test systems to simulate browser state, and
-            unnecessarily complex to deploy.
-          </p>
-        </div>
-        <div>
-          <h2 className="section-label">The approach</h2>
-          <p className="text-secondary">
-            Single-instance server rendering with light-touch client JavaScript.
-            Templates are deterministic functions of their props—given the same
-            input, they produce the same HTML. Trivial to test without browser
-            simulation. One process, one deploy target.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section className="backpressure">
-      <div className="backpressure-intro">
-        <h2>Capture your backpressure</h2>
-        <p className="text-secondary">
-          AI agents work best when they get told they're wrong immediately—not
-          by you, by the toolchain. Type errors, failing tests, lint warnings:
-          that's backpressure. Every automated check that catches a mistake is
-          one less time you have to context-switch back in to fix something a
-          machine should have caught.
+      {!user && (
+        <p>
+          <a className="btn btn-primary" href="/signup">
+            Create an account
+          </a>
         </p>
-      </div>
-      <div className="feedback-stack">
-        <div className="stack-row">
-          <span className="stack-layer">TypeScript strict mode</span>
-          <span className="stack-catches">
-            Type mismatches, missing properties, unused code
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">Biome linting</span>
-          <span className="stack-catches">
-            Style violations, unsafe patterns, console usage
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">Pre-commit hooks</span>
-          <span className="stack-catches">
-            Anything that slipped past the editor
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">Test suite</span>
-          <span className="stack-catches">
-            Behavioural regressions, broken templates, bad responses
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">CI on every push</span>
-          <span className="stack-catches">
-            Lint, build and the whole suite on a real PostgreSQL before a branch
-            can merge
-          </span>
-        </div>
-      </div>
-    </section>
-
-    <section className="features">
-      <h2>What's included</h2>
-      <p className="features-lead text-secondary">
-        Auth, security, database, testing, linting—the rails are laid so your
-        agent can focus on building your product.
-      </p>
-      <div className="feature-grid">
-        <div className="feature-card">
-          <h3>Authentication</h3>
-          <p>
-            Magic-link or password login, session management, guest sessions,
-            admin roles
-          </p>
-        </div>
-        <div className="feature-card">
-          <h3>Security</h3>
-          <p>
-            CSRF protection, rate limiting, an optional proof-of-work captcha, a
-            Content Security Policy, HSTS, and security headers on every
-            response
-          </p>
-        </div>
-        <div className="feature-card">
-          <h3>Database</h3>
-          <p>
-            PostgreSQL via Bun.SQL, auto-migrations, seed scripts, parameterised
-            queries
-          </p>
-        </div>
-        <div className="feature-card">
-          <h3>Testing</h3>
-          <p>
-            900+ tests, deterministic templates, real database testing, no
-            browser simulation
-          </p>
-        </div>
-        <div className="feature-card">
-          <h3>Frontend</h3>
-          <p>
-            Server-rendered JSX, custom CSS via Bun bundler, flash messages, and
-            a small reactive layer that binds signals to the server's own
-            markup—no virtual DOM
-          </p>
-        </div>
-        <div className="feature-card">
-          <h3>Teams</h3>
-          <p>
-            Optional organisations: invite by email, manage members, and
-            owner/admin/member roles that stay separate from the platform admin
-            flag
-          </p>
-        </div>
-        <div className="feature-card">
-          <h3>Email</h3>
-          <p>
-            Transactional mail through Resend, or a console provider in
-            development; magic links, verification and password resets already
-            wired
-          </p>
-        </div>
-        <div className="feature-card">
-          <h3>Code Quality</h3>
-          <p>
-            Biome linting, strict TypeScript, pre-commit hooks, structured
-            logging
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section className="spec">
-      <div className="spec-header">
-        <svg
-          className="spec-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M12 21V7" />
-          <path d="m16 12 2 2 4-4" />
-          <path d="M22 6V4a1 1 0 0 0-1-1h-5a4 4 0 0 0-4 4 4 4 0 0 0-4-4H3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6a1 1 0 0 0 1-1v-1.3" />
-        </svg>
-        <h2>Built to a public standard</h2>
-      </div>
-      <p className="spec-lead text-secondary">
-        <a
-          href="https://specification.website"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          specification.website
-        </a>{" "}
-        is an open, platform-agnostic checklist of the technical features a good
-        website should have—168 specs across foundations, SEO, accessibility,
-        security, performance, and more. Billet works through it section by
-        section, so the boring-but-critical baseline is in place before you
-        write a line of product code.
-      </p>
-      <div className="feedback-stack">
-        <div className="stack-row">
-          <span className="stack-layer">Foundations</span>
-          <span className="stack-catches">
-            Doctype, charset, viewport, canonical URLs, Open Graph, favicons,
-            theme-color
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">SEO</span>
-          <span className="stack-catches">
-            robots.txt, XML sitemap, JSON-LD, per-page metadata, an explicit
-            indexing policy
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">Accessibility</span>
-          <span className="stack-catches">
-            Semantic landmarks, labelled forms, focus rings, reduced motion,
-            captioned tables
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">Security</span>
-          <span className="stack-catches">
-            Security headers on every response, a Content Security Policy, HSTS,
-            security.txt, Clear-Site-Data
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">Agent readiness</span>
-          <span className="stack-catches">
-            An llms.txt index, AI-crawler rules and Content-Signal in
-            robots.txt, machine-readable Link headers, structured data, stable
-            URLs
-          </span>
-        </div>
-        <div className="stack-row">
-          <span className="stack-layer">Performance</span>
-          <span className="stack-catches">
-            Brotli and gzip compression, fingerprinted immutable assets, ETag
-            revalidation with 304s, preconnect resource hints, minified bundles
-          </span>
-        </div>
-      </div>
-      <a
-        className="spec-cta"
-        href="https://specification.website"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Read the full standard <span aria-hidden="true">→</span>
-      </a>
-    </section>
-
-    <section className="addons">
-      <h2>Works well with</h2>
-      <p className="features-lead text-secondary">
-        Small packages built alongside Billet. None are bundled—add the ones
-        your product needs.
-      </p>
-      <div className="feature-grid">
-        <a
-          className="feature-card addon-card"
-          href="https://github.com/alexpricedev/billet-cookie-consent"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h3>
-            billet-cookie-consent <span aria-hidden="true">→</span>
-          </h3>
-          <p>
-            GDPR-friendly cookie consent banner. Lightweight,
-            framework-agnostic, designed to slot into a server-rendered
-            template.
-          </p>
-        </a>
-        <a
-          className="feature-card addon-card"
-          href="https://github.com/alexpricedev/billet-dialog"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h3>
-            billet-dialog <span aria-hidden="true">→</span>
-          </h3>
-          <p>
-            Accessible confirm dialog for destructive actions. Vanilla DOM, zero
-            dependencies, and progressive-enhancement form gating over an
-            alertdialog role
-          </p>
-        </a>
-        <a
-          className="feature-card addon-card"
-          href="https://github.com/alexpricedev/billet-analytics"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h3>
-            billet-analytics <span aria-hidden="true">→</span>
-          </h3>
-          <p>
-            Privacy-first, self-hosted analytics. Page views and referrers land
-            in your own PostgreSQL rather than a third party's dashboard, and
-            the page needs no tracker script
-          </p>
-        </a>
-        <a
-          className="feature-card addon-card"
-          href="https://github.com/alexpricedev/billet-storage"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h3>
-            billet-storage <span aria-hidden="true">→</span>
-          </h3>
-          <p>
-            File storage behind one interface: an S3-compatible bucket in
-            production, a local directory in development, so a dev environment
-            needs no bucket
-          </p>
-        </a>
-        <a
-          className="feature-card addon-card"
-          href="https://github.com/alexpricedev/log-digest"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h3>
-            log-digest <span aria-hidden="true">→</span>
-          </h3>
-          <p>
-            In-memory log buffer with a pluggable digest sink. Batches error,
-            warn and info entries and hands them off on an interval to email,
-            Slack, or a sink of your own
-          </p>
-        </a>
-        <a
-          className="feature-card addon-card"
-          href="https://conductor.build"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h3>
-            Conductor <span aria-hidden="true">→</span>
-          </h3>
-          <p>
-            Runs several coding agents in parallel, one git worktree each.
-            Billet ships settings that give every workspace its own port, dev
-            database, test database and session cookie
-          </p>
-        </a>
-      </div>
+      )}
     </section>
   </Layout>
 );

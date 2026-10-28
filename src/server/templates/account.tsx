@@ -2,6 +2,7 @@ import { CsrfField } from "../components/csrf-field";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Layout } from "../components/layouts";
+import { PageHeader } from "../components/page-header";
 import type { AuthMode } from "../services/auth-mode";
 import { MIN_PASSWORD_LENGTH } from "../services/passwords";
 import type { User } from "../services/users";
@@ -63,7 +64,7 @@ export const Account = ({
     csrfToken={csrfToken}
     noindex
   >
-    <h1>Account</h1>
+    <PageHeader title="Account" />
 
     {state?.state === "verified" && (
       <Flash type="success">
@@ -171,7 +172,7 @@ export const Account = ({
             />
           </FormField>
 
-          <button type="submit">
+          <button type="submit" className="btn-primary">
             {hasPassword ? "Update password" : "Set password"}
           </button>
         </form>

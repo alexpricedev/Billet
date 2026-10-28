@@ -79,7 +79,6 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 
 These are links specific to the original Billet repository. Remove or update them:
 
-- `src/server/templates/home.tsx` — The "Get Started" button linking to `github.com/new?template_name=Billet`. Change the href to `/` or their own repo URL.
 - `src/server/components/layouts.tsx` — The footer GitHub link (`github.com/alexpricedev/Billet`). Update to their repo URL or remove.
 - `src/server/components/layouts.tsx` — The "Built by alexprice.dev" attribution. Remove or replace.
 
@@ -88,20 +87,25 @@ is how you find out what upstream fixed after you forked — see the note in ste
 
 ## 4. Rewrite the home page
 
-The home page (`src/server/templates/home.tsx`) is currently a marketing landing page for the Billet starter. It has:
+The home page (`src/server/templates/home.tsx`) is a **demo index**: a card per demo surface
+(`/todos`, `/forms`, `/stack`, the JSON API) and a short note about making the project yours. It is
+not a marketing page — Billet's own sales site lives in its own repository, so you did not inherit
+one and there is nothing to strip.
 
-- A hero section with tagline and "Get Started" button
-- A "story" section with the Billet etymology and problem/approach prose
-- A "backpressure" section explaining the development philosophy
-- A "features" section listing what's included
+Replace it with a simple welcome page for their project. Keep it minimal — just a heading with the
+project name and a short description. They'll build their own home page from here. The card grid
+and `.home-next` section go with it, so `src/client/pages/home.css` can be emptied or deleted (and
+its `@import` removed from `src/client/style.css`).
 
-Replace this with a simple welcome page for their project. Keep it minimal — just a heading with the project name and a short description. They'll build their own home page from here.
+> **Design:** The visual language is documented in [DESIGN.md](DESIGN.md) — tokens, type and
+> spacing scales, the component rules, and the anti-patterns. Light and dark are both defined and
+> the theme follows the OS. If you replace the palette, replace it in `src/client/base.css`'s token
+> block and nowhere else; the legacy `--color-*` aliases exist so no page file can grow a private
+> palette. `src/client/base-css.test.ts` fails the suite if the two dark token lists drift apart.
 
-> **Note:** The home page currently loads a looping Lottie hero animation (`src/client/pages/home.ts`, gated behind `prefers-reduced-motion`). If your welcome page drops the animation, remove that init logic and the `/cube.json` asset too.
+> **Accessibility:** Billet ships a WCAG-aligned baseline (labelled forms, keyboard focus rings, reduced motion, announced flash messages, captioned tables). Once you replace the theme with your own design language, **colour contrast and forced-colours support become your responsibility** — a framework can't decide your palette, and you now have two themes to check rather than one. See [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md) for what's handled, what's yours, and how to verify.
 
-> **Accessibility:** Billet ships a WCAG-aligned baseline (labelled forms, keyboard focus rings, reduced motion, announced flash messages, captioned tables). Once you replace the placeholder theme with your own design language, **colour contrast and forced-colours support become your responsibility** — a framework can't decide your palette. See [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md) for what's handled, what's yours, and how to verify.
-
-> **Security:** Billet applies security headers, a Content Security Policy, HSTS, and a Clear-Site-Data wipe on logout automatically. Two things need you: set `SECURITY_CONTACT` in your env (the `security.txt` reporting address — it defaults to a placeholder), and if you drop the Lottie hero above, remove its script in `src/server/components/layouts.tsx`, the `build:vendor` script in `package.json`, and the `lottie-web` dependency too. See [runbooks/SECURITY.md](runbooks/SECURITY.md) for that plus the TLS, HSTS-preload, CAA, and DNSSEC deploy steps.
+> **Security:** Billet applies security headers, a Content Security Policy, HSTS, and a Clear-Site-Data wipe on logout automatically. One thing needs you: set `SECURITY_CONTACT` in your env (the `security.txt` reporting address — it defaults to a placeholder). Billet vendors no third-party script at all, so `script-src 'self'` covers everything it ships. See [runbooks/SECURITY.md](runbooks/SECURITY.md) for the TLS, HSTS-preload, CAA, and DNSSEC deploy steps.
 
 > **Privacy:** Billet is privacy-clean by default — no analytics, no trackers, only strictly-necessary cookies — so **no cookie banner is legally required** as shipped. The moment you add analytics, ads, or third-party embeds, you must add an opt-in consent banner and a privacy policy. See [runbooks/PRIVACY.md](runbooks/PRIVACY.md) for wiring `@alexpricedev/billet-cookie-consent`, the required policy disclosures, GPC handling, and third-party-script hygiene.
 
@@ -123,6 +127,13 @@ Remove the stack page and all its associated files:
 - `src/server/components/nav.tsx` — remove the stack nav link
 - `src/client/main.ts` — remove the stack import and `registerPage` call
 - `src/client/style.css` — remove the `@import "./pages/stack.css"` line
+- `src/server/services/seo.ts` — remove `/stack` from `SITEMAP_PATHS`
+- `src/server/services/llms-txt.ts` — remove its `PAGES` entry
+- `src/server/templates/home.tsx` — remove its card from the demo grid
+
+The last three are easy to miss. `llms-txt.test.ts` carries a drift test against the public routes,
+so a forgotten entry fails the suite rather than shipping — but it fails in a file you weren't
+editing, so look here first.
 
 ## 6. Clean up the README
 

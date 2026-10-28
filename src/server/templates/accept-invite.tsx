@@ -121,7 +121,9 @@ export const AcceptInvite = ({
         <Honeypot />
         {challenge && <CaptchaWidget challenge={challenge} />}
 
-        <button type="submit">Accept invitation</button>
+        <button type="submit" className="btn-primary">
+          Accept invitation
+        </button>
       </form>
     )}
 
@@ -151,7 +153,9 @@ export const AcceptInvite = ({
         <Honeypot />
         {challenge && <CaptchaWidget challenge={challenge} />}
 
-        <button type="submit">Accept invitation</button>
+        <button type="submit" className="btn-primary">
+          Accept invitation
+        </button>
       </form>
     )}
   </AuthPage>

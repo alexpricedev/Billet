@@ -19,7 +19,7 @@ const PAGES: LlmsPage[] = [
     path: "/",
     title: "Home",
     description:
-      "Overview of the Billet stack and the production web defaults it ships out of the box.",
+      "An index of the demo surfaces this starter ships with, and what each one shows.",
   },
   {
     path: "/stack",

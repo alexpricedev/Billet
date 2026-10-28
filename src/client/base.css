@@ -1,70 +1,240 @@
-/* Base layer: tokens, the element defaults every page inherits, and the few
-   shared utility classes. Imported first by style.css so page and component
-   rules override it at equal specificity — see the manifest's comment. */
+/* Base layer: design tokens, the element defaults every page inherits, and the
+   shared button/field primitives. Imported first by style.css so page and
+   component rules override it at equal specificity — see the manifest.
+   Design decisions are documented in DESIGN.md at the repository root. */
 
 :root {
-  --color-bg: #0a0a0b;
-  --color-surface: #141415;
-  --color-surface-hover: #1c1c1e;
-  --color-border: #222224;
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --canvas: #fafafa;
+  --surface: #ffffff;
+  --surface-subtle: #f5f5f5;
+  --surface-hover: #f2f2f2;
+  --surface-selected: #f0f0f0;
+  --overlay: rgba(23, 23, 23, 0.4);
+
+  /* Text */
+  --text: #171717;
+  --text-secondary: #525252;
+  --text-muted: #737373;
+  --text-disabled: #a3a3a3;
+
+  /* Borders */
+  --border: #e5e5e5;
+  --border-strong: #d4d4d4;
   /* A field's edge is information, not decoration: WCAG 1.4.11 wants 3:1 for
-     the boundary that identifies a control, and the divider colour above is
-     1.16:1 on --color-surface. Inputs, selects and textareas draw this one;
-     --color-border stays for dividers, which nothing has to see. */
-  --color-border-strong: #6a6a6a;
-  --color-text: #ededef;
-  --color-text-secondary: #b4b5b9;
-  --color-text-tertiary: #8a8b8e;
-  --color-text-quaternary: #78797c;
-  /* The accent: link text, the focus ring, badges, accent borders. It has to
-     stay light enough to read as text on the dark surfaces (5.67:1 on
-     --color-surface), which leaves it too light for a white button label
-     (3.25:1). A filled primary control draws the same hue darkened — the fill
-     pair below — so the label reaches 4.5:1 in both states. */
-  --color-primary: #7c85f0;
-  --color-primary-hover: #9098f3;
-  --color-primary-fill: #4b58e7;
-  --color-primary-fill-hover: #5461e8;
-  --color-success: #34d399;
-  --color-danger: #f87171;
-  --color-warning: #fbbf24;
-  --font-main:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
-  --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, monospace;
-  --radius: 0.5rem;
-  --shadow: none;
+     the boundary that identifies a control, and --border is well under that.
+     Inputs, selects and textareas draw this one; --border stays for dividers,
+     which nothing has to see. */
+  --border-control: #8f8f8f;
+
+  /* Accent */
+  --accent: #0070f3;
+  --accent-hover: #005cc5;
+  --accent-soft: #eef6ff;
+  --accent-border: #b2d4ff;
+  --accent-contrast: #ffffff;
+  --focus-ring: var(--accent);
+  --selection-bg: var(--surface-selected);
+  --input-bg: var(--surface);
+  --input-placeholder: var(--text-muted);
+
+  /* Status */
+  --success: #067647;
+  --success-soft: #ecfdf3;
+  --success-border: #abefc6;
+  --warning: #b54708;
+  --warning-soft: #fffaeb;
+  --warning-border: #fedf89;
+  --danger: #b42318;
+  --danger-soft: #fef3f2;
+  --danger-border: #fda29b;
+
+  /* Buttons */
+  --button-primary-bg: #171717;
+  --button-primary-fg: #ffffff;
+  --button-primary-bg-hover: #383838;
+  --button-danger-bg: #d92d20;
+  --button-danger-bg-hover: #b42318;
+
+  /* The select chevron is a data URI, and a data URI cannot read a custom
+     property — so the whole url() is the token and each theme overrides it.
+     Keep the stroke in step with --text-muted. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23737373' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+
+  /* Type */
+  --font-sans:
+    "Geist", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  --font-main: var(--font-sans);
+  --font-mono:
+    "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Geometry */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.16);
+  --shadow: var(--shadow-lg);
+  --sidebar-width: 248px;
+  --content-max: 1120px;
+  --bar-height: 56px;
 
   /* Form controls. Inputs, selects and buttons all take their box from these,
      so a row of field, select and button lines up without per-page height
-     fixes. Inline padding is the one part a control sets for itself: fields
-     use --control-padding-x, and a button keeps a wider 16px so its label has
-     room in a filled shape. The line-height is absolute on purpose: inputs
-     need 16px text and buttons use 14px, and a relative line-height would give
-     them different heights. --control-height is derived, never set — change
-     its parts. */
+     fixes. The height is flat rather than derived from its parts: the design
+     system names 32px (28px compact, 40px large) as the control scale, and a
+     derived height cannot hit those numbers from one set of paddings. To
+     change the size of every control, change these — never a page. */
   --control-border-width: 1px;
-  --control-padding-y: 7px;
-  --control-padding-x: 12px;
-  --control-line-height: 24px;
-  --control-height: calc(
-    var(--control-line-height) +
-    2 *
-    var(--control-padding-y) +
-    2 *
-    var(--control-border-width)
-  );
-  --control-radius: var(--radius);
+  --control-height: 32px;
+  --control-padding-x: 10px;
+  --control-padding-y: 5px;
+  --control-line-height: 1.4;
+  --control-radius: var(--radius-sm);
+
+  /* Compatibility aliases. Older component CSS names these; new CSS uses the
+     semantic tokens above. Mapping them here is what stops a second palette
+     growing inside one page file. */
+  --color-bg: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-control);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-text-quaternary: var(--text-muted);
+  --color-primary: var(--accent);
+  --color-primary-hover: var(--accent-hover);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+}
+
+/* A visitor whose browser carries the attribute gets these tokens whatever the
+   OS says. The list is duplicated below rather than shared: plain CSS with no
+   preprocessor cannot make one declaration block land under both a media query
+   and an attribute selector. Keep the two lists in step — `base-css.test.ts`
+   compares them. */
+:root[data-theme="dark"] {
+  --canvas: #090909;
+  --surface: #111111;
+  --surface-subtle: #161616;
+  --surface-hover: #1c1c1c;
+  --surface-selected: #1f1f1f;
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  --text: #ededed;
+  --text-secondary: #a3a3a3;
+  --text-muted: #8f8f8f;
+  --text-disabled: #5c5c5c;
+
+  --border: #292929;
+  --border-strong: #3a3a3a;
+  --border-control: #6a6a6a;
+
+  --accent: #3291ff;
+  --accent-hover: #5ba8ff;
+  --accent-soft: #0f2237;
+  --accent-border: #1d4e82;
+  --accent-contrast: #0a0a0a;
+
+  --success: #3dd68c;
+  --success-soft: #0d231a;
+  --success-border: #1d4b37;
+  --warning: #f5b544;
+  --warning-soft: #241a08;
+  --warning-border: #4d3a12;
+  --danger: #ff6b6b;
+  --danger-soft: #2a1110;
+  --danger-border: #5a2320;
+
+  --button-primary-bg: #ededed;
+  --button-primary-fg: #0a0a0a;
+  --button-primary-bg-hover: #ffffff;
+  --button-danger-bg: #e5484d;
+  --button-danger-bg-hover: #eb5c60;
+
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%238f8f8f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+/* System (the default, and every page as shipped) has no `data-theme`, so the
+   OS setting decides. A page carrying `data-theme="light"` never matches. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --canvas: #090909;
+    --surface: #111111;
+    --surface-subtle: #161616;
+    --surface-hover: #1c1c1c;
+    --surface-selected: #1f1f1f;
+    --overlay: rgba(0, 0, 0, 0.6);
+
+    --text: #ededed;
+    --text-secondary: #a3a3a3;
+    --text-muted: #8f8f8f;
+    --text-disabled: #5c5c5c;
+
+    --border: #292929;
+    --border-strong: #3a3a3a;
+    --border-control: #6a6a6a;
+
+    --accent: #3291ff;
+    --accent-hover: #5ba8ff;
+    --accent-soft: #0f2237;
+    --accent-border: #1d4e82;
+    --accent-contrast: #0a0a0a;
+
+    --success: #3dd68c;
+    --success-soft: #0d231a;
+    --success-border: #1d4b37;
+    --warning: #f5b544;
+    --warning-soft: #241a08;
+    --warning-border: #4d3a12;
+    --danger: #ff6b6b;
+    --danger-soft: #2a1110;
+    --danger-border: #5a2320;
+
+    --button-primary-bg: #ededed;
+    --button-primary-fg: #0a0a0a;
+    --button-primary-bg-hover: #ffffff;
+    --button-danger-bg: #e5484d;
+    --button-danger-bg-hover: #eb5c60;
+
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%238f8f8f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
 }
 
 html {
-  background: var(--color-bg);
+  background: var(--canvas);
   box-sizing: border-box;
-  color: var(--color-text);
+  color: var(--text);
   font-size: 16px;
   /* Reserve the scrollbar's space so pages that grow past one viewport don't
      shift horizontally when the scrollbar appears (classic scrollbars only). */
   scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
 }
 
 *,
@@ -89,8 +259,8 @@ html {
 /* Keyboard focus ring — high-contrast, only on keyboard/AT focus (not mouse
    clicks), so removing it from any control requires an explicit override. */
 :focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 4px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
   /* Browsers round the outline to follow border-radius, even on inline links. */
   border-radius: 4px;
 }
@@ -99,8 +269,8 @@ html {
    ring. outline-offset is uniform, so we add inline padding and cancel it with
    an equal negative margin to avoid shifting surrounding text. */
 a:not([class]):focus-visible {
-  padding-inline: 0.4em;
-  margin-inline: -0.4em;
+  padding-inline: 0.3em;
+  margin-inline: -0.3em;
 }
 
 /* Honour the OS "reduce motion" setting — near-instant animations/transitions
@@ -117,7 +287,9 @@ a:not([class]):focus-visible {
 }
 
 body {
-  font-family: var(--font-main);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
   margin: 0;
   /* 100vh first as the fallback; 100dvh tracks the actually-visible viewport on
      mobile so the page isn't sized to include a retracted browser toolbar. */
@@ -125,9 +297,10 @@ body {
   /* biome-ignore lint/suspicious/noDuplicateProperties: dvh override is a
      deliberate progressive-enhancement fallback over the vh baseline. */
   min-height: 100dvh;
-  background: var(--color-bg);
-  color: var(--color-text);
-  line-height: 1.6;
+  background: var(--canvas);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
@@ -137,62 +310,59 @@ h4,
 h5,
 h6 {
   font-weight: 600;
-  margin: 0 0 0.5em 0;
-  line-height: 1.2;
+  margin: 0 0 var(--space-2);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 h1 {
-  font-size: 2.2rem;
+  font-size: 24px;
+  line-height: 1.25;
   letter-spacing: -0.02em;
 }
 
 h2 {
+  font-size: 16px;
   letter-spacing: -0.01em;
 }
 
+h3 {
+  font-size: 14px;
+}
+
 p {
-  margin: 0 0 1.2em 0;
+  margin: 0 0 var(--space-4);
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--accent);
   text-decoration: none;
-  transition: color 150ms ease;
+  transition: color 120ms ease;
 
   &:hover,
   &:focus {
-    color: var(--color-primary-hover);
+    color: var(--accent-hover);
     text-decoration: underline;
-    text-underline-offset: 3px;
+    text-underline-offset: 2px;
     text-decoration-thickness: 1px;
   }
 }
 
-button {
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: var(--control-line-height);
-  padding: var(--control-padding-y) 16px;
-  border-radius: var(--control-radius);
-  /* Transparent rather than none, so a filled button is exactly as tall as a
-     bordered input or .btn-ghost beside it. */
-  border: var(--control-border-width) solid transparent;
-  background: var(--color-primary-fill);
-  color: #fff;
-  cursor: pointer;
-  transition: all 150ms ease;
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
 
-  /* :hover matches a disabled button — the engine doesn't consult the
-     attribute for it — so the shared :disabled fade can't be what keeps a
-     frozen control at its resting fill: the state has to exclude :disabled
-     itself. :where() keeps that exclusion at zero specificity, so this rule
-     stays a (0,1,1) button default: a page rule like .btn-danger:hover, or
-     the todos .toggle-btn, still out-specifies it instead of having its own
-     fill overridden on hover. */
-  &:where(:not(:disabled)):is(:hover, :focus) {
-    background: var(--color-primary-fill-hover);
-  }
+pre code {
+  display: block;
+  padding: var(--space-3);
+  overflow-x: auto;
 }
 
 img {
@@ -200,104 +370,252 @@ img {
   display: block;
 }
 
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  display: inline-block;
-  margin-bottom: 2rem;
-  padding: 24px;
-  width: 100%;
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: var(--space-6) 0;
+}
 
-  /* The trailing margin of the last block would otherwise stack on top of the
-     card's own padding and leave the bottom looking deeper than the top. */
-  > *:last-child {
-    margin-bottom: 0;
+/* ---- Buttons ------------------------------------------------------------
+
+   One box, explicit variants. The base is on the bare `button` element as
+   well as `.btn`, so an unclassed button is already correct and a page never
+   has to reach for a class to get the default treatment. A button that
+   navigates is an <a class="btn">, never a styled div. */
+
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-danger,
+.btn-danger-solid {
+  align-items: center;
+  appearance: none;
+  background: var(--surface);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  gap: var(--space-2);
+  height: var(--control-height);
+  justify-content: center;
+  line-height: 1;
+  padding: 0 var(--space-3);
+  text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+
+  /* :hover matches a disabled button — the engine doesn't consult the
+     attribute for it — so the shared :disabled fade can't be what keeps a
+     frozen control at its resting fill: the state has to exclude :disabled
+     itself. :where() keeps that exclusion at zero specificity, so this stays
+     a (0,0,1) element default that any page rule still out-specifies. */
+  &:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus) {
+    background: var(--surface-hover);
+    border-color: var(--border-strong);
+    color: var(--text);
+    text-decoration: none;
   }
+
+  &:where(:not(:disabled, [aria-disabled="true"])):active {
+    background: var(--surface-selected);
+  }
+}
+
+.btn-primary {
+  background: var(--button-primary-bg);
+  border-color: var(--button-primary-bg);
+  color: var(--button-primary-fg);
+
+  &:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus) {
+    background: var(--button-primary-bg-hover);
+    border-color: var(--button-primary-bg-hover);
+    color: var(--button-primary-fg);
+  }
+}
+
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
 }
 
 .btn-ghost {
   background: transparent;
-  border: var(--control-border-width) solid var(--color-border);
-  color: var(--color-text-secondary);
+  border-color: transparent;
+  color: var(--text-secondary);
 
-  /* Scoped the same way as the filled button: a disabled ghost button keeps
-     its transparent fill under the pointer, and :where() keeps this state at
-     the class's own specificity. */
-  &:where(:not(:disabled)):is(:hover, :focus) {
-    background: var(--color-surface);
-    color: var(--color-text);
+  &:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus) {
+    background: var(--surface-hover);
+    border-color: transparent;
+    color: var(--text);
   }
 }
 
-/* The border is what keeps a link and a <button> the same height: the button
-   element draws it transparent, so a .btn-danger anchor has to draw the same
-   one rather than sit two pixels short. .btn-ghost carries its own. */
+/* The default destructive look: an outline, not a filled red block. A confirm
+   step that is already destructive uses .btn-danger-solid. */
 .btn-danger {
-  background: transparent;
-  border: var(--control-border-width) solid transparent;
-  color: var(--color-danger);
+  background: var(--surface);
+  border-color: var(--danger-border);
+  color: var(--danger);
 
-  /* Scoped the same way as .btn-ghost: a disabled danger button keeps its
-     transparent fill under the pointer. */
-  &:where(:not(:disabled)):is(:hover, :focus) {
-    background: rgba(248, 113, 113, 0.1);
+  &:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus) {
+    background: var(--danger-soft);
+    border-color: var(--danger);
     /* The global a:hover/a:focus colour is more specific than a lone
-       .btn-danger rule, so a danger link turned indigo on hover unless the
+       .btn-danger rule, so a danger link took the accent on hover unless the
        state re-states the colour here. */
-    color: var(--color-danger);
+    color: var(--danger);
   }
 }
 
-/* A link styled as a button (Cancel, Remove) gets the same box as a
-   <button>, so it lines up with the Save or submit beside it — the /team
-   Remove link beside the Pending-invitations Revoke button, for instance.
-   nav.css gives the Account link its own borderless box rather than this one.
-   .btn-danger is here for forks: without it a link with that class is a bare
-   word with no box. */
-a.btn-ghost,
-a.btn-danger {
-  display: inline-block;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: var(--control-line-height);
-  padding: var(--control-padding-y) 16px;
-  border-radius: var(--control-radius);
+.btn-danger-solid {
+  background: var(--button-danger-bg);
+  border-color: var(--button-danger-bg);
+  color: #ffffff;
 
+  &:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus) {
+    background: var(--button-danger-bg-hover);
+    border-color: var(--button-danger-bg-hover);
+    color: #ffffff;
+  }
+}
+
+.btn-sm {
+  font-size: 12.5px;
+  height: 28px;
+  padding: 0 var(--space-2);
+}
+
+.btn-lg {
+  font-size: 14px;
+  height: 40px;
+  padding: 0 var(--space-4);
+}
+
+.btn-icon {
+  height: var(--control-height);
+  padding: 0;
+  width: var(--control-height);
+}
+
+.btn-group {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* A link styled as a button already has the box: the base selector above
+   names every variant class, not just `.btn`, because the templates write
+   `class="btn-ghost"` on its own. All an anchor needs here is the underline
+   killed in the states where `a` would otherwise add one. */
+a.btn,
+a.btn-primary,
+a.btn-secondary,
+a.btn-ghost,
+a.btn-danger,
+a.btn-danger-solid {
   &:hover,
   &:focus {
     text-decoration: none;
   }
 }
 
+/* ---- Form controls ------------------------------------------------------ */
+
 input,
 textarea,
 select {
-  background-color: var(--color-surface);
-  border: var(--control-border-width) solid var(--color-border-strong);
+  background-color: var(--input-bg);
+  border: var(--control-border-width) solid var(--border-control);
   border-radius: var(--control-radius);
-  color: var(--color-text);
+  color: var(--text);
   font-family: inherit;
-  /* 16px keeps iOS Safari from zooming the viewport on focus. */
+  /* 16px keeps iOS Safari from zooming the viewport on focus; the design
+     system's 13.5px takes over once there is no touch keyboard to trigger it. */
   font-size: 16px;
   line-height: var(--control-line-height);
+  min-height: var(--control-height);
   padding: var(--control-padding-y) var(--control-padding-x);
-  transition: border-color 150ms ease;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
 
   &::placeholder {
-    /* 4.23:1 on --color-surface was under the 4.5:1 AA floor for text. */
-    color: var(--color-text-tertiary);
+    color: var(--input-placeholder);
+    opacity: 1;
   }
 
-  &:focus-visible {
-    border-color: var(--color-primary);
+  &:where(:not(:disabled)):hover {
+    border-color: var(--text-muted);
   }
+
+  /* A ring rather than an outline: an outline at this width shifts the row it
+     sits in, and the border alone is too quiet to read as focus. */
+  &:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    outline: none;
+  }
+
+  &[aria-invalid="true"] {
+    border-color: var(--danger);
+  }
+}
+
+@media (width >= 641px) {
+  input,
+  textarea,
+  select {
+    font-size: 13.5px;
+  }
+}
+
+textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  width: 16px;
+}
+
+input[type="file"]::file-selector-button {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  margin-right: var(--space-2);
+  padding: 3px 8px;
 }
 
 /* Disabled controls looked enabled: a disabled input keeps its box and a
    restyled control keeps its fill in Chromium and WebKit alike, so fade the
-   whole thing and say it with the cursor. */
-:is(input, select, textarea, button):disabled {
+   whole thing and say it with the cursor.
+
+   The fade is the *only* mute. Re-colouring the text to --text-disabled as
+   well faded it twice — about 1.9:1 against a disabled input's 6:1 — so a
+   frozen control became unreadable rather than merely inactive. One treatment,
+   applied once; `scripts/browser-smoke.test.ts` pins both halves. */
+:is(input, select, textarea, button):disabled,
+:is(input, select, textarea, button)[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -305,9 +623,9 @@ select {
 /* The one select style. Native selects size and pad differently in every
    engine (Safari ignores padding outright) and their chevron sits at the far
    edge of whatever width the select is given, so drop the native look and draw
-   the chevron at a fixed inset inside reserved padding. The chevron's stroke is
-   --color-text-secondary; a data URI can't read a custom property, so change
-   both together. Don't restyle select per page: adjust the tokens or this rule.
+   the chevron at a fixed inset inside reserved padding. The chevron itself is
+   --select-chevron, a per-theme token, because a data URI cannot read a custom
+   property. Don't restyle select per page: adjust the tokens or this rule.
 
    flex: 0 1 auto keeps a select at its content width in a flex row (a role
    picker beside its Save button) instead of stretching and stranding the
@@ -318,7 +636,7 @@ select {
   --select-chevron-size: 12px;
 
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23b4b5b9' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+  background-image: var(--select-chevron);
   background-position: right var(--select-chevron-inset) center;
   background-repeat: no-repeat;
   background-size: var(--select-chevron-size);
@@ -356,8 +674,7 @@ select {
 
   /* No :disabled rule of its own. The shared `:disabled` rule above fades the
      whole control — the value, the box and the drawn chevron alike — so a
-     frozen select reads as one. Muting the value here as well faded it twice,
-     to about 1.9:1 effective, while a disabled input sits near 6:1. */
+     frozen select reads as one. */
 
   /* A list box is a list, not a dropdown: no chevron, no space reserved for
      one, its own rows for a height, and the cursor a list is read with.
@@ -391,21 +708,108 @@ select {
   }
 }
 
+/* ---- Fields ------------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+fieldset.field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.field > label,
+.field-label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field-hint,
+.field-help {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* A choice row is one flex line, so the control centres on its text and the
+   row shares the card's left edge rather than being indented by the control's
+   own margin. */
+label:has(> input[type="radio"]),
+label:has(> input[type="checkbox"]) {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+}
+
+label > input[type="radio"],
+label > input[type="checkbox"] {
+  margin: 0;
+}
+
+.choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ---- Cards and panels --------------------------------------------------- */
+
+.card,
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+
+  /* The trailing margin of the last block would otherwise stack on top of the
+     card's own padding and leave the bottom looking deeper than the top. */
+  > *:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.card {
+  margin-bottom: var(--space-6);
+  width: 100%;
+}
+
+.panel-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+
+  h2,
+  h3 {
+    margin: 0;
+  }
+}
+
+/* ---- Text helpers ------------------------------------------------------- */
+
 .text-secondary {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
-.text-tertiary {
-  color: var(--color-text-tertiary);
-}
-
+.text-tertiary,
 .text-quaternary {
-  color: var(--color-text-quaternary);
+  color: var(--text-muted);
 }
 
 .lead {
-  font-size: 1.125rem;
+  font-size: 15px;
   font-weight: 400;
-  color: var(--color-text-tertiary);
-  line-height: 1.7;
+  color: var(--text-secondary);
+  line-height: 1.65;
 }

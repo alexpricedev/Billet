@@ -2,6 +2,7 @@ import { CsrfField } from "@server/components/csrf-field";
 import { Flash } from "@server/components/flash";
 import { FormField } from "@server/components/form-field";
 import { Layout } from "@server/components/layouts";
+import { PageHeader } from "@server/components/page-header";
 import type { User } from "@server/services/users";
 
 export interface FormsState {
@@ -42,11 +43,10 @@ export const Forms = ({
       user={user}
       csrfToken={csrfToken}
     >
-      <h1>Form Patterns</h1>
-      <p className="lead">
-        Interactive forms with validation, CSRF protection, and flash messages
-        baked in.
-      </p>
+      <PageHeader
+        title="Form Patterns"
+        description="Interactive forms with validation, CSRF protection, and flash messages baked in."
+      />
 
       {state?.state === "submission-success" && (
         <Flash type="success">
@@ -107,7 +107,9 @@ export const Forms = ({
                 defaultValue={restored.message}
               />
             </FormField>
-            <button type="submit">Submit</button>
+            <button type="submit" className="btn-primary">
+              Submit
+            </button>
           </form>
         </section>
 

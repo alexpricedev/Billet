@@ -90,7 +90,7 @@ export const AuthConfirm = ({
           <input type="hidden" name="token" value={token} />
           {next && <input type="hidden" name="next" value={next} />}
 
-          <button type="submit" className="login-submit">
+          <button type="submit" className="login-submit btn-primary">
             {copy.submit}
           </button>
         </form>

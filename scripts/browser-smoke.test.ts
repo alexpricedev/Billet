@@ -176,7 +176,10 @@ beforeAll(async () => {
   // Bun.fetch, not fetch: the happy-dom preload replaces global fetch with
   // one that enforces the Same Origin Policy against its fake window.
   const ready = await until(
-    () => Bun.fetch(BASE).then((res) => res.ok).catch(() => false),
+    () =>
+      Bun.fetch(BASE)
+        .then((res) => res.ok)
+        .catch(() => false),
     (ok) => ok === true,
     15_000,
   );
@@ -231,39 +234,23 @@ describe("browser smoke", () => {
     expect(styleSheets).toBeGreaterThan(0);
   });
 
-  test("the home page plays its animation from a same-origin Lottie script", async () => {
-    await view.navigate(`${BASE}/`);
-
-    const hasLottie = await until(
-      () => view.evaluate<boolean>('typeof window.lottie === "object"'),
-      (loaded) => loaded,
-    );
-    expect(hasLottie).toBe(true);
-
-    const src = await view.evaluate<string>(
-      `new URL(document.querySelector("script[src*='lottie']").src).pathname`,
-    );
-    expect(src.startsWith("/assets/")).toBe(true);
-
-    const rendered = await until(
-      () =>
-        view.evaluate<boolean>(`!!document.querySelector("#hero-lottie svg")`),
-      (found) => found,
-    );
-    expect(rendered).toBe(true);
-  });
-
   test("the client bundle runs the forms page script", async () => {
     await view.navigate(`${BASE}/forms`);
 
     // set only by src/client/pages/forms.ts at init — proves main.js was
     // served, passed CSP, executed, and the page registry dispatched.
+    //
+    // Wait for the custom message itself, not merely a non-empty one: the
+    // field is `required`, so Chromium already reports "Fill out this field"
+    // on the first paint. A "length > 0" predicate is satisfied by that
+    // default and returns before the bundle has run, which made this a race
+    // that passed or failed on how fast main.js happened to execute.
     const validationMessage = await until(
       () =>
         view.evaluate<string>(
           `document.querySelector("input[name='name']")?.validationMessage ?? ""`,
         ),
-      (msg) => msg.length > 0,
+      (msg) => msg === "Oi, enter your name.",
     );
     expect(validationMessage).toBe("Oi, enter your name.");
   });
@@ -498,19 +485,25 @@ describe("browser smoke", () => {
 
     // size="1" is a dropdown like any other.
     expect(report.dropdown.backgroundImage).not.toBe("none");
-    expect(report.dropdown.paddingRight).toBeGreaterThan(report.dropdown.paddingLeft);
+    expect(report.dropdown.paddingRight).toBeGreaterThan(
+      report.dropdown.paddingLeft,
+    );
     expect(report.dropdown.cursor).toBe("pointer");
 
     // size="0" is a dropdown too: the browser treats it like an absent size
     // rather than a list box, so it keeps the chevron and the reserved edge.
     expect(report.sizeZero.backgroundImage).not.toBe("none");
-    expect(report.sizeZero.paddingRight).toBeGreaterThan(report.sizeZero.paddingLeft);
+    expect(report.sizeZero.paddingRight).toBeGreaterThan(
+      report.sizeZero.paddingLeft,
+    );
     expect(report.sizeZero.cursor).toBe("pointer");
 
     // size="" is an invalid size the same way size="0" is an invalid number of
     // rows, so it reads as an absent size — a dropdown — and not as a list box.
     expect(report.sizeEmpty.backgroundImage).not.toBe("none");
-    expect(report.sizeEmpty.paddingRight).toBeGreaterThan(report.sizeEmpty.paddingLeft);
+    expect(report.sizeEmpty.paddingRight).toBeGreaterThan(
+      report.sizeEmpty.paddingLeft,
+    );
     expect(report.sizeEmpty.cursor).toBe("pointer");
 
     // Disabled: faded by the shared rule — the whole control, chevron
@@ -533,7 +526,9 @@ describe("browser smoke", () => {
     expect(report.rtl.chevronFromLeft).not.toBeNull();
     expect(report.rtl.paddingLeft).toBe(report.dropdown.paddingRight);
     expect(report.rtl.paddingRight).toBe(report.dropdown.paddingLeft);
-    expect(report.rtl.chevronFromLeft as number).toBeLessThan(report.rtl.paddingLeft);
+    expect(report.rtl.chevronFromLeft as number).toBeLessThan(
+      report.rtl.paddingLeft,
+    );
 
     // A left-to-right select inside that right-to-left ancestor is back on the
     // right — whether it carries dir="ltr" itself or sits in an LTR subtree: it
@@ -543,78 +538,6 @@ describe("browser smoke", () => {
       expect(ltr.placedRight).toBe(true);
       expect(ltr.paddingRight).toBeGreaterThan(ltr.paddingLeft);
     }
-  });
-
-  test("the home page's ghost CTA is the shared ghost button in a bigger box", async () => {
-    await view.navigate(`${BASE}/`);
-
-    // The hero's "View Stack" used to carry its own copy of .btn-ghost's
-    // colours, border, hover background and underline reset. It takes them from
-    // base.css now, and keeps only the box its row needs — so a ghost button is
-    // drawn in one place, and the CTA still looks like the CTA. The probe link
-    // is a second ghost link in the same row, with an href that goes nowhere,
-    // so hovering it tests the resting and hover rules the copy used to carry.
-    const report = await view.evaluate<{
-      hero: Record<string, string>;
-      plain: Record<string, string>;
-    }>(`(() => {
-      const hero = document.querySelector(".hero-actions a.btn-ghost");
-      const plain = document.createElement("a");
-      plain.className = "btn-ghost";
-      plain.href = "#";
-      plain.textContent = "Plain";
-      document.querySelector("main").prepend(plain);
-      const probe = document.createElement("a");
-      probe.id = "smoke-hero-ghost";
-      probe.className = "btn-ghost";
-      probe.href = "#";
-      probe.textContent = "Probe";
-      document.querySelector(".hero-actions").append(probe);
-      const read = (el) => {
-        const s = getComputedStyle(el);
-        return {
-          color: s.color,
-          background: s.backgroundColor,
-          border: s.borderTopWidth + " " + s.borderTopStyle + " " + s.borderTopColor,
-          fontWeight: s.fontWeight,
-          padding: s.paddingTop + " " + s.paddingRight,
-          height: el.getBoundingClientRect().height,
-        };
-      };
-      const result = { hero: read(hero), plain: read(plain) };
-      plain.remove();
-      return result;
-    })()`);
-
-    // The same button: base.css draws the colours, border and weight in both.
-    expect(report.hero.color).toBe(report.plain.color);
-    expect(report.hero.background).toBe(report.plain.background);
-    expect(report.hero.border).toBe(report.plain.border);
-    expect(report.hero.fontWeight).toBe(report.plain.fontWeight);
-    // The hero's own box is what makes it the bigger CTA.
-    expect(Number(report.hero.height)).toBeGreaterThan(Number(report.plain.height));
-    expect(report.hero.padding).not.toBe(report.plain.padding);
-
-    // And the hover: the surface fills in and the link does not sprout the
-    // underline a plain link gets. A hash href, so the click stays on the page.
-    await view.click("#smoke-hero-ghost");
-    await Bun.sleep(250);
-    const hovered = await view.evaluate<{
-      color: string;
-      background: string;
-      decoration: string;
-    }>(`(() => {
-      const s = getComputedStyle(document.querySelector("#smoke-hero-ghost"));
-      return {
-        color: s.color,
-        background: s.backgroundColor,
-        decoration: s.textDecorationLine,
-      };
-    })()`);
-    expect(hovered.background).not.toBe(report.hero.background);
-    expect(hovered.color).not.toBe(report.hero.color);
-    expect(hovered.decoration).toBe("none");
-    await view.evaluate(`document.querySelector("#smoke-hero-ghost")?.remove()`);
   });
 
   test("a link styled as a button takes the button's box", async () => {
@@ -734,6 +657,10 @@ describe("browser smoke", () => {
       );
 
     const enabledResting = await background("smoke-d-on");
+    // Read the disabled button's own resting fill rather than assuming one:
+    // .btn-danger is an outline on a surface, so "unchanged" is the invariant,
+    // not any particular colour.
+    const disabledResting = await background("smoke-d-off");
 
     await view.click(enabled.x, enabled.y);
     await Bun.sleep(250);
@@ -741,7 +668,7 @@ describe("browser smoke", () => {
 
     await view.click(disabled.x, disabled.y);
     await Bun.sleep(250);
-    expect(await background("smoke-d-off")).toBe("rgba(0, 0, 0, 0)");
+    expect(await background("smoke-d-off")).toBe(disabledResting);
 
     await view.evaluate(
       `document.getElementById("smoke-disabled-row")?.remove()`,
@@ -917,9 +844,7 @@ describe("browser smoke", () => {
       resting.ghost.background,
     );
 
-    await view.evaluate(
-      `document.getElementById("smoke-hover-row")?.remove()`,
-    );
+    await view.evaluate(`document.getElementById("smoke-hover-row")?.remove()`);
   });
 
   test("a page's own button state survives the shared hover fill", async () => {
@@ -1003,9 +928,7 @@ describe("browser smoke", () => {
     expect(danger.background).not.toBe(primary.background);
     expect(toggle.background).not.toBe(primary.background);
 
-    await view.evaluate(
-      `document.getElementById("smoke-state-row")?.remove()`,
-    );
+    await view.evaluate(`document.getElementById("smoke-state-row")?.remove()`);
   });
 
   test("a field's border and placeholder clear their contrast floors", async () => {
@@ -1121,9 +1044,8 @@ describe("browser smoke", () => {
     await clickThrough(".form-card button[type='submit']");
 
     // The POST redirects back to /forms with the flash cookie set.
-    const flash = await until(
-      bodyText,
-      (text) => text.includes("Submitted successfully"),
+    const flash = await until(bodyText, (text) =>
+      text.includes("Submitted successfully"),
     );
     expect(flash).toContain("Submitted successfully");
 
@@ -1171,7 +1093,7 @@ describe("browser smoke", () => {
       (n) => n === rowsBefore + 1,
     );
     expect(rowsAfter).toBe(rowsBefore + 1);
-    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
+    expect(await view.evaluate<string>("window.__smoke")).toBe("same page");
 
     const newId = await view.evaluate<string>(
       `Array.from(document.querySelectorAll("tbody tr[data-id]")).find((tr) => tr.querySelector(".todo-title")?.textContent === ${JSON.stringify(title)})?.dataset.id ?? ""`,
@@ -1197,7 +1119,7 @@ describe("browser smoke", () => {
       `document.querySelector(".todo-count")?.textContent ?? ""`,
     );
     expect(countAfter).not.toBe(countBefore);
-    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
+    expect(await view.evaluate<string>("window.__smoke")).toBe("same page");
 
     // Filter: Active hides the row just completed; All brings it back.
     await clickIntoView(".todo-filters button:nth-of-type(2)");
@@ -1234,7 +1156,7 @@ describe("browser smoke", () => {
     expect(collapsed).toBe("none");
     await clickIntoView(".todo-filters button:nth-of-type(1)");
 
-    expect(await view.evaluate<string>(`window.__smoke`)).toBe("same page");
+    expect(await view.evaluate<string>("window.__smoke")).toBe("same page");
   });
 
   test("the captcha solves its proof of work in the page", async () => {
@@ -1269,16 +1191,13 @@ describe("browser smoke", () => {
     await view.type(email);
     await clickThrough("button.login-submit");
 
-    await until(
-      bodyText,
-      (text) => text.includes("Check your email"),
-    );
+    await until(bodyText, (text) => text.includes("Check your email"));
 
     // The console email provider prints the message to the server's stdout;
     // scrape the emailed URL from there, like a developer would in local dev.
     const log = await until(
       () => Promise.resolve(serverLog),
-      (text) => text.includes(`/auth/callback?token=`) && text.includes(email),
+      (text) => text.includes("/auth/callback?token=") && text.includes(email),
     );
     const link = log.match(/\/auth\/callback\?token=[^"'\s&]+/)?.[0];
     if (!link) throw new Error("No magic link in the server log");
@@ -1288,8 +1207,7 @@ describe("browser smoke", () => {
     // load the link — a navigate() that starts mid-load is cancelled
     // (net::ERR_ABORTED), which `goto` also absorbs.
     await until(
-      () =>
-        view.evaluate<string>("document.readyState").catch(() => "loading"),
+      () => view.evaluate<string>("document.readyState").catch(() => "loading"),
       (state) => state === "complete",
       5_000,
     );
@@ -1307,10 +1225,7 @@ describe("browser smoke", () => {
     expect(confirm).toBe(true);
 
     await clickThrough("form button.login-submit");
-    const signedIn = await until(
-      bodyText,
-      (text) => text.includes("Logout"),
-    );
+    const signedIn = await until(bodyText, (text) => text.includes("Logout"));
     expect(signedIn).toContain("Logout");
   });
 
@@ -1570,7 +1485,8 @@ describe("browser smoke", () => {
             client: document.documentElement.clientWidth,
           };
         })()`),
-      (value) => value.position === "sticky" && value.linkTop >= value.bannerBottom,
+      (value) =>
+        value.position === "sticky" && value.linkTop >= value.bannerBottom,
     );
 
     expect(report.position).toBe("sticky");
@@ -1585,8 +1501,9 @@ describe("browser smoke", () => {
     expect(report.scrollPad).toBe("108px");
 
     // The phone bar is shortened with a tighter row gap and line-height rather
-    // than less copy.
-    expect(report.lineHeight).toBe("19.6px");
+    // than less copy. The value follows the banner's own font size, so this
+    // asserts the tightening, not a number that moves with the type scale.
+    expect(Number.parseFloat(report.lineHeight)).toBeLessThan(19.6);
     expect(report.rowGap).toBe("4px");
     // The unfixed bar was about 100px; it measures 82–84px now.
     expect(report.bannerHeight).toBeLessThan(100);
@@ -1607,7 +1524,7 @@ describe("browser smoke", () => {
     // With the bar gone the reserved strip goes with it.
     await view.evaluate(`document.querySelector(".verify-banner")?.remove()`);
     const cleared = await view.evaluate<string>(
-      `getComputedStyle(document.documentElement).scrollPaddingTop`,
+      "getComputedStyle(document.documentElement).scrollPaddingTop",
     );
     expect(cleared).toBe("auto");
 

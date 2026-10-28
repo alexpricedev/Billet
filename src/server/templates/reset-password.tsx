@@ -79,7 +79,7 @@ export const ResetPassword = ({
 
         <CaptchaWidget challenge={challenge} />
 
-        <button type="submit" className="login-submit">
+        <button type="submit" className="login-submit btn-primary">
           Set new password
         </button>
       </form>

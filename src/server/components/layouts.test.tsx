@@ -9,8 +9,17 @@ describe("Layout", () => {
     </Layout>,
   );
 
-  test("loads Lottie from its own /assets, async with no cross-origin script", () => {
-    expect(html).toMatch(/<script async[^>]*src="\/assets\/lottie\.js"/);
+  // Every script the layout loads is same-origin, which is what lets the CSP
+  // keep its script allowlist to 'self'. The marketing page's Lottie player
+  // was the only third-party-shaped script and it left with the sales site.
+  test("loads no cross-origin script", () => {
     expect(html).not.toMatch(/<script[^>]*src="https?:/);
+    expect(html).toMatch(/<script type="module" src="\/assets\/main\.js"/);
+  });
+
+  test("follows the OS colour scheme rather than pinning dark", () => {
+    expect(html).toContain("color-scheme:light dark");
+    expect(html).toContain('content="light dark"');
+    expect(html).toMatch(/media="\(prefers-color-scheme: dark\)"/);
   });
 });

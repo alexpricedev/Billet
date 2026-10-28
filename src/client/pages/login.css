@@ -1,77 +1,84 @@
+/* The signed-out auth pages have no nav and no chrome (BaseLayout): one
+   centred card on the canvas, so the form is the only thing on screen. */
+
 .login-page {
-  min-height: 100vh;
-  background: var(--color-bg);
+  align-items: center;
+  background: var(--canvas);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
-  padding: 48px 16px;
+  min-height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: dvh override is a
+     deliberate progressive-enhancement fallback over the vh baseline. */
+  min-height: 100dvh;
+  padding: var(--space-8) var(--space-4);
 }
 
 .login-wrapper {
   width: 100%;
-  max-width: 440px;
+  max-width: 400px;
 }
 
 .login-header {
+  margin-bottom: var(--space-6);
   text-align: center;
-  margin-bottom: 32px;
 
   a {
+    color: var(--text);
     display: inline-flex;
-    color: var(--color-text);
   }
 }
 
+/* The one place --radius-lg is used on a card: this is the only surface on
+   the page, so it carries a little more shape than a panel in a list. */
 .login-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
 }
 
 .login-title {
-  font-size: 1.25rem;
+  color: var(--text);
+  font-size: 18px;
   font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-1);
   text-align: center;
 }
 
 .login-subtitle {
-  font-size: 14px;
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: var(--space-5);
   text-align: center;
-  margin-bottom: 24px;
 }
 
 .login-card .flash-success p:first-child {
+  color: var(--text);
   font-weight: 500;
-  color: var(--color-text);
   margin: 0;
 }
 
 .login-card .flash-success p:nth-child(2) {
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  margin-top: 4px;
-  margin-bottom: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: var(--space-1) 0 0;
 }
 
 .login-card .flash-success p:last-child {
-  color: var(--color-text-quaternary);
+  color: var(--text-muted);
   font-size: 12px;
-  margin-top: 8px;
-  margin-bottom: 0;
+  margin: var(--space-2) 0 0;
 }
 
 .login-card .flash-error span {
-  font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .login-card .form-field {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .login-submit {
@@ -82,19 +89,19 @@
    the submit button rather than in the footer, where it would compete with the
    sign-in/sign-up cross-link. */
 .login-aside {
+  font-size: 13px;
+  margin: var(--space-4) 0 0;
   text-align: center;
-  font-size: 14px;
-  margin: 16px 0 0 0;
 }
 
 .login-footer {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: var(--space-6);
   text-align: center;
-  margin-top: 24px;
-  color: var(--color-text-tertiary);
-  font-size: 14px;
 
   a {
-    font-size: 14px;
-    color: var(--color-text-tertiary);
+    color: var(--text-secondary);
+    font-size: 13px;
   }
 }

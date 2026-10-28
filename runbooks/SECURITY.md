@@ -171,19 +171,14 @@ attacker-initiated posts. The header names live in `src/shared/protocol.ts`.
 
 ## 4. Third-party scripts
 
-Billet loads no third-party script. The homepage's Lottie player is the
-`lottie-web` package, pinned exactly in `package.json`; `bun run build:vendor`
-copies `lottie_light.min.js` byte-for-byte to `dist/assets/lottie.js`, which is
-fingerprinted and served from `/assets` like the other bundles, as a separate
-`async` script in [`layouts.tsx`](../src/server/components/layouts.tsx). No SRI
-hash applies to a same-origin file, and nothing needs recomputing on upgrade.
+Billet loads no third-party script, and vendors none either. The one that used
+to be here — the `lottie-web` player behind the marketing hero — left with the
+sales site, so `script-src 'self'` now covers a bundle set that is entirely
+first-party: `main.js`, `captcha.js` and `main.css`.
 
-**Upgrading Lottie.** Bump the package, then rebuild:
-
-```bash
-bun add lottie-web@<NEW> --exact
-bun run build
-```
+If you vendor a package the way that one was vendored (copy it into
+`dist/assets` at build time and serve it same-origin), pin it exactly in
+`package.json` and note that no SRI hash applies to a same-origin file.
 
 **If you add a CDN script.** Add its origin to `script-src` (§3), pin an exact
 version (never a floating range like `@5`), and add an `integrity` hash plus

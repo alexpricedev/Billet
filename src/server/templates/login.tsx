@@ -157,7 +157,7 @@ export const Login = ({
 
           <CaptchaWidget challenge={challenge} />
 
-          <button type="submit" className="login-submit">
+          <button type="submit" className="login-submit btn-primary">
             {password ? "Sign in" : "Send magic link"}
           </button>
 

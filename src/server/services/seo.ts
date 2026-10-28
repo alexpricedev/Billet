@@ -44,7 +44,7 @@ export const indexingAllowed = (): boolean =>
 
 export const SITE_NAME = "Billet";
 export const SITE_DESCRIPTION =
-  "Guardrails for your AI coding agents — a full-stack TypeScript starter on Bun";
+  "A server-rendered full-stack TypeScript starter on Bun and PostgreSQL";
 
 // Public, indexable routes included in the sitemap. Private or noindex routes
 // (/login, /admin), API endpoints, and auth callbacks are intentionally omitted.
