@@ -96,7 +96,13 @@ export function getAssetUrl(path: string): string {
   return path.substring(0, lastIndex) + hashedFilename;
 }
 
-const HASHED_ASSET_PATTERN = /^\/assets\/(\w+)\.([a-f0-9]{8})\.(js|css)$/;
+// `[\w-]`, not `\w`: a bundle name may carry a hyphen, and `\w` is
+// `[A-Za-z0-9_]`, which doesn't match one. None of Billet's own bundles have a
+// hyphen, so this was invisible here — but a fork that adds an entry point
+// named like `cms-form.ts` gets a fingerprinted URL this never matched, so the
+// handler returned null and the request fell through to a 404. In production
+// only, because that is the only place the names are hashed at all.
+const HASHED_ASSET_PATTERN = /^\/assets\/([\w-]+)\.([a-f0-9]{8})\.(js|css)$/;
 
 export function handleAssetRequest(url: URL): Response | null {
   if (Bun.env.NODE_ENV !== "production") {

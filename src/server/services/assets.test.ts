@@ -127,6 +127,22 @@ describe("assets (production)", () => {
     );
   });
 
+  // A fork's bundle may be named with a hyphen (billet-cms ships `cms-form.js`),
+  // and the pattern used `\w`, which doesn't match one — so the fingerprinted
+  // URL fell through to a 404 and took that whole page's script with it.
+  //
+  // Billet has no hyphenated bundle to serve, so the assertion is about routing
+  // rather than bytes: a hyphenated name must be *recognised* and answered —
+  // here a 404 for an unknown hash — rather than falling through as `null`,
+  // which is what the old pattern did and what this would catch.
+  test("handleAssetRequest recognises a bundle name containing a hyphen", () => {
+    const url = new URL("http://localhost/assets/cms-form.00000000.js");
+    const response = handleAssetRequest(url);
+
+    expect(response).not.toBeNull();
+    expect(response?.status).toBe(404);
+  });
+
   test("handleAssetRequest returns null for non-matching path", () => {
     const url = new URL("http://localhost/other/path");
     expect(handleAssetRequest(url)).toBeNull();
