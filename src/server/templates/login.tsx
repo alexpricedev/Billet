@@ -4,6 +4,7 @@ import { CsrfField } from "../components/csrf-field";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
+import { toneForMessage } from "../components/tone";
 import type { AuthMode } from "../services/auth-mode";
 import type { CaptchaChallenge } from "../services/captcha";
 import type { FlashMessage } from "../utils/flash";
@@ -83,7 +84,9 @@ export const Login = ({
           in — accepting an invitation on an account that already has a
           password. Rendered above the form, since it explains why they're
           looking at it. */}
-      {message && <Flash tone={message.type} title={message.text} />}
+      {message && (
+        <Flash tone={toneForMessage(message.type)} title={message.text} />
+      )}
 
       {state?.state === "email-sent" ? (
         <Flash
@@ -103,7 +106,7 @@ export const Login = ({
             state?.state === "no-password") &&
             state.error && (
               <Flash
-                tone="error"
+                tone="danger"
                 title={state.error}
                 // The message alone is a dead end — nothing on this page tells
                 // someone that the reset flow is also how you set a first

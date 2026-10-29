@@ -1,6 +1,5 @@
 import type { ComponentChildren } from "preact";
-
-export type FlashTone = "success" | "info" | "warning" | "error";
+import type { BannerTone } from "./tone";
 
 /** A link under the banner's text, e.g. "Reset your password". */
 export interface FlashAction {
@@ -21,7 +20,7 @@ export interface FlashField {
 }
 
 interface FlashProps {
-  tone: FlashTone;
+  tone: BannerTone;
   title?: ComponentChildren;
   detail?: ComponentChildren;
   actions?: readonly FlashAction[];
@@ -36,7 +35,7 @@ interface FlashProps {
 // One 20px line icon per tone. The tone is carried by the shape as well as the
 // colour, so the four states stay distinguishable without relying on colour —
 // which is the design system's rule for every status in the app.
-const iconFor = (tone: FlashTone) => {
+const iconFor = (tone: BannerTone) => {
   switch (tone) {
     case "success":
       return (
@@ -61,7 +60,7 @@ const iconFor = (tone: FlashTone) => {
           <circle cx="10" cy="14" r="0.9" fill="currentColor" stroke="none" />
         </>
       );
-    case "error":
+    case "danger":
       return (
         <>
           <circle cx="10" cy="10" r="8" />
@@ -72,7 +71,7 @@ const iconFor = (tone: FlashTone) => {
   }
 };
 
-const Icon = ({ tone }: { tone: FlashTone }) => (
+const Icon = ({ tone }: { tone: BannerTone }) => (
   <svg
     className="flash-icon"
     viewBox="0 0 20 20"
@@ -92,8 +91,8 @@ const Icon = ({ tone }: { tone: FlashTone }) => (
 // Informational and advisory messages are announced politely; only an error
 // interrupts, because only an error stops what the reader was doing from
 // having worked. Both are announced when injected after a post-redirect-get.
-const roleFor = (tone: FlashTone): "status" | "alert" =>
-  tone === "error" ? "alert" : "status";
+const roleFor = (tone: BannerTone): "status" | "alert" =>
+  tone === "danger" ? "alert" : "status";
 
 /**
  * A banner at the top of a page: one message, optionally with a detail line,

@@ -88,7 +88,7 @@ export const Todos = (props: TodosProps): JSX.Element => {
       )}
 
       {props.state?.state === "validation-error" && (
-        <Flash tone="error" title="A todo must be at least 2 characters." />
+        <Flash tone="danger" title="A todo must be at least 2 characters." />
       )}
 
       <div {...list.root}>

@@ -70,7 +70,7 @@ export const Forms = ({
       )}
 
       {state?.state === "validation-error" && (
-        <Flash tone="error" title="Name must be at least 3 characters." />
+        <Flash tone="danger" title="Name must be at least 3 characters." />
       )}
 
       <div className="forms-layout">

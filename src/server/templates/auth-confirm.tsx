@@ -77,7 +77,7 @@ export const AuthConfirm = ({
     >
       {needsCsrf && !csrfToken ? (
         <Flash
-          tone="error"
+          tone="danger"
           title="We couldn't start a session in your browser. Check that cookies are enabled and open the link again."
         />
       ) : (

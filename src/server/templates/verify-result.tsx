@@ -42,7 +42,7 @@ export const VerifyResult = ({ status }: VerifyResultProps) => (
       />
     ) : (
       <Flash
-        tone="error"
+        tone="danger"
         title="This confirmation link is invalid, already used, or expired. Sign in and send yourself a new one from your account page."
       />
     )}

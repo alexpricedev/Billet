@@ -97,7 +97,7 @@ export const Account = ({
     )}
 
     {(state?.state === "verify-failed" || state?.state === "password-error") &&
-      state.error && <Flash tone="error" title={state.error} />}
+      state.error && <Flash tone="danger" title={state.error} />}
 
     <section className="account-section card">
       <h2>Email address</h2>

@@ -60,7 +60,7 @@ export const ForgotPassword = ({
       <form method="POST" action="/forgot-password">
         <CsrfField token={csrfToken} />
         {state?.state === "validation-error" && state.error && (
-          <Flash tone="error" title={state.error} />
+          <Flash tone="danger" title={state.error} />
         )}
 
         <FormField label="Email address" id="email">

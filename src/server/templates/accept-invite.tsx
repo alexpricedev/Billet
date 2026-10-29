@@ -55,14 +55,14 @@ export const AcceptInvite = ({
   >
     {state?.state === "invalid-token" && (
       <Flash
-        tone="error"
+        tone="danger"
         title="That invitation link is invalid, has expired, or has already been used. Ask whoever invited you to send another."
       />
     )}
 
     {state?.state === "already-in-org" && (
       <Flash
-        tone="error"
+        tone="danger"
         title="You're already in a team. Leave that team before accepting this invitation."
       />
     )}
@@ -73,7 +73,7 @@ export const AcceptInvite = ({
     {state?.state === "email-mismatch" && preview && (
       <>
         <Flash
-          tone="error"
+          tone="danger"
           title={
             <>
               This invitation was sent to {preview.email}, but you're signed in
@@ -128,7 +128,7 @@ export const AcceptInvite = ({
 
     {preview && state?.state === "validation-error" && (
       <form className="invite-form" method="POST" action="/invites/accept">
-        <Flash tone="error" title={state.error} />
+        <Flash tone="danger" title={state.error} />
 
         <input type="hidden" name="token" value={token} />
         {csrfToken && <CsrfField token={csrfToken} />}

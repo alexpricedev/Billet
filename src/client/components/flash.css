@@ -33,10 +33,10 @@
   --flash-icon: var(--banner-warning-icon);
 }
 
-.flash[data-tone="error"] {
-  --flash-bg: var(--banner-error-bg);
-  --flash-border: var(--banner-error-border);
-  --flash-icon: var(--banner-error-icon);
+.flash[data-tone="danger"] {
+  --flash-bg: var(--banner-danger-bg);
+  --flash-border: var(--banner-danger-border);
+  --flash-icon: var(--banner-danger-icon);
 }
 
 /* A banner carrying more than its title sits 2px looser at the bottom. */

@@ -365,5 +365,5 @@ const TeamFlash = ({ state }: { state?: TeamState }) => {
     return <Flash tone="warning" title={warning[state.state]} />;
   }
 
-  return <Flash tone="error" title={error[state.state]} />;
+  return <Flash tone="danger" title={error[state.state]} />;
 };

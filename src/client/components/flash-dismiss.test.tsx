@@ -9,7 +9,7 @@ const markup = (): string =>
   renderToString(
     <>
       <Flash tone="success" title="Saved." />
-      <Flash tone="error" title="Nope." />
+      <Flash tone="danger" title="Nope." />
     </>,
   );
 
@@ -45,7 +45,7 @@ describe("flash dismiss", () => {
 
     expect(banners()).toHaveLength(1);
     expect(document.querySelector(".flash")?.getAttribute("data-tone")).toBe(
-      "error",
+      "danger",
     );
   });
 

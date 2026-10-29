@@ -1,6 +1,7 @@
 import { Flash } from "@server/components/flash";
 import { Layout } from "@server/components/layouts";
 import { PageHeader } from "@server/components/page-header";
+import { toneForMessage } from "@server/components/tone";
 import type { User } from "@server/services/users";
 import type { FlashMessage } from "@server/utils/flash";
 
@@ -144,7 +145,9 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
     user={user}
     csrfToken={csrfToken}
   >
-    {message && <Flash tone={message.type} title={message.text} />}
+    {message && (
+      <Flash tone={toneForMessage(message.type)} title={message.text} />
+    )}
 
     <PageHeader
       title="See Billet running"

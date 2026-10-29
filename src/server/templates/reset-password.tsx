@@ -44,7 +44,7 @@ export const ResetPassword = ({
   >
     {state?.state === "invalid-token" ? (
       <Flash
-        tone="error"
+        tone="danger"
         title={
           state.error ??
           "That reset link is invalid or has expired. Request a new one."
@@ -54,7 +54,7 @@ export const ResetPassword = ({
       <form method="POST" action="/reset-password">
         <CsrfField token={csrfToken} />
         {state?.state === "validation-error" && state.error && (
-          <Flash tone="error" title={state.error} />
+          <Flash tone="danger" title={state.error} />
         )}
 
         {/* The token travels in the form rather than the action URL so it stays

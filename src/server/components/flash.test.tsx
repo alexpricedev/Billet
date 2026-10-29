@@ -1,12 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { renderToString } from "preact-render-to-string";
-import { Flash, type FlashTone } from "./flash";
+import { Flash } from "./flash";
+import type { BannerTone } from "./tone";
 
-const tones: Array<{ tone: FlashTone; role: "status" | "alert" }> = [
+const tones: Array<{ tone: BannerTone; role: "status" | "alert" }> = [
   { tone: "success", role: "status" },
   { tone: "info", role: "status" },
   { tone: "warning", role: "status" },
-  { tone: "error", role: "alert" },
+  { tone: "danger", role: "alert" },
 ];
 
 describe("Flash", () => {
@@ -54,7 +55,7 @@ describe("Flash", () => {
   test("renders a title, detail, actions and field links", () => {
     const html = renderToString(
       <Flash
-        tone="error"
+        tone="danger"
         title="Couldn't save."
         detail="Fix these 2 fields and try again:"
         actions={[

@@ -82,9 +82,12 @@
 
 /* ---- Badges -------------------------------------------------------------
 
-   One shape, toned by attribute. A badge is never a solid saturated pill and
+   One shape, toned by attribute, from the one vocabulary in
+   `server/components/tone.ts`. A badge is never a solid saturated pill and
    never carries its meaning in colour alone: the dot gives it a second channel
-   and the word inside it gives a third. */
+   and the word inside it gives a third. The role classes `Badge` also writes
+   (`.badge-admin`, `.badge-owner`, …) are markup hooks and style nothing — the
+   tone decides, so a role can't drift away from the palette. */
 
 .badge {
   align-items: center;
@@ -117,8 +120,7 @@
   color: var(--success);
 }
 
-.badge[data-tone="warning"],
-.badge-owner {
+.badge[data-tone="warning"] {
   background: var(--warning-soft);
   border-color: var(--warning-border);
   color: var(--warning);
@@ -130,16 +132,13 @@
   color: var(--danger);
 }
 
-.badge[data-tone="accent"],
-.badge-admin {
+.badge[data-tone="accent"] {
   background: var(--accent-soft);
   border-color: var(--accent-border);
   color: var(--accent-hover);
 }
 
-.badge[data-tone="neutral"],
-.badge-user,
-.badge-member {
+.badge[data-tone="neutral"] {
   background: var(--surface-subtle);
   border-color: var(--border);
   color: var(--text-secondary);

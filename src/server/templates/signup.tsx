@@ -84,7 +84,7 @@ export const Signup = ({
           <CsrfField token={csrfToken} />
           {next && <input type="hidden" name="next" value={next} />}
           {state?.state === "validation-error" && state.error && (
-            <Flash tone="error" title={state.error} />
+            <Flash tone="danger" title={state.error} />
           )}
 
           <FormField label="Email address" id="email">

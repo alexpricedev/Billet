@@ -61,6 +61,21 @@ boundary that identifies a control, and `--border` is nowhere near it. Inputs dr
 Legacy aliases (`--color-bg`, `--color-surface`, `--color-text`, `--color-primary` and so on) map
 onto these tokens, so older CSS cannot drift into a private palette. New CSS uses the semantic names.
 
+### Tones
+
+There is **one tone vocabulary**, in `src/server/components/tone.ts`:
+`success`, `info`, `warning`, `danger`, `accent`, `neutral`. Badges and banners both key off
+`data-tone`, so they have to mean the same thing by the same word — `danger` is the destructive
+one everywhere, matching `--danger` and `.btn-danger`. A component narrows the type to the subset
+it can draw (a banner has no `accent` or `neutral`; "neutral news" is `info`), so a tone it has no
+rule for fails `bun run typecheck` rather than rendering untinted. `tone.test.tsx` checks that
+every `data-tone` in the stylesheets is a word the vocabulary allows.
+
+The flash *cookie* is the one place that keeps its own words (`success` / `error` / `warning`). It
+is a wire format written by a controller and read once on the next request, so renaming its values
+would make a cookie written before a deploy render untinted after it. `toneForMessage()` translates
+at the point a message becomes something drawn.
+
 ### Status colours
 
 Status always pairs colour with a word or a shape. Badges use a soft surface, a 1px border, the
@@ -181,18 +196,18 @@ bordered container or reflows to stacked rows (`/team` does the latter, via `dat
 
 ### Badges
 
-`.badge` with `data-tone="success" | "warning" | "danger" | "accent" | "neutral"`. Soft surface,
-hairline border, 11.5px medium, and a leading dot so the tone is never colour alone.
+`.badge` with `data-tone`. Soft surface, hairline border, 11.5px medium, and a leading dot so the
+tone is never colour alone.
 
-> Badges and banners both key off `data-tone`, but they are **not one vocabulary**: a badge's
-> destructive tone is `danger` and a banner's is `error`, and a banner has no `accent` or
-> `neutral`. They arrived from different places and the names were left as each component spells
-> them. Copying a tone from one to the other silently falls through to the default.
+A role badge (`<Badge variant="admin">`) draws a shared tone rather than a colour rule of its own —
+`admin` is `accent`, `owner` is `warning`, `user` and `member` are `neutral`. The `.badge-admin`
+class is still written to the element as a markup hook, but it styles nothing, so a role can't
+drift away from the palette.
 
 ### Banners
 
 `Flash` (`src/server/components/flash.tsx`) is one shape in four tones, selected by
-`data-tone="success | info | warning | error"`. A tinted surface, a hairline border, a 20px line
+`data-tone`. A tinted surface, a hairline border, a 20px line
 icon, and a body of up to four parts: a bold **title**, a **detail** line, **action** links, and a
 **field list** whose entries link to the controls they name. No shadow. They appear directly under
 the page header, inline — never floating.
@@ -202,7 +217,7 @@ the page header, inline — never floating.
 | Success | `--banner-success-bg` | `--banner-success-border` | `--banner-success-icon` | circle + check | `status` |
 | Info | `--banner-info-bg` | `--banner-info-border` | `--banner-info-icon` | circle + i | `status` |
 | Warning | `--banner-warning-bg` | `--banner-warning-border` | `--banner-warning-icon` | triangle + ! | `status` |
-| Error | `--banner-error-bg` | `--banner-error-border` | `--banner-error-icon` | circle + ! | `alert` |
+| Danger | `--banner-danger-bg` | `--banner-danger-border` | `--banner-danger-icon` | circle + ! | `alert` |
 
 Three rules make it accessible rather than merely tinted:
 
@@ -210,7 +225,7 @@ Three rules make it accessible rather than merely tinted:
   for a reader who cannot tell the tints apart. `flash.test.tsx` asserts the four icons differ.
 - **The words never carry the tone.** Title and detail stay on `--text` / `--text-secondary`, which
   is what lets one pair of text colours pass AA on all four tints in both themes.
-- **Only an error interrupts.** Error is `role="alert"`; the other three are `role="status"`, so a
+- **Only the destructive tone interrupts.** `danger` is `role="alert"`; the other three are `role="status"`, so a
   success message is announced without cutting a screen-reader user off mid-sentence.
 
 The × is an enhancement: it ships `hidden` and `src/client/components/flash-dismiss.ts` reveals it,
