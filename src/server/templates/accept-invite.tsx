@@ -54,21 +54,17 @@ export const AcceptInvite = ({
     footer={<a href="/login">Back to sign in</a>}
   >
     {state?.state === "invalid-token" && (
-      <Flash type="error">
-        <span>
-          That invitation link is invalid, has expired, or has already been
-          used. Ask whoever invited you to send another.
-        </span>
-      </Flash>
+      <Flash
+        tone="danger"
+        title="That invitation link is invalid, has expired, or has already been used. Ask whoever invited you to send another."
+      />
     )}
 
     {state?.state === "already-in-org" && (
-      <Flash type="error">
-        <span>
-          You're already in a team. Leave that team before accepting this
-          invitation.
-        </span>
-      </Flash>
+      <Flash
+        tone="danger"
+        title="You're already in a team. Leave that team before accepting this invitation."
+      />
     )}
 
     {/* The likeliest footgun: clicking a forwarded link, or one meant for
@@ -76,12 +72,15 @@ export const AcceptInvite = ({
         it must not silently bind the invite to the wrong account. */}
     {state?.state === "email-mismatch" && preview && (
       <>
-        <Flash type="error">
-          <span>
-            This invitation was sent to {preview.email}, but you're signed in as{" "}
-            {signedInAs}. Sign out and open the link again.
-          </span>
-        </Flash>
+        <Flash
+          tone="danger"
+          title={
+            <>
+              This invitation was sent to {preview.email}, but you're signed in
+              as {signedInAs}. Sign out and open the link again.
+            </>
+          }
+        />
         {logoutCsrfToken && (
           <form className="invite-form" method="POST" action="/auth/logout">
             <CsrfField token={logoutCsrfToken} />
@@ -121,15 +120,15 @@ export const AcceptInvite = ({
         <Honeypot />
         {challenge && <CaptchaWidget challenge={challenge} />}
 
-        <button type="submit">Accept invitation</button>
+        <button type="submit" className="btn-primary">
+          Accept invitation
+        </button>
       </form>
     )}
 
     {preview && state?.state === "validation-error" && (
       <form className="invite-form" method="POST" action="/invites/accept">
-        <Flash type="error">
-          <span>{state.error}</span>
-        </Flash>
+        <Flash tone="danger" title={state.error} />
 
         <input type="hidden" name="token" value={token} />
         {csrfToken && <CsrfField token={csrfToken} />}
@@ -151,7 +150,9 @@ export const AcceptInvite = ({
         <Honeypot />
         {challenge && <CaptchaWidget challenge={challenge} />}
 
-        <button type="submit">Accept invitation</button>
+        <button type="submit" className="btn-primary">
+          Accept invitation
+        </button>
       </form>
     )}
   </AuthPage>

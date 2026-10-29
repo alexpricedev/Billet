@@ -6,6 +6,7 @@ import { CsrfField } from "../components/csrf-field";
 import { DataTable } from "../components/data-table";
 import { Flash } from "../components/flash";
 import { Layout } from "../components/layouts";
+import { PageHeader } from "../components/page-header";
 import { TodoRow } from "../components/todo-row";
 import type { Todo } from "../services/todo";
 import type { User } from "../services/users";
@@ -55,40 +56,39 @@ export const Todos = (props: TodosProps): JSX.Element => {
       user={props.user}
       csrfToken={props.csrfToken}
     >
-      <h1>Todos</h1>
-      <p className="lead">
-        Every action here is a plain HTML form, so the page works with
-        JavaScript switched off. When JavaScript is on, those same forms post
-        without a reload and the server sends back just the row that changed—no
-        virtual DOM, no client-side templates, no second copy of the markup,
-        full reactivity.
-      </p>
+      <PageHeader
+        title="Todos"
+        description="Every action here is a plain HTML form, so the page works with JavaScript switched off. When JavaScript is on, those same forms post without a reload and the server sends back just the row that changed—no virtual DOM, no client-side templates, no second copy of the markup, full reactivity."
+      />
 
       {(props.state?.state === "submission-success" ||
         props.state?.state === "deletion-success") && (
-        <Flash type="success">
-          {props.state.state === "submission-success" &&
-            "Todo added successfully."}
-          {props.state.state === "deletion-success" &&
-            "Todo deleted successfully."}
-        </Flash>
+        <Flash
+          tone="success"
+          title={
+            props.state.state === "submission-success"
+              ? "Todo added successfully."
+              : "Todo deleted successfully."
+          }
+        />
       )}
 
       {props.state?.state === "csrf-expired" && (
-        <Flash type="warning">
-          Your session timed out—nothing was saved. Check the title and add it
-          again.
-        </Flash>
+        <Flash
+          tone="warning"
+          title="Your session timed out—nothing was saved. Check the title and add it again."
+        />
       )}
 
       {props.state?.state === "action-csrf-expired" && (
-        <Flash type="warning">
-          Your session timed out—nothing changed. Try again.
-        </Flash>
+        <Flash
+          tone="warning"
+          title="Your session timed out—nothing changed. Try again."
+        />
       )}
 
       {props.state?.state === "validation-error" && (
-        <Flash type="error">A todo must be at least 2 characters.</Flash>
+        <Flash tone="danger" title="A todo must be at least 2 characters." />
       )}
 
       <div {...list.root}>
@@ -118,7 +118,9 @@ export const Todos = (props: TodosProps): JSX.Element => {
               minLength={2}
               defaultValue={restoredTitle}
             />
-            <button type="submit">Add</button>
+            <button type="submit" className="btn-primary">
+              Add
+            </button>
           </form>
         </section>
 

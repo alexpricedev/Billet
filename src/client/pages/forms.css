@@ -1,76 +1,69 @@
 [data-page="forms"] {
   .forms-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
     align-items: start;
+    display: grid;
+    gap: var(--space-8);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 
-    @media (width <= 768px) {
-      grid-template-columns: 1fr;
+    @media (width <= 900px) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-6);
     }
   }
 
   .form-card {
     display: block;
+    margin-bottom: 0;
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--space-5);
   }
 
-  .how-it-works {
-    h2 {
-      margin-bottom: 1.25rem;
-    }
+  .how-it-works h2 {
+    margin-bottom: var(--space-4);
   }
 
   .steps {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: var(--space-5);
   }
 
   .step {
-    display: flex;
-    gap: 1rem;
     align-items: flex-start;
+    display: flex;
+    gap: var(--space-3);
 
     h3 {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
+      margin-bottom: var(--space-1);
     }
 
     p {
-      font-size: 14px;
+      color: var(--text-secondary);
+      font-size: 13px;
       line-height: 1.6;
       margin: 0;
     }
-
-    code {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
-      color: var(--color-text-secondary);
-      font-family: var(--font-mono);
-      font-size: 12px;
-      padding: 1px 5px;
-    }
   }
 
+  /* The step number is an identifier, not a status, so it takes the neutral
+     chip treatment rather than the accent. */
   .step-num {
     align-items: center;
-    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
     border-radius: 50%;
-    color: var(--color-primary);
+    color: var(--text-secondary);
     display: flex;
     flex-shrink: 0;
-    font-size: 13px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
     font-weight: 600;
-    height: 28px;
+    height: 24px;
     justify-content: center;
-    width: 28px;
+    width: 24px;
   }
 }

@@ -90,6 +90,40 @@ install without it won't boot.
 attribute names through verbatim, and the HTML parser doesn't recognise `strokeWidth` — the stroke
 silently renders at the default width. React used to rewrite these; nothing does now.
 
+### The design system is written down, and the tokens are the only palette
+
+`DESIGN.md` at the root is the source of truth: tokens, the type and spacing scales, the component
+rules, and the anti-patterns. The tokens live in the `:root` block at the top of
+`src/client/base.css` and nowhere else — a hard-coded colour in a page file is the first-listed
+anti-pattern. Legacy `--color-*` names are kept as aliases onto the semantic ones, which is what
+stops a page growing a private palette.
+
+**Light is the default and dark follows the OS.** Dark is declared twice on purpose — once under
+`:root[data-theme="dark"]` and once under `@media (prefers-color-scheme: dark) { :root:not([data-theme]) }`
+— because plain CSS cannot put one declaration block under both a media query and an attribute
+selector. `src/client/base-css.test.ts` compares the two lists and fails the suite if they drift.
+`data-theme` is written by the toggle in the top bar (System → Light → Dark), which keeps the
+choice in `localStorage` — the one place client storage is allowed, with the exemption and its
+reason in `boundaries.test.ts`. **System is the absence of the attribute**, not a value for it, so
+going back to it removes the attribute. A small inline script in `<head>` applies a stored choice
+before the first paint; it is the only inline script in the project, and the storage key is
+deliberately spelled in both it and `src/client/components/theme-toggle.ts`.
+
+The button box is on the bare `button` element **and on every variant class** (`.btn-ghost`,
+`.btn-danger`, …), because templates write `class="btn-ghost"` on its own. A variant added to the
+stylesheet but left out of that selector list silently loses its box — an `<a>` carrying it
+collapses to the height of its text.
+
+That base sets `display: inline-flex`, and an author `display` **beats** the user agent's
+`[hidden] { display: none }` — so a button shipped `hidden` would render anyway. Two are (the nav's
+menu button and the theme toggle), so `base.css` restores `display: none` for `[hidden]` across the
+button selectors. Drop that rule and every no-JS page grows controls that do nothing.
+
+**A design change with a green `bun run test` has not been checked.** The client fixtures lift
+markup into happy-dom with no stylesheet, on purpose, so no unit test can see a visual regression.
+`scripts/browser-smoke.test.ts` (`bun run test:browser`) is the only check that evaluates real CSS,
+and it is where the control-box, select, disabled and nav-row invariants are pinned.
+
 ### Client code has three tiers, and the default is the first
 
 The server owns state and rendering. Before writing any client code ask: *if JavaScript were off,
@@ -240,8 +274,8 @@ Password hashing lives in `src/server/utils/crypto.ts` and is deliberately *not*
 Every response gets its headers from `secureRoutes` / `handleGuarded` in
 `src/server/utils/security-headers.ts`. Controllers set only content-specific headers.
 
-The CSP script allowlist is `'self' 'unsafe-inline'` — every script is same-origin, Lottie
-included (`build:vendor` copies it into `dist/assets/lottie.js`). Any new
+The CSP script allowlist is `'self' 'unsafe-inline'` — every script is same-origin, and there is
+no vendored third-party bundle at all since the Lottie hero left with the sales site. Any new
 third-party script needs the CSP entry, an SRI `integrity` hash, and ideally a `preconnect` in
 `layouts.tsx` — otherwise it is silently blocked in the browser but passes every test.
 

@@ -11,10 +11,10 @@
 /* Component styles */
 @import "./components/layout.css";
 @import "./components/nav.css";
+@import "./components/page.css";
 @import "./components/flash.css";
 @import "./components/form-field.css";
 @import "./components/data-table.css";
-@import "./components/badge.css";
 @import "./components/verify-banner.css";
 
 /* Page styles */

@@ -1,6 +1,7 @@
 import { Badge } from "@server/components/badge";
 import { DataTable } from "@server/components/data-table";
 import { Layout } from "@server/components/layouts";
+import { PageHeader } from "@server/components/page-header";
 import type { SessionContext } from "@server/middleware/auth";
 import type { User } from "@server/services/users";
 
@@ -26,44 +27,39 @@ export const AdminDashboard = (props: {
     user={props.user}
     csrfToken={props.csrfToken}
   >
-    <div className="admin-content">
-      <div className="admin-header">
-        <h1>Admin</h1>
-        <p className="text-quaternary">Manage users and system settings</p>
-      </div>
+    <PageHeader title="Admin" description="Manage users and system settings." />
 
-      <div className="admin-table-wrap">
-        <DataTable caption="Users">
-          <thead>
+    <div className="admin-table-wrap">
+      <DataTable caption="Users">
+        <thead>
+          <tr>
+            <th scope="col">Email</th>
+            <th scope="col">Role</th>
+            <th scope="col">Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.users.length === 0 ? (
             <tr>
-              <th scope="col">Email</th>
-              <th scope="col">Role</th>
-              <th scope="col">Joined</th>
+              <td colSpan={3} className="admin-empty">
+                No users found.
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {props.users.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="admin-empty">
-                  No users found.
+          ) : (
+            props.users.map((user) => (
+              <tr key={user.id}>
+                <td className="admin-email">{user.email}</td>
+                <td>
+                  <Badge variant={user.role === "admin" ? "admin" : "user"}>
+                    {user.role}
+                  </Badge>
                 </td>
+                <td className="admin-date">{formatDate(user.created_at)}</td>
               </tr>
-            ) : (
-              props.users.map((user) => (
-                <tr key={user.id}>
-                  <td className="admin-email">{user.email}</td>
-                  <td>
-                    <Badge variant={user.role === "admin" ? "admin" : "user"}>
-                      {user.role}
-                    </Badge>
-                  </td>
-                  <td className="admin-date">{formatDate(user.created_at)}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </DataTable>
-      </div>
+            ))
+          )}
+        </tbody>
+      </DataTable>
     </div>
   </Layout>
 );

@@ -134,7 +134,8 @@ describe("Todos Controller", () => {
 
       expect(mockGetTodos).toHaveBeenCalled();
       expect(response.headers.get("content-type")).toBe("text/html");
-      expect(html).toContain("<h1>Todos</h1>");
+      // PageHeader renders the title, so the h1 carries its class.
+      expect(html).toContain(">Todos</h1>");
       expect(html).toContain("Todo 1");
       expect(html).toContain("Todo 2");
       expect(html).toContain('action="/todos"');

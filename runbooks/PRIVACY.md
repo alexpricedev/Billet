@@ -23,7 +23,7 @@ by default and hand you the pattern.
 |---|---|---|
 | Analytics | None. `analytics.ts` is a mock (`getVisitorStats()` returns a fake count); `/api/stats` is unused | [`src/server/services/analytics.ts`](../src/server/services/analytics.ts) |
 | Cookies | Only strictly-necessary: `session_id` (auth) and `flash_*` (transient/OAuth state), all HMAC-signed, `HttpOnly`, `SameSite=Lax`, `Secure` in production | [`sessions.ts`](../src/server/services/sessions.ts), [`utils/flash.ts`](../src/server/utils/flash.ts) |
-| Client storage | None. No `localStorage`/`sessionStorage`/`IndexedDB` anywhere in `src/client/` | — |
+| Client storage | One key, strictly necessary: `billet-theme` in `localStorage`, written only when the reader picks a theme from the toggle. No `sessionStorage`, no `IndexedDB`, nothing written on an ordinary page view | [`theme-toggle.ts`](../src/client/components/theme-toggle.ts) |
 | Fonts | Self-hosted (`font-src 'self'`) — no Google Fonts, no external font CDN | [`security-headers.ts`](../src/server/utils/security-headers.ts) |
 | Third-party egress | `connect-src 'self'` blocks XHR/fetch/beacon to other origins | [`security-headers.ts`](../src/server/utils/security-headers.ts) |
 | Request logging | No IP, user-agent, headers, or request bodies logged in the request path | [`services/logger.ts`](../src/server/services/logger.ts) |
@@ -31,6 +31,17 @@ by default and hand you the pattern.
 Because these cookies are strictly necessary (session, security, transient
 post-redirect-get state), they are **exempt** from consent under the ePrivacy
 Directive — but they still need **disclosure** in a privacy policy (see §4).
+
+The theme key is exempt on the same ground, and for the reason that matters: it
+is written **only in response to the reader explicitly choosing a theme**, holds
+a display preference and nothing else, is never read by anything but the toggle,
+and leaves the browser never. A preference a user asked for is the textbook
+"strictly necessary" case. Nothing is stored until they click, so a visitor who
+never touches the control is stored against not at all — which is what keeps the
+default site banner-free. `boundaries.test.ts` enforces that it stays the only
+one: client storage is forbidden everywhere else, with this single exemption
+named in the rule. **Widen that exemption and you are very likely crossing the
+line in §2** — check before you do.
 
 ## 2. The trigger: when you actually need a consent banner
 
@@ -167,7 +178,9 @@ must disclose, at minimum:
 5. **Recipients / processors** — name them (e.g. your analytics vendor, host), and any non-EU/UK transfers + safeguards
 6. **Retention periods** — how long, per category
 7. **User rights** — access, rectify, erase, restrict, port, object, complain to a supervisory authority
-8. **Cookies & tracking** — inline or link to a cookie notice
+8. **Cookies & tracking** — inline or link to a cookie notice. Include the
+   `billet-theme` `localStorage` key: exempt from *consent*, but still
+   **disclosable** storage, exactly like the session cookie
 9. **Last-updated date** — visible at the top
 
 Link it from the footer on every page, keep it reachable without login, name

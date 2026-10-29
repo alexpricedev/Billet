@@ -159,7 +159,9 @@ means it is server work. Slower is the only case where enhancement is a candidat
 
 `src/client/boundaries.test.ts` is the fence, and it fails the suite rather than a review: no
 `fetch`, markup building, `JSON.parse`, routing or storage in client code outside
-`reactive/request.ts`; no runtime imports across the server/client line in either direction (types
+`reactive/request.ts` (the theme toggle is the one storage exemption, named in the rule with its
+reason — a theme belongs to a browser, not an account, and a signed-out reader has no session to
+hold it); no runtime imports across the server/client line in either direction (types
 cross freely); nothing in `src/shared/` touches the DOM or `node:`; and the built `main.js` stays
 under a byte budget. Raise the budget or add an exemption only with the reason written next to it —
 the number moving is the signal that something is being built on the client that belongs on the
@@ -179,9 +181,20 @@ page group; anything global goes in `base.css`.
 ## Form controls share one box
 
 Inputs, selects and buttons take their height, border and radius from the `--control-*` tokens at
-the top of `base.css`, so a field, a select and a button in one row line up with no page rule. Inline
-padding is the one part a control sets for itself: a field uses `--control-padding-x`, a button a
-wider 16px. To change the size of every control, change the tokens, not a page.
+the top of `base.css`, so a field, a select and a button in one row line up with no page rule. To
+change the size of every control, change the tokens, not a page.
+
+`--control-height` is a flat `32px`, not a value derived from its padding and line-height. The
+design system names 32px as the control scale (28px compact via `.btn-sm`, 40px large via
+`.btn-lg`), and a derived height cannot land on those numbers from one set of paddings — so the
+height is the token and the padding follows it.
+
+The button box is on the bare `button` element **and on every variant class**
+(`.btn`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.btn-danger`, `.btn-danger-solid`),
+because the templates write `class="btn-ghost"` on its own rather than `class="btn btn-ghost"`.
+A variant added to the stylesheet but left out of that selector list gets no box, and an `<a>`
+carrying it collapses to the height of its text — which is a real regression `bun run test:browser`
+catches and `bun run test` cannot.
 
 `select` is the one control with a style of its own, and it is the base rule's or nothing. It drops
 the native look (Safari ignores padding on a native select), draws its chevron at a fixed inset
@@ -193,14 +206,21 @@ row gets a class rule like `.role-picker { width: 100% }`, not `select.role-pick
 `bun run test:browser` checks the row, the chevron and the list-box and disabled cases in a real
 engine.
 
-A control that steps off the shared box says why where it does it. The template's three are the
-compact todo filters (own padding and `line-height: normal`), the nav's auth actions (no border, and
-smaller at phone width, because the header has one row to give them) and the home hero's larger CTAs.
+A button that ships `hidden` needs `base.css`'s `[hidden]` rule to stay: the shared box sets
+`display: inline-flex`, which beats the user agent's `[hidden] { display: none }`. The nav's menu
+button and the theme toggle both rely on it, and both are revealed only once their script runs —
+a page with no bundle must not render a control that does nothing.
 
-Two of a control's colours are separated on purpose. `--color-primary` is the accent — link text,
-badges, the focus ring, accent borders — and stays light enough to read on the dark surfaces;
-`--color-primary-fill` (and its hover) is the same hue darkened, and is what a filled primary
-control draws so its white label clears 4.5:1. A disabled control is faded and given the
-`not-allowed` cursor by one `:is(input, select, textarea, button):disabled` rule, and a field's
-border is `--color-border-strong` so the boundary clears the 3:1 non-text minimum rather than
-blending into the surface.
+A control that steps off the shared box says why where it does it. The template's two are the
+compact todo filters and delete buttons (the 28px step, because they are a segmented control inside
+a row rather than a page action) and the nav's auth actions (no border, and full-width rows inside
+the mobile panel, because the header has one row to give them).
+
+A filled primary control does not draw the accent. `--accent` is link text, the focus ring, badges
+and accent borders; `.btn-primary` draws `--button-primary-bg` — near-black on the light theme and
+near-white on the dark one — so its label clears 4.5:1 without needing a second, darkened copy of
+the accent hue. A disabled control is faded and given the `not-allowed` cursor by one
+`:is(input, select, textarea, button):disabled` rule, and that fade is the **only** mute: colouring
+the text to `--text-disabled` as well took a frozen control to about 1.9:1, so the rule sets
+`opacity` and `cursor` and nothing else. A field's border is `--border-control` so the boundary
+clears the 3:1 non-text minimum rather than blending into the surface.

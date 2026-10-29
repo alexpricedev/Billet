@@ -4,6 +4,7 @@ import { DataTable } from "../components/data-table";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Layout } from "../components/layouts";
+import { PageHeader } from "../components/page-header";
 import type { Invite } from "../services/invites";
 import {
   MAX_ORG_NAME_LENGTH,
@@ -74,7 +75,7 @@ export const Team = (props: TeamProps) => (
     csrfToken={props.csrfToken}
     noindex
   >
-    <h1>Team</h1>
+    <PageHeader title="Team" />
 
     <TeamFlash state={props.state} />
 
@@ -143,7 +144,9 @@ export const Team = (props: TeamProps) => (
               </select>
             </FormField>
 
-            <button type="submit">Send invitation</button>
+            <button type="submit" className="btn-primary">
+              Send invitation
+            </button>
           </form>
         </section>
 
@@ -212,7 +215,9 @@ export const Team = (props: TeamProps) => (
               value={props.state?.name ?? ""}
             />
           </FormField>
-          <button type="submit">Create team</button>
+          <button type="submit" className="btn-primary">
+            Create team
+          </button>
         </form>
       </section>
     )}
@@ -353,24 +358,12 @@ const TeamFlash = ({ state }: { state?: TeamState }) => {
   };
 
   if (success[state.state]) {
-    return (
-      <Flash type="success">
-        <span>{success[state.state]}</span>
-      </Flash>
-    );
+    return <Flash tone="success" title={success[state.state]} />;
   }
 
   if (warning[state.state]) {
-    return (
-      <Flash type="warning">
-        <span>{warning[state.state]}</span>
-      </Flash>
-    );
+    return <Flash tone="warning" title={warning[state.state]} />;
   }
 
-  return (
-    <Flash type="error">
-      <span>{error[state.state]}</span>
-    </Flash>
-  );
+  return <Flash tone="danger" title={error[state.state]} />;
 };

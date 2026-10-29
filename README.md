@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
-> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with auth (magic-link or email+password, your pick), CSRF protection, rate limiting, auto-migrations, and 700+ tests. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
+> **TLDR:** Full-stack TypeScript starter built for AI coding agents. Server-rendered JSX (not React), custom CSS, PostgreSQL via Bun — one process, one test runner, one deploy target. Ships with auth (magic-link or email+password, your pick), CSRF protection, rate limiting, auto-migrations, and 1,100+ tests. The architecture is deliberately simple (services → controllers → templates) so AI agents get fast, unambiguous feedback from strict types, zero-warning linting, and a test suite that runs in seconds. Deploy anywhere you can run `bun run start`.
 >
 > — *Claude Opus 4.6*
 
@@ -96,7 +96,7 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 
 The "deterministic templates, test with confidence" tagline isn't a marketing claim — it's backed by infrastructure.
 
-- **760+ tests across 70 files** covering controllers, services, middleware, utilities, and client scripts
+- **1,100+ tests across 92 files** covering controllers, services, middleware, utilities, and client scripts
 - **No browser simulation needed** — server-rendered templates are pure functions of props, testable with `renderToString()` and string assertions
 - **Real database testing** for services — tests run against PostgreSQL with table truncation for isolation
 - **Mock-based controller tests** that verify HTTP responses (status codes, headers, HTML content) without touching the database
@@ -121,11 +121,12 @@ parallel with a database per worker.
 
 - **Preact JSX as a template engine** — server-rendered to a string, no hydration, and no framework runtime on the page. Preact is a build-time detail of the server; nothing in the browser imports it
 - **Bun CSS bundler** with `@import` resolution, CSS nesting, and minification — no external CSS tooling needed
+- **A documented design system** — semantic tokens, one type and spacing scale, and shared button, field, table, badge and page-header primitives, all written down in [DESIGN.md](DESIGN.md). Light and dark are both defined and the theme follows the OS; a guard test fails the suite if the two dark token lists drift apart
 - **Reactive components that bind to the server's markup** — `src/client/reactive/` is a few hundred lines: signals, computeds and effects, plus `data-*` bindings (`data-text`, `data-show`, `data-value`, `data-on`…) that name a component's state by name, never by expression — with `ui.perElement` for the case where the elements are a list the server built from data and there is no name to give each one. No virtual DOM, nothing rendered twice, no `'unsafe-eval'` in the CSP, and the binding names in a template are typechecked against the component
 - **Progressive enhancement over plain forms** — every mutation on the todo page is a `<form>` that works without JavaScript. With it, `server.submit(form)` posts the same form with the CSRF token as a header and asks for a fragment; the controller answers with the server-rendered row instead of a redirect, and a stale token is refreshed and retried once. The classic todo list is the worked example — add, toggle, delete and filter, no page loads
 - **Page lifecycle system** — `registerPage()` / `PageController` pattern with `init()` and `cleanup()` for per-page JS
 - **Cookie-based flash messages** — HMAC-signed, single-use cookies for post-redirect-get feedback (success banners, validation errors)
-- **Accessibility baseline** — semantic landmarks, labelled form controls, a keyboard focus ring, reduced-motion support, announced flash messages, captioned data tables, AA-checked button and link contrast, visible field borders, and faded disabled controls out of the box — see [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md)
+- **Accessibility baseline** — semantic landmarks, labelled form controls, a keyboard focus ring, reduced-motion support, announced flash messages, captioned data tables, AA-checked contrast in both themes, visible field borders, and faded disabled controls out of the box — see [runbooks/ACCESSIBILITY.md](runbooks/ACCESSIBILITY.md)
 - **Privacy-clean by default** — no analytics, no trackers, no third-party cookies; only strictly-necessary first-party cookies, so no consent banner is legally required until you add tracking — see [runbooks/PRIVACY.md](runbooks/PRIVACY.md) for the consent-banner and privacy-policy pattern
 - **Asset cache-busting** in production — MD5-hashed filenames with immutable `Cache-Control` headers
 
@@ -490,7 +491,7 @@ Prefer the dashboard? These are the same values, to set by hand in the service's
 
 > **Signup spam:** The login form always carries a honeypot and per-IP rate limit. If bots still create accounts with random emails, set `CAPTCHA_ENABLED=true` to add a first-party proof-of-work captcha — it signs challenges with your existing `CRYPTO_PEPPER`, so there's no third party, account, or extra secret to configure.
 
-> **Privacy:** The default site needs no cookie banner (zero non-essential storage). The moment you add analytics, ads, or embeds, you must add an opt-in consent banner and a privacy policy — see [runbooks/PRIVACY.md](runbooks/PRIVACY.md) for wiring up `@alexpricedev/billet-cookie-consent`, the required policy disclosures, and GPC handling.
+> **Privacy:** The default site needs no cookie banner. The only thing it stores client-side is the reader's own theme choice (`billet-theme`), written only when they pick one — strictly necessary, and nothing at all is written on an ordinary page view. The moment you add analytics, ads, or embeds, you must add an opt-in consent banner and a privacy policy — see [runbooks/PRIVACY.md](runbooks/PRIVACY.md) for wiring up `@alexpricedev/billet-cookie-consent`, the required policy disclosures, and GPC handling.
 
 > **CI & merge protection:** CI runs on every PR, but check results are advisory until you require them. A fork doesn't inherit branch protection, so nothing stops an auto-merge (GitHub's or Conductor's) from merging a red build — enable required status checks once per repo. See [runbooks/CI.md](runbooks/CI.md).
 

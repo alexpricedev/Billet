@@ -76,12 +76,10 @@ export const AuthConfirm = ({
       footer={<a href="/">Back to home</a>}
     >
       {needsCsrf && !csrfToken ? (
-        <Flash type="error">
-          <span>
-            We couldn't start a session in your browser. Check that cookies are
-            enabled and open the link again.
-          </span>
-        </Flash>
+        <Flash
+          tone="danger"
+          title="We couldn't start a session in your browser. Check that cookies are enabled and open the link again."
+        />
       ) : (
         <form method="POST" action={copy.canonicalPath}>
           <CsrfField token={csrfToken} />
@@ -90,7 +88,7 @@ export const AuthConfirm = ({
           <input type="hidden" name="token" value={token} />
           {next && <input type="hidden" name="next" value={next} />}
 
-          <button type="submit" className="login-submit">
+          <button type="submit" className="login-submit btn-primary">
             {copy.submit}
           </button>
         </form>

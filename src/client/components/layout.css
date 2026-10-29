@@ -1,35 +1,39 @@
+/* The page shell: a 56px top bar, a capped content column, and a quiet footer.
+   Chrome recedes — the bar takes the canvas colour and a hairline, so the
+   content below it is what reads as the page. */
+
 [data-component="layout"] {
   & > header {
     align-items: center;
-    background: var(--color-bg);
-    border-bottom: 1px solid var(--color-border);
+    background: var(--canvas);
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
-    padding: 0.75rem 2rem;
+    min-height: var(--bar-height);
+    padding: 0 var(--space-6);
 
     /* Containing block for the mobile nav panel, which hangs off the header's
        bottom edge at full viewport width — see nav.css. */
     position: relative;
 
     @media (width <= 640px) {
-      padding: 0.75rem 1rem;
+      padding: 0 var(--space-4);
     }
 
     .logo {
       align-items: center;
       display: flex;
-      gap: 0.5rem;
+      gap: var(--space-2);
       text-decoration: none;
 
       svg {
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
       }
 
       span {
-        color: var(--color-text);
-        font-size: 1.125rem;
-
+        color: var(--text);
+        font-size: 15px;
         font-weight: 600;
         letter-spacing: -0.01em;
       }
@@ -41,36 +45,76 @@
     }
   }
 
-  & > main {
-    margin: 0 auto;
-    max-width: 960px;
-    padding: 2rem;
+  /* The theme control sits at the end of the bar, outside the nav, so it stays
+     reachable at phone width instead of collapsing into the menu panel. */
+  & > header > .theme-toggle {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-secondary);
+    flex: 0 0 auto;
+    height: var(--control-height);
+    margin-left: var(--space-2);
+    padding: 0;
+    width: var(--control-height);
 
-    @media (width <= 768px) {
-      padding: 1.5rem;
+    &:hover,
+    &:focus {
+      background: var(--surface-hover);
+      border-color: transparent;
+      color: var(--text);
+    }
+
+    .theme-icon {
+      height: 16px;
+      width: 16px;
+    }
+
+    /* The UA's `[hidden] { display: none }` is a (0,1,0) author-beatable rule
+       and the sizing above sets no display, but state this anyway: the icons
+       are swapped by that attribute and nothing else should decide it. */
+    .theme-icon[hidden] {
+      display: none;
     }
 
     @media (width <= 640px) {
-      padding: 1rem;
+      /* WCAG 2.2 enhanced target, matching the nav's menu button. */
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  & > main {
+    margin: 0 auto;
+    max-width: var(--content-max);
+    padding: var(--space-8) var(--space-10) var(--space-16);
+    width: 100%;
+
+    @media (width <= 900px) {
+      padding: var(--space-6) var(--space-5) var(--space-12);
+    }
+
+    @media (width <= 640px) {
+      padding: var(--space-5) var(--space-4) var(--space-10);
     }
   }
 
   & > footer {
-    border-top: 1px solid var(--color-border);
-    color: var(--color-text-tertiary);
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
     display: flex;
-    font-size: 13px;
-    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    gap: var(--space-2) var(--space-6);
     justify-content: center;
-    padding: 1.5rem 2rem;
+    padding: var(--space-5) var(--space-6);
   }
 
   & > footer a {
-    color: var(--color-text-tertiary);
+    color: var(--text-muted);
   }
 
   & > footer a:hover,
   & > footer a:focus {
-    color: var(--color-text-secondary);
+    color: var(--text);
   }
 }

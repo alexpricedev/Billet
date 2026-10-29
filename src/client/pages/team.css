@@ -3,13 +3,13 @@
 .team-role-form {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* Height comes from the control tokens; only the inline padding is trimmed,
    because the row sits in a table column. */
 .team-role-form button {
-  padding-inline: 10px;
+  padding-inline: var(--space-2);
   white-space: nowrap;
 }
 
@@ -20,14 +20,14 @@
 .team-create {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   max-width: 420px;
 }
 
 /* The paragraph above the create form is part of the empty state, not the
    form, so it gets its own separation rather than riding on the flex gap. */
 .team-create-intro {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
   max-width: 60ch;
 }
 
@@ -46,13 +46,14 @@
 /* The remove confirmation, revealed by ?remove= and jumped to via
    #confirm-remove. */
 .team-confirm {
-  border-color: var(--color-danger, #dc2626);
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
 }
 
 .team-confirm-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -83,9 +84,9 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      gap: 8px 12px;
-      padding: 12px 0;
-      border-top: 1px solid var(--color-border);
+      gap: var(--space-2) var(--space-3);
+      padding: var(--space-3) 0;
+      border-top: 1px solid var(--border);
     }
 
     td {
@@ -102,7 +103,7 @@
     }
 
     td[data-label] {
-      color: var(--color-text-quaternary);
+      color: var(--text-muted);
     }
 
     td[data-label]::before {

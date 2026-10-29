@@ -1,40 +1,65 @@
+/* The account page is a stack of plain sections with a heading and a divider,
+   rather than a card per paragraph. */
+
 .account-section {
   display: block;
 
+  + .account-section {
+    border-top: 1px solid var(--border);
+    margin-top: var(--space-8);
+    padding-top: var(--space-6);
+  }
+
   h2 {
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-2);
+  }
+
+  > p {
+    color: var(--text-secondary);
+    font-size: 13.5px;
+    max-width: 68ch;
   }
 
   form {
-    margin-top: 1rem;
+    margin-top: var(--space-4);
   }
 
   .form-field {
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
     max-width: 22rem;
   }
 }
 
 .account-email {
   font-family: var(--font-mono);
-  font-size: 14px;
-  margin-bottom: 0.25rem;
+  font-size: 13px;
+  margin-bottom: var(--space-1);
 }
 
 .account-details {
   display: grid;
-  gap: 0.25rem 1.5rem;
+  gap: var(--space-1) var(--space-6);
   grid-template-columns: max-content 1fr;
   margin: 0;
 
   dt {
-    color: var(--color-text-tertiary);
-    font-size: 14px;
+    color: var(--text-muted);
+    font-size: 12px;
   }
 
   dd {
     margin: 0;
-    font-size: 14px;
+    font-size: 13px;
+  }
+}
+
+@media (width <= 480px) {
+  .account-details {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 0;
+
+    dd {
+      margin-bottom: var(--space-2);
+    }
   }
 }

@@ -12,11 +12,24 @@ import {
 import type { User } from "../services/users";
 import { Logo } from "./logo";
 import { Nav } from "./nav";
+import { ThemeToggle } from "./theme-toggle";
 import { VerifyBanner } from "./verify-banner";
 
-// The site is dark-only (see `colorScheme: "dark"` on <html>), so theme-color
-// matches --color-bg from style.css rather than shipping light/dark variants.
-const THEME_COLOR = "#0a0a0b";
+// The palette follows the OS: `color-scheme: light dark` lets the browser pick,
+// and base.css carries both token sets. theme-color has no var() of its own, so
+// each theme ships its own meta — keep these in step with --canvas.
+// Applies a stored theme override before the first paint. It has to be inline
+// and in <head>: the bundle is deferred, so by the time it ran the reader would
+// already have seen the OS theme and watched it swap. Kept to one statement in
+// a try/catch — storage throws in private modes — and it writes the attribute
+// `base.css` scopes its dark rules to. The key is duplicated from
+// `src/client/components/theme-toggle.ts`; `theme-toggle.test.ts` pins both.
+const THEME_INIT_SCRIPT =
+  'try{var t=localStorage.getItem("billet-theme");' +
+  'if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}';
+
+const THEME_COLOR_LIGHT = "#fafafa";
+const THEME_COLOR_DARK = "#090909";
 
 const canonicalUrl = (path?: string): string =>
   path ? absolute(path) : siteUrl();
@@ -56,8 +69,20 @@ function HeadMeta({
       {blocksIndexing(noindex) && (
         <meta name="robots" content="noindex, nofollow" />
       )}
-      <meta name="color-scheme" content="dark" />
-      <meta name="theme-color" content={THEME_COLOR} />
+      {/* A fixed string constant, never user input. Inline and in <head>
+          because it has to beat the first paint. */}
+      <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      <meta name="color-scheme" content="light dark" />
+      <meta
+        name="theme-color"
+        media="(prefers-color-scheme: light)"
+        content={THEME_COLOR_LIGHT}
+      />
+      <meta
+        name="theme-color"
+        media="(prefers-color-scheme: dark)"
+        content={THEME_COLOR_DARK}
+      />
       <link rel="canonical" href={canonicalUrl(canonicalPath)} />
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       <link
@@ -105,7 +130,7 @@ export function Layout({
   noindex,
 }: LayoutProps) {
   return (
-    <html lang="en" style={{ colorScheme: "dark" }}>
+    <html lang="en" style={{ colorScheme: "light dark" }}>
       <head>
         <HeadMeta
           title={title}
@@ -137,10 +162,10 @@ export function Layout({
             <span>Billet</span>
           </a>
           <Nav page={name} user={user} csrfToken={csrfToken} />
+          <ThemeToggle />
         </header>
         <main>{children}</main>
         <SiteFooter />
-        <script async src={getAssetUrl("/assets/lottie.js")} />
         <script type="module" src={getAssetUrl("/assets/main.js")} />
       </body>
     </html>
@@ -167,14 +192,14 @@ interface ErrorLayoutProps {
 }
 
 // Layout for error and maintenance pages (404, 500, 503). Deliberately ships NO
-// client JavaScript — no Lottie, no main bundle — so the page renders
+// client JavaScript — no main bundle — so the page renders
 // instantly and stays legible even when the app is degraded or offline, the
 // spec's resilience baseline for error and 503 responses. Reuses the same
 // header/footer chrome as `Layout` for continuity, and is always noindex so
 // crawlers never treat an error body as real content.
 export function ErrorLayout({ title, children, nav = true }: ErrorLayoutProps) {
   return (
-    <html lang="en" style={{ colorScheme: "dark" }}>
+    <html lang="en" style={{ colorScheme: "light dark" }}>
       <head>
         <HeadMeta title={title} description={SITE_DESCRIPTION} noindex />
       </head>
@@ -185,6 +210,7 @@ export function ErrorLayout({ title, children, nav = true }: ErrorLayoutProps) {
             <span>{SITE_NAME}</span>
           </a>
           {nav && <Nav page="" user={null} />}
+          <ThemeToggle />
         </header>
         <main>{children}</main>
         <SiteFooter />
@@ -209,7 +235,7 @@ export function BaseLayout({
   noindex,
 }: BaseLayoutProps) {
   return (
-    <html lang="en" style={{ colorScheme: "dark" }}>
+    <html lang="en" style={{ colorScheme: "light dark" }}>
       <head>
         <HeadMeta
           title={title}

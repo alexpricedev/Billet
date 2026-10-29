@@ -118,13 +118,22 @@ Forget one and the browser blocks the resource with a `Refused to load…` conso
 error. Test in a real browser after any change (see §6).
 
 **The `'unsafe-inline'` tradeoff.** `script-src` includes `'unsafe-inline'`
-because the page ships inline JSON-LD in
-[`layouts.tsx`](../src/server/components/layouts.tsx). That weakens CSP's XSS
-protection. The hardening path (a follow-up, not done here) is nonce +
-`'strict-dynamic'`: generate a per-request nonce, stamp it on every inline and
-first-party `<script>`, add `'nonce-…' 'strict-dynamic'` to `script-src`, and
-drop `'unsafe-inline'`. Every script is already same-origin, so the inline
-JSON-LD is the only thing left to nonce.
+because the page ships two inline scripts, both in
+[`layouts.tsx`](../src/server/components/layouts.tsx):
+
+1. the JSON-LD block, and
+2. the theme script — one statement that reads the `billet-theme` key and sets
+   `data-theme` on `<html>`. It has to be inline and in `<head>`: the bundle is
+   deferred, so anywhere later the reader would see the OS theme and watch it
+   swap.
+
+That weakens CSP's XSS protection. The hardening path (a follow-up, not done
+here) is nonce + `'strict-dynamic'`: generate a per-request nonce, stamp it on
+every inline and first-party `<script>`, add `'nonce-…' 'strict-dynamic'` to
+`script-src`, and drop `'unsafe-inline'`. Every script is already same-origin,
+so **those two are the only things left to nonce** — and the theme script is
+the one to check first, because missing it doesn't throw. It fails silently,
+and the symptom is a flash of the wrong palette on every load.
 
 **No `'unsafe-eval'`, by design.** The client's reactive layer
 (`src/client/reactive/`) binds state to markup through `data-*` attributes that
@@ -171,19 +180,14 @@ attacker-initiated posts. The header names live in `src/shared/protocol.ts`.
 
 ## 4. Third-party scripts
 
-Billet loads no third-party script. The homepage's Lottie player is the
-`lottie-web` package, pinned exactly in `package.json`; `bun run build:vendor`
-copies `lottie_light.min.js` byte-for-byte to `dist/assets/lottie.js`, which is
-fingerprinted and served from `/assets` like the other bundles, as a separate
-`async` script in [`layouts.tsx`](../src/server/components/layouts.tsx). No SRI
-hash applies to a same-origin file, and nothing needs recomputing on upgrade.
+Billet loads no third-party script, and vendors none either. The one that used
+to be here — the `lottie-web` player behind the marketing hero — left with the
+sales site, so `script-src 'self'` now covers a bundle set that is entirely
+first-party: `main.js`, `captcha.js` and `main.css`.
 
-**Upgrading Lottie.** Bump the package, then rebuild:
-
-```bash
-bun add lottie-web@<NEW> --exact
-bun run build
-```
+If you vendor a package the way that one was vendored (copy it into
+`dist/assets` at build time and serve it same-origin), pin it exactly in
+`package.json` and note that no SRI hash applies to a same-origin file.
 
 **If you add a CDN script.** Add its origin to `script-src` (§3), pin an exact
 version (never a floating range like `@5`), and add an `integrity` hash plus

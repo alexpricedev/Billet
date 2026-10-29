@@ -1,0 +1,201 @@
+/* Shared page furniture: headers, breadcrumbs, badges, empty states and the
+   small metadata rows. The visual rules live here so no page re-invents them;
+   pages add their own layout in pages/*.css. */
+
+.page-header {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-5);
+}
+
+.page-header-text {
+  max-width: 70ch;
+  min-width: 0;
+}
+
+.page-title {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.page-header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* With a breadcrumb above the title, sit level with the title rather than the
+   breadcrumb. Pages without one align to the title's own top edge. */
+.page-header.has-breadcrumb .page-header-actions {
+  padding-top: 22px;
+}
+
+.page-intro {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.6;
+  /* Keep the intro to a comfortable measure rather than the full page width. */
+  margin: 0;
+  max-width: 68ch;
+}
+
+/* ---- Breadcrumb --------------------------------------------------------- */
+
+.breadcrumb {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px;
+  line-height: 1.4;
+  margin: 0 0 var(--space-2);
+  min-width: 0;
+
+  a {
+    color: var(--text-secondary);
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+      color: var(--text);
+      text-decoration: none;
+    }
+  }
+
+  /* The separator is literal text in the markup (" / ") so the trail reads
+     correctly with CSS off and in the accessible text. */
+  > span:last-child {
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ---- Badges -------------------------------------------------------------
+
+   One shape, toned by attribute, from the one vocabulary in
+   `server/components/tone.ts`. A badge is never a solid saturated pill and
+   never carries its meaning in colour alone: the dot gives it a second channel
+   and the word inside it gives a third. The role classes `Badge` also writes
+   (`.badge-admin`, `.badge-owner`, …) are markup hooks and style nothing — the
+   tone decides, so a role can't drift away from the palette. */
+
+.badge {
+  align-items: center;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  font-weight: 500;
+  gap: 5px;
+  line-height: 1;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.badge::before {
+  background: currentColor;
+  border-radius: 999px;
+  content: "";
+  height: 5px;
+  opacity: 0.9;
+  width: 5px;
+}
+
+.badge[data-tone="success"] {
+  background: var(--success-soft);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
+.badge[data-tone="warning"] {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+
+.badge[data-tone="danger"] {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.badge[data-tone="accent"] {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-hover);
+}
+
+.badge[data-tone="neutral"] {
+  background: var(--surface-subtle);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.badge-plain::before {
+  display: none;
+}
+
+/* ---- Empty states -------------------------------------------------------
+
+   A bordered block with a quiet title, one sentence, and a next action where
+   there is one — never a bare "No results". The dashed edge is the only one
+   in the system, and it is what says "nothing here yet" rather than "a thing
+   that is empty". */
+
+.empty-state {
+  align-items: flex-start;
+  background: var(--surface-subtle);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  gap: var(--space-1);
+  line-height: 1.55;
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.empty-state-title {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ---- Metadata rows ------------------------------------------------------ */
+
+.meta-row {
+  align-items: baseline;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: var(--space-1) var(--space-3);
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (width <= 640px) {
+  .page-header {
+    gap: var(--space-3);
+  }
+
+  /* The actions wrap under the title rather than squeezing beside it, so the
+     breadcrumb offset that lined them up would only add a gap. */
+  .page-header.has-breadcrumb .page-header-actions {
+    padding-top: 0;
+  }
+}

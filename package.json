@@ -6,9 +6,8 @@
     "bun": ">=1.4.0"
   },
   "scripts": {
-    "build": "bun run build:client && bun run build:css && bun run build:vendor",
+    "build": "bun run build:client && bun run build:css",
     "build:client": "bun build ./src/client/main.ts ./src/client/captcha.ts --outdir ./dist/assets --minify",
-    "build:vendor": "mkdir -p dist/assets && cp node_modules/lottie-web/build/player/lottie_light.min.js dist/assets/lottie.js",
     "build:css": "bun build ./src/client/style.css --outdir ./dist/assets --entry-naming main.css --minify",
     "start": "bun --no-env-file run src/server/main.ts",
     "dev": "bun run build && bun run --parallel --no-orphans dev:client dev:server dev:css",
@@ -48,7 +47,6 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "lottie-web": "5.13.0",
     "preact": "^11.0.2",
     "preact-render-to-string": "^6.8.1",
     "resend": "^6.34.1"

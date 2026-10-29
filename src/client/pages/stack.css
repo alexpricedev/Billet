@@ -1,21 +1,28 @@
 [data-page="stack"] {
   section + section {
-    margin-top: 2.5rem;
+    margin-top: var(--space-10);
   }
 
-  code {
-    font-family: var(--font-mono);
-    font-size: 13px;
-  }
-
+  /* Code blocks are an inset surface, not a card: the subtle fill is what
+     separates them, so they take no shadow and no extra border radius. */
   pre {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
+    color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: 14px;
-    padding: 16px;
+    font-size: 12px;
+    line-height: 1.6;
     overflow-x: auto;
-    color: var(--color-text);
+    padding: var(--space-4);
+  }
+
+  /* The block already draws the inset surface, so the inline chip treatment
+     from base.css would double the border inside it. */
+  pre code {
+    background: none;
+    border: 0;
+    font-size: inherit;
+    padding: 0;
   }
 }

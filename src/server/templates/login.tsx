@@ -4,6 +4,7 @@ import { CsrfField } from "../components/csrf-field";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Honeypot } from "../components/honeypot";
+import { toneForMessage } from "../components/tone";
 import type { AuthMode } from "../services/auth-mode";
 import type { CaptchaChallenge } from "../services/captcha";
 import type { FlashMessage } from "../utils/flash";
@@ -84,15 +85,15 @@ export const Login = ({
           password. Rendered above the form, since it explains why they're
           looking at it. */}
       {message && (
-        <Flash type={message.type}>
-          <span>{message.text}</span>
-        </Flash>
+        <Flash tone={toneForMessage(message.type)} title={message.text} />
       )}
 
       {state?.state === "email-sent" ? (
-        <Flash type="success">
-          <p>Check your email!</p>
-          <p>We've sent you a magic link. Click it to sign in instantly.</p>
+        <Flash
+          tone="success"
+          title="Check your email!"
+          detail="We've sent you a magic link. Click it to sign in instantly."
+        >
           {showConsoleHint && (
             <p>For testing: Check the server console for the magic link.</p>
           )}
@@ -104,28 +105,27 @@ export const Login = ({
           {(state?.state === "validation-error" ||
             state?.state === "no-password") &&
             state.error && (
-              <Flash type="error">
-                <span>{state.error}</span>
-                {/* The message alone is a dead end — nothing on this page tells
-                    someone that the reset flow is also how you set a first
-                    password. */}
-                {state.state === "no-password" && (
-                  <p className="flash-action">
-                    {/* Carry the address across so the reset form doesn't ask
-                        for what was typed one page earlier. The flash trims
-                        empties, so a missing email is a real case. */}
-                    <a
-                      href={
-                        state.email
-                          ? `/forgot-password?email=${encodeURIComponent(state.email)}`
-                          : "/forgot-password"
-                      }
-                    >
-                      Set your password
-                    </a>
-                  </p>
-                )}
-              </Flash>
+              <Flash
+                tone="danger"
+                title={state.error}
+                // The message alone is a dead end — nothing on this page tells
+                // someone that the reset flow is also how you set a first
+                // password. Carry the address across so the reset form doesn't
+                // ask for what was typed one page earlier; the flash trims
+                // empties, so a missing email is a real case.
+                actions={
+                  state.state === "no-password"
+                    ? [
+                        {
+                          href: state.email
+                            ? `/forgot-password?email=${encodeURIComponent(state.email)}`
+                            : "/forgot-password",
+                          label: "Set your password",
+                        },
+                      ]
+                    : undefined
+                }
+              />
             )}
 
           <FormField label="Email address" id="email">
@@ -157,7 +157,7 @@ export const Login = ({
 
           <CaptchaWidget challenge={challenge} />
 
-          <button type="submit" className="login-submit">
+          <button type="submit" className="login-submit btn-primary">
             {password ? "Sign in" : "Send magic link"}
           </button>
 

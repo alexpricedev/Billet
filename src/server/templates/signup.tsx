@@ -70,9 +70,11 @@ export const Signup = ({
       }
     >
       {state?.state === "email-sent" ? (
-        <Flash type="success">
-          <p>Check your email!</p>
-          <p>We've sent you a link to finish setting up your account.</p>
+        <Flash
+          tone="success"
+          title="Check your email!"
+          detail="We've sent you a link to finish setting up your account."
+        >
           {showConsoleHint && (
             <p>For testing: Check the server console for the link.</p>
           )}
@@ -82,9 +84,7 @@ export const Signup = ({
           <CsrfField token={csrfToken} />
           {next && <input type="hidden" name="next" value={next} />}
           {state?.state === "validation-error" && state.error && (
-            <Flash type="error">
-              <span>{state.error}</span>
-            </Flash>
+            <Flash tone="danger" title={state.error} />
           )}
 
           <FormField label="Email address" id="email">
@@ -117,7 +117,7 @@ export const Signup = ({
 
           <CaptchaWidget challenge={challenge} />
 
-          <button type="submit" className="login-submit">
+          <button type="submit" className="login-submit btn-primary">
             {password ? "Create account" : "Send sign-up link"}
           </button>
         </form>

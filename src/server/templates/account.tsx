@@ -2,6 +2,7 @@ import { CsrfField } from "../components/csrf-field";
 import { Flash } from "../components/flash";
 import { FormField } from "../components/form-field";
 import { Layout } from "../components/layouts";
+import { PageHeader } from "../components/page-header";
 import type { AuthMode } from "../services/auth-mode";
 import { MIN_PASSWORD_LENGTH } from "../services/passwords";
 import type { User } from "../services/users";
@@ -63,44 +64,40 @@ export const Account = ({
     csrfToken={csrfToken}
     noindex
   >
-    <h1>Account</h1>
+    <PageHeader title="Account" />
 
     {state?.state === "verified" && (
-      <Flash type="success">
-        <span>Your email address is confirmed.</span>
-      </Flash>
+      <Flash tone="success" title="Your email address is confirmed." />
     )}
 
     {state?.state === "verification-sent" && (
-      <Flash type="success">
-        <span>
-          Confirmation link sent to {user.email}.
-          {showConsoleHint && " For testing: check the server console."}
-        </span>
-      </Flash>
+      <Flash
+        tone="success"
+        title={
+          <>
+            Confirmation link sent to {user.email}.
+            {showConsoleHint && " For testing: check the server console."}
+          </>
+        }
+      />
     )}
 
     {state?.state === "password-changed" && (
-      <Flash type="success">
-        <span>Password updated. You've been signed out everywhere else.</span>
-      </Flash>
+      <Flash
+        tone="success"
+        title="Password updated. You've been signed out everywhere else."
+      />
     )}
 
     {state?.state === "password-set" && (
-      <Flash type="success">
-        <span>
-          Password set. You can now sign in with your email and password. You've
-          been signed out everywhere else.
-        </span>
-      </Flash>
+      <Flash
+        tone="success"
+        title="Password set. You can now sign in with your email and password. You've been signed out everywhere else."
+      />
     )}
 
     {(state?.state === "verify-failed" || state?.state === "password-error") &&
-      state.error && (
-        <Flash type="error">
-          <span>{state.error}</span>
-        </Flash>
-      )}
+      state.error && <Flash tone="danger" title={state.error} />}
 
     <section className="account-section card">
       <h2>Email address</h2>
@@ -171,7 +168,7 @@ export const Account = ({
             />
           </FormField>
 
-          <button type="submit">
+          <button type="submit" className="btn-primary">
             {hasPassword ? "Update password" : "Set password"}
           </button>
         </form>
