@@ -26,12 +26,13 @@ These are handled in the framework layer and apply to every page automatically:
 | Labelled form controls | `form-field.tsx`, templates | Every input has an associated `<label>` (see §3) |
 | Keyboard focus ring | `base.css` | Global `:focus-visible { outline }` — visible, keyboard-only |
 | Disabled controls | `base.css` | `:is(input, select, textarea, button):disabled` fades to 50% and shows `cursor: not-allowed` |
-| Field borders | `base.css` | Inputs, selects and textareas draw `--color-border-strong` — 3:1 on the surface (WCAG 1.4.11 non-text contrast) |
-| Reduced motion | `base.css`, `home.ts` | `prefers-reduced-motion` shrinks transitions and stops the hero animation looping |
-| Announced flash messages | `flash.tsx` | `role="alert"` for errors, `role="status"` for success |
+| Field borders | `base.css` | Inputs, selects and textareas draw `--border-control` — 3:1 on the surface in **both themes** (WCAG 1.4.11 non-text contrast) |
+| Reduced motion | `base.css` | `prefers-reduced-motion` shrinks every transition. There is no animation left to stop — the only one was the marketing hero, which left with the sales site |
+| Announced banners | `flash.tsx` | `role="alert"` for errors; `role="status"` for success, info and warning, so a non-urgent message doesn't interrupt. Tone is carried by the icon's *shape* as well as its colour |
 | Data tables | `data-table.tsx`, templates | `<caption>` + `scope="col"` header cells |
 | Accessible authentication | magic-link login | No password puzzle or CAPTCHA; `autocomplete="email"`; paste allowed |
-| Mobile inputs | `base.css` | Inputs are `font-size: 16px` so iOS Safari doesn't zoom on focus |
+| Mobile inputs | `base.css` | Inputs are `font-size: 16px` below 641px so iOS Safari doesn't zoom on focus |
+| Theme choice | `theme-toggle.tsx` | System / Light / Dark, so a reader who needs one can pick it. Both palettes are AA-checked |
 | Screen-reader-only text | `.sr-only` utility | `base.css` — visually hidden, still announced |
 
 Icon-only SVGs (e.g. the hero) carry `aria-hidden="true"` and sit next to real
@@ -45,14 +46,16 @@ you:
 
 - **Colour contrast** — text and meaningful UI must meet WCAG contrast against
   their background (4.5:1 for body text, 3:1 for large text and UI). Check every
-  colour pair in your palette, not just the defaults. A filled primary control
-  is its own pair: `--color-primary` is the accent — link text, badges, the
-  focus ring — and has to stay light enough to read as text on the dark
-  surfaces, while `--color-primary-fill` and `--color-primary-fill-hover` are
-  the same hue darkened for the control's background, so its white 14px label
-  clears 4.5:1 at rest and on hover. Retune **both pairs together**: one colour
-  can't do both jobs, because a fill dark enough for a white label is too dark
-  to read as link text. See
+  colour pair in your palette, not just the defaults — and check it **in both
+  themes**, which is twice the work a dark-only palette needed.
+
+  A filled primary control does not draw the accent, and that separation is
+  deliberate. `--accent` is link text, the focus ring and badges, and has to
+  read as *text* on the surfaces; `.btn-primary` draws `--button-primary-bg`
+  (near-black on light, near-white on dark) so its label clears 4.5:1 without
+  the accent having to be dark enough for a white label and light enough for
+  body text at the same time — one colour cannot do both jobs. If you replace
+  the palette, keep those two decisions separate. See
   [contrast](https://specification.website/spec/accessibility/color-contrast/)
   and the CSS
   [`contrast-color()`](https://specification.website/spec/accessibility/contrast-color/)
@@ -69,9 +72,12 @@ you:
   relies on background colours to convey meaning (e.g. status pills), add
   [forced-colours](https://specification.website/spec/accessibility/forced-colors/)
   handling of your own so Windows High Contrast users don't lose it.
-- **Touch targets** — the default buttons clear the 24×24 CSS px WCAG 2.2
-  minimum but not the 44×44 enhanced target. Size your interactive controls
-  accordingly.
+- **Touch targets** — the default 32px buttons clear the 24×24 CSS px WCAG 2.2
+  minimum but not the 44×44 enhanced target. The three controls that are only
+  ever tapped — the nav's menu button, the theme toggle and a banner's dismiss
+  × — are sized to 44×44 anyway; the dismiss does it with a negative block
+  margin so the hit area costs the banner no height. Size your own interactive
+  controls accordingly.
 
 ## 3. Patterns to follow as you build
 
@@ -94,10 +100,11 @@ Keep the baseline intact by following these when you add pages:
   here" / "read more"; screen-reader users navigate by jumping between links.
 - **Images** — every `<img>` needs an `alt` attribute (empty `alt=""` for purely
   decorative images). Decorative inline SVGs get `aria-hidden="true"`.
-- **Motion** — respect `prefers-reduced-motion`. The global CSS block covers
-  CSS animation/transition; for JS-driven animation (like the Lottie hero),
-  gate autoplay on `matchMedia("(prefers-reduced-motion: reduce)")` as `home.ts`
-  does.
+- **Motion** — respect `prefers-reduced-motion`. The global CSS block in
+  `base.css` covers every CSS animation and transition, and Billet ships no
+  JS-driven animation at all. If you add one, gate autoplay on
+  `matchMedia("(prefers-reduced-motion: reduce)")` rather than relying on that
+  block, which cannot reach it.
 - **Media** — video you add needs synchronised captions; audio-only content
   needs a transcript. Auto-captions alone aren't enough.
 - **ARIA** — reach for a native HTML element first. Only add ARIA when nothing

@@ -118,13 +118,22 @@ Forget one and the browser blocks the resource with a `Refused to load…` conso
 error. Test in a real browser after any change (see §6).
 
 **The `'unsafe-inline'` tradeoff.** `script-src` includes `'unsafe-inline'`
-because the page ships inline JSON-LD in
-[`layouts.tsx`](../src/server/components/layouts.tsx). That weakens CSP's XSS
-protection. The hardening path (a follow-up, not done here) is nonce +
-`'strict-dynamic'`: generate a per-request nonce, stamp it on every inline and
-first-party `<script>`, add `'nonce-…' 'strict-dynamic'` to `script-src`, and
-drop `'unsafe-inline'`. Every script is already same-origin, so the inline
-JSON-LD is the only thing left to nonce.
+because the page ships two inline scripts, both in
+[`layouts.tsx`](../src/server/components/layouts.tsx):
+
+1. the JSON-LD block, and
+2. the theme script — one statement that reads the `billet-theme` key and sets
+   `data-theme` on `<html>`. It has to be inline and in `<head>`: the bundle is
+   deferred, so anywhere later the reader would see the OS theme and watch it
+   swap.
+
+That weakens CSP's XSS protection. The hardening path (a follow-up, not done
+here) is nonce + `'strict-dynamic'`: generate a per-request nonce, stamp it on
+every inline and first-party `<script>`, add `'nonce-…' 'strict-dynamic'` to
+`script-src`, and drop `'unsafe-inline'`. Every script is already same-origin,
+so **those two are the only things left to nonce** — and the theme script is
+the one to check first, because missing it doesn't throw. It fails silently,
+and the symptom is a flash of the wrong palette on every load.
 
 **No `'unsafe-eval'`, by design.** The client's reactive layer
 (`src/client/reactive/`) binds state to markup through `data-*` attributes that

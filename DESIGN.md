@@ -104,7 +104,10 @@ its sidebar; Billet has no sidebar and so no exception.)
   `--radius-lg` 12px (the one auth card).
 - Borders are 1px at `--border`; a hovered control moves to `--border-strong`, and a focused one to
   `--accent` plus a 3px `--accent-soft` ring.
-- Icons: 20px in the bar, 24px inline. Stroke width 2. No emoji, no mixed icon families.
+- Icons: 20px for the brand mark, the nav's menu button, a banner's tone icon and a demo card;
+  16px inside the theme toggle and a banner's dismiss ×. Stroke width 2 throughout, drawn in
+  `currentColor` so an icon themes for free. No emoji, no mixed icon families, and no icon
+  library — the glyphs are Lucide paths inlined in the component that uses them.
 
 > **SVG attributes are kebab-case** (`stroke-width`, not `strokeWidth`). Preact passes camelCase
 > through verbatim and the HTML parser ignores it — the stroke silently renders at the default
@@ -180,6 +183,11 @@ bordered container or reflows to stacked rows (`/team` does the latter, via `dat
 
 `.badge` with `data-tone="success" | "warning" | "danger" | "accent" | "neutral"`. Soft surface,
 hairline border, 11.5px medium, and a leading dot so the tone is never colour alone.
+
+> Badges and banners both key off `data-tone`, but they are **not one vocabulary**: a badge's
+> destructive tone is `danger` and a banner's is `error`, and a banner has no `accent` or
+> `neutral`. They arrived from different places and the names were left as each component spells
+> them. Copying a tone from one to the other silently falls through to the default.
 
 ### Banners
 
@@ -266,9 +274,15 @@ colour into the `select` rule is the defect this replaced.
 ## Responsive behaviour
 
 - 1120px+: content max width.
+- 1000px: the home page's four demo cards go two-up. The column count always divides four — three
+  across would orphan the fourth on a row of its own.
 - 900px: the forms page's two columns collapse; main padding tightens.
+- 641px: form controls drop from 16px to 13.5px. The larger size exists below this point only to
+  stop iOS Safari zooming the viewport on focus.
 - 640px: page padding 16px, header actions wrap under the title, the nav collapses to a toggled
   panel with 44px rows, tables scroll or reflow.
+- 560px: the demo cards go one-up.
+- 480px: the verification banner tightens its row gap and line height rather than dropping copy.
 - 320px: no horizontal overflow. Every long unbroken token (URLs, ids, emails) wraps.
 
 ## Accessibility
