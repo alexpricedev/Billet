@@ -37,6 +37,30 @@ describe("Home Controller", () => {
       expect(html).toContain("<main>");
     });
 
+    // The test database has no cms_ tables, which is also a site whose CMS has
+    // never been deployed: the page must render its own hero, not fail.
+    test("falls back to the written hero without the CMS tables", async () => {
+      const request = createBunRequest("http://localhost:3000/", {
+        method: "GET",
+      });
+      const response = await home.index(request);
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain("Let your agents ship, safely");
+    });
+
+    test("an unknown preview token reads as the published page", async () => {
+      const request = createBunRequest(
+        "http://localhost:3000/?cms_preview=not-a-token",
+        { method: "GET" },
+      );
+      const response = await home.index(request);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).not.toBe("no-store");
+      expect(await response.text()).not.toContain("cms-preview-banner");
+    });
+
     // A public page carries no noindex of its own, so what it renders is the
     // site-wide switch. Both directions, because the default being closed is
     // the whole point and the open path is what a production host gets.

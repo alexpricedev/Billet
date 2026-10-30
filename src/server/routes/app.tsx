@@ -1,4 +1,5 @@
 import {
+  cmsSignIn,
   forms,
   home,
   llmsTxt,
@@ -29,6 +30,7 @@ export const appRoutes = {
   "/llms.txt": llmsTxt.index,
   "/.well-known/security.txt": securityTxt.index,
   "/stack": stack.index,
+  "/cms/sign-in": cmsSignIn.index,
   "/forms": createRouteHandler({
     GET: forms.index,
     POST: forms.create,

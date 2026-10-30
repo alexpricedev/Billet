@@ -35,6 +35,7 @@
     "migrate:up": "bun run src/server/database/cli.ts up",
     "migrate:status": "bun run src/server/database/cli.ts status",
     "migrate:create": "bun run src/server/database/cli.ts create",
+    "cms:publish": "billet-cms-publish",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -48,9 +49,11 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@alexpricedev/billet-cms": "^0.4.0",
     "lottie-web": "5.13.0",
     "preact": "^11.0.2",
     "preact-render-to-string": "^6.8.1",
-    "resend": "^6.34.1"
+    "resend": "^6.34.1",
+    "zod": "^4.6.7"
   }
 }

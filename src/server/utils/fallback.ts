@@ -1,3 +1,4 @@
+import { cmsPageRoute } from "../cms/marketing-page";
 import {
   assetsDir,
   handleAssetRequest,
@@ -83,6 +84,11 @@ export const handleFallback = async (req: Request): Promise<Response> => {
     if (await file.exists()) return serveFile(req, file);
   }
 
-  // No route, no static file: a real 404 with the styled, navigable error page.
+  // A page an editor made in the CMS, or a CMS redirect to one. Last, so a
+  // route or a static file always wins over a page at the same path.
+  const cmsPage = await cmsPageRoute(req);
+  if (cmsPage) return cmsPage;
+
+  // No route, no static file, no CMS page: a real 404 with the styled, navigable error page.
   return render404();
 };

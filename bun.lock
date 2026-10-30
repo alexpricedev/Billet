@@ -5,10 +5,12 @@
     "": {
       "name": "billet",
       "dependencies": {
+        "@alexpricedev/billet-cms": "^0.4.0",
         "lottie-web": "5.13.0",
         "preact": "^11.0.2",
         "preact-render-to-string": "^6.8.1",
         "resend": "^6.34.1",
+        "zod": "^4.6.7",
       },
       "devDependencies": {
         "@biomejs/biome": "2.6.2",
@@ -23,6 +25,8 @@
     },
   },
   "packages": {
+    "@alexpricedev/billet-cms": ["@alexpricedev/billet-cms@0.4.0", "", { "peerDependencies": { "zod": "^4.0.0" }, "bin": { "billet-cms-pull": "src/cli/pull/cli.ts", "billet-cms-publish": "src/cli/publish/cli.ts" } }, "sha512-fFTIKlyT8EKoQlTxVEBGDutDkDuu8gG6eBCIs5mwKcVM2ZiFIqf7sDzF59xF5TA5n4rsMWbfiocl6kr9QiJsxw=="],
+
     "@biomejs/biome": ["@biomejs/biome@2.6.2", "", { "optionalDependencies": { "@biomejs/cli-android-arm64": "2.6.2", "@biomejs/cli-android-x64": "2.6.2", "@biomejs/cli-darwin-arm64": "2.6.2", "@biomejs/cli-darwin-x64": "2.6.2", "@biomejs/cli-linux-arm64": "2.6.2", "@biomejs/cli-linux-arm64-musl": "2.6.2", "@biomejs/cli-linux-x64": "2.6.2", "@biomejs/cli-linux-x64-musl": "2.6.2", "@biomejs/cli-win32-arm64": "2.6.2", "@biomejs/cli-win32-x64": "2.6.2" }, "bin": { "biome": "bin/biome" } }, "sha512-JLTFAFF9vfJcWwLhwuL4ZHflLg+XfTEC4IUnAlJRX1cMRt57++Xd1Ysb9Fdmlh9YUrvyCXfPEHjjEIqKJGdPKw=="],
 
     "@biomejs/cli-android-arm64": ["@biomejs/cli-android-arm64@2.6.2", "", { "os": "android", "cpu": "arm64" }, "sha512-dMpdpH7zFEL5FxuIA9LJW+RoNyC3oeDB7PJyjqVVwtMNoKB5uo8OZYmrVSBikn71txzYwy/3xga7UME6bJQZ6A=="],
@@ -134,5 +138,7 @@
     "whatwg-mimetype": ["whatwg-mimetype@3.0.0", "", {}, "sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q=="],
 
     "ws": ["ws@8.21.3", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw=="],
+
+    "zod": ["zod@4.6.7", "", {}, "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg=="],
   }
 }

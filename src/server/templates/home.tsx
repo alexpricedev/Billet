@@ -1,3 +1,4 @@
+import type { HeroAction, HomeHeroContent } from "@server/cms/home-hero";
 import { Flash } from "@server/components/flash";
 import { Layout } from "@server/components/layouts";
 import type { User } from "@server/services/users";
@@ -14,9 +15,28 @@ interface HomeProps {
   // runbooks/ACCESSIBILITY.md going unmet. The writer picks the type: a guard's
   // refusal and "You've joined Acme" both arrive on this key.
   message?: FlashMessage;
+  // The CMS-edited copy for the hero, or null for the copy written below. The
+  // lottie and the announcement link stay in the template either way.
+  hero?: HomeHeroContent | null;
 }
 
-export const Home = ({ user, csrfToken, message }: HomeProps) => (
+const ActionLink = ({
+  action,
+  className,
+}: {
+  action: HeroAction;
+  className: string;
+}) => (
+  <a
+    href={action.href}
+    className={className}
+    {...(action.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+  >
+    {action.label}
+  </a>
+);
+
+export const Home = ({ user, csrfToken, message, hero }: HomeProps) => (
   <Layout
     title="Billet—The AI-native TypeScript starter"
     description="Let your AI coding agents ship, safely: server-rendered JSX, PostgreSQL via Bun, auth, security and 900+ tests in a single deploy target."
@@ -61,25 +81,41 @@ export const Home = ({ user, csrfToken, message }: HomeProps) => (
           →
         </span>
       </a>
-      <p className="hero-tag">Full-stack TypeScript starter</p>
-      <h1>Let your agents ship, safely</h1>
-      <p className="hero-sub">
-        Auth, security, migrations and 900+ tests come as standard.
-        Server-rendered JSX on Bun and PostgreSQL, reactive without a virtual
-        DOM—one codebase, one test runner, one deploy target. Your agent starts
-        on your product, not on the parts every app needs.
-      </p>
-      <div className="hero-actions">
-        <a
-          href="https://github.com/alexpricedev/Billet?tab=readme-ov-file#quick-start"
-          className="btn-primary"
-        >
-          Get Started
-        </a>
-        <a href="/stack" className="btn-ghost">
-          View Stack
-        </a>
-      </div>
+      {hero ? (
+        <>
+          <p className="hero-tag">{hero.tag}</p>
+          <h1>{hero.heading}</h1>
+          <p className="hero-sub">{hero.body}</p>
+          <div className="hero-actions">
+            <ActionLink action={hero.primaryAction} className="btn-primary" />
+            {hero.secondaryAction && (
+              <ActionLink action={hero.secondaryAction} className="btn-ghost" />
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="hero-tag">Full-stack TypeScript starter</p>
+          <h1>Let your agents ship, safely</h1>
+          <p className="hero-sub">
+            Auth, security, migrations and 900+ tests come as standard.
+            Server-rendered JSX on Bun and PostgreSQL, reactive without a
+            virtual DOM—one codebase, one test runner, one deploy target. Your
+            agent starts on your product, not on the parts every app needs.
+          </p>
+          <div className="hero-actions">
+            <a
+              href="https://github.com/alexpricedev/Billet?tab=readme-ov-file#quick-start"
+              className="btn-primary"
+            >
+              Get Started
+            </a>
+            <a href="/stack" className="btn-ghost">
+              View Stack
+            </a>
+          </div>
+        </>
+      )}
     </section>
 
     <section className="story">

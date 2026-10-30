@@ -1,6 +1,12 @@
+import {
+  applyPreview,
+  getPreviewAccess,
+} from "@alexpricedev/billet-cms/server";
 import type { BunRequest } from "bun";
+import { getHomeHero } from "../../cms/home-hero";
 import { getSessionContext } from "../../middleware/auth";
 import { createCsrfToken } from "../../services/csrf";
+import { db } from "../../services/database";
 import { setSessionCookie } from "../../services/sessions";
 import { Home } from "../../templates/home";
 import { type FlashMessage, getFlashCookie } from "../../utils/flash";
@@ -25,12 +31,21 @@ export const home = {
     // which is why this one is fetched directly.
     const message = getFlashCookie<Partial<FlashMessage>>(req, "message");
 
-    return render(
-      <Home
-        user={ctx.user}
-        csrfToken={csrfToken}
-        message={message.text ? (message as FlashMessage) : undefined}
-      />,
+    // A CMS preview link lands here with ?cms_preview=; without a valid token
+    // this is null and the page reads the published hero, untouched.
+    const preview = await getPreviewAccess(db, req);
+    const hero = await getHomeHero(preview);
+
+    return applyPreview(
+      render(
+        <Home
+          user={ctx.user}
+          csrfToken={csrfToken}
+          message={message.text ? (message as FlashMessage) : undefined}
+          hero={hero}
+        />,
+      ),
+      preview,
     );
   },
 };

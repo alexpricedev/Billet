@@ -12,6 +12,23 @@ import { maintenanceResponse } from "./maintenance";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+// CMS images are served from the media bucket, not this origin. The CMS sets
+// MEDIA_PUBLIC_BASE_URL; give the site the same value or every image on a CMS
+// page is blocked with nothing but a console line to say so.
+const cmsMediaOrigin = (() => {
+  const configured = process.env.MEDIA_PUBLIC_BASE_URL?.trim();
+  if (!configured) return null;
+  try {
+    return new URL(configured).origin;
+  } catch {
+    log.warn(
+      "csp",
+      "MEDIA_PUBLIC_BASE_URL is not a URL; CMS images will be blocked",
+    );
+    return null;
+  }
+})();
+
 // Content Security Policy. Enforcing, but deliberately host-allowlist based
 // rather than nonce + 'strict-dynamic': the page ships inline JSON-LD, and that
 // inline block forces 'unsafe-inline' here. Every script is same-origin. The real wins this still buys:
@@ -23,7 +40,7 @@ const CONTENT_SECURITY_POLICY = [
   "base-uri 'none'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "img-src 'self' data:",
+  ["img-src 'self' data:", cmsMediaOrigin].filter(Boolean).join(" "),
   "font-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline'",

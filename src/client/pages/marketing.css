@@ -1,0 +1,144 @@
+/* CMS marketing pages: a hero, then any mix of prose, full-bleed images and
+   call-to-action banners. The image breaks out of <main>'s 960px column, so the
+   page clips horizontally rather than letting 100vw (which counts the
+   scrollbar) push a sideways scroll. */
+[data-page="marketing"] {
+  overflow-x: clip;
+
+  /* ── Hero ────────────────────────────────────────────── */
+
+  .marketing-hero {
+    text-align: center;
+    padding: 64px 0 72px;
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+      color: var(--color-text);
+      margin-bottom: 1.5rem;
+
+      @media (width >= 768px) {
+        font-size: 3.5rem;
+      }
+    }
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-sub {
+    max-width: 680px;
+    margin-inline: auto;
+    margin-bottom: 2.5rem;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--color-text-tertiary);
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  /* Every button on the page is a link: this is its box, and .btn-ghost in
+     base.css supplies the ghost colours. */
+  .hero-actions a,
+  .marketing-cta a {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 22px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 150ms ease;
+  }
+
+  .btn-primary {
+    background: var(--color-primary-fill);
+    color: #fff;
+
+    &:hover,
+    &:focus {
+      background: var(--color-primary-fill-hover);
+      color: #fff;
+      text-decoration: none;
+    }
+  }
+
+  /* ── Body blocks ─────────────────────────────────────── */
+
+  .marketing-prose {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 3rem 0;
+    line-height: 1.7;
+    color: var(--color-text-secondary);
+
+    h2 {
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+      margin-bottom: 1rem;
+    }
+
+    :where(p + p, ul, ol) {
+      margin-top: 1rem;
+    }
+  }
+
+  .marketing-image {
+    margin: 3rem calc(50% - 50vw);
+
+    picture,
+    img {
+      display: block;
+      width: 100%;
+      height: 100svh;
+    }
+
+    figcaption {
+      max-width: 960px;
+      margin: 0.75rem auto 0;
+      padding-inline: 1rem;
+      font-size: 0.875rem;
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  .marketing-cta {
+    margin: 3rem 0;
+    padding: 3rem 2rem;
+    text-align: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+
+    h2 {
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+    }
+
+    p {
+      max-width: 560px;
+      margin: 0.75rem auto 0;
+      color: var(--color-text-secondary);
+    }
+
+    a {
+      margin-top: 1.75rem;
+    }
+  }
+}
