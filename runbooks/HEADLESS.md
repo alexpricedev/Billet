@@ -275,7 +275,7 @@ Ordered by how long it takes to work out what happened.
    header is set in `security-headers.ts` and stays. An SPA that is supposed to be indexed
    and silently is not is a long afternoon. `runbooks/SEO.md` §1b.
 2. **Deleting `src/client/` orphans the test runner's assumptions.** `run-tests.ts` sweeps
-   `TEST_PATHS = ["src", "./.railway/railway.test.ts"]`. The React app's own tests live
+   `TEST_PATHS = ["src"]`. The React app's own tests live
    outside that unless you name them, and a path inside a dot-directory needs the leading
    `./` or `bun test` reads the bare argument as a name filter.
 3. **`rate-limit.ts`'s `requestLog` Map is module-level** and shared by every test file in a

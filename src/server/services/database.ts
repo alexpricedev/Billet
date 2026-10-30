@@ -10,7 +10,7 @@ let closing = false;
 
 const pool = new SQL(process.env.DATABASE_URL, {
   // Keep the pool healthy on hosts whose private network silently drops idle
-  // TCP connections (e.g. Railway). Recycle connections before they go stale so
+  // TCP connections (common on hosting platforms). Recycle connections before they go stale so
   // a request never gets handed a dead socket (the cause of hung requests that
   // surface as upstream 502/499 errors).
   max: 10,

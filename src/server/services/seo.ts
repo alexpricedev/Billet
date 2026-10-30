@@ -29,7 +29,7 @@ export const siteUrl = (): string => {
  *
  * Closed by default: the site stays out of Google unless `ALLOW_INDEXING=true`
  * is set explicitly, so a preview deploy, a staging host or a fork's first
- * Railway URL can't be crawled because nobody remembered to block it. Opening
+ * deploy URL can't be crawled because nobody remembered to block it. Opening
  * indexing is one deliberate variable in one place, and every layer that speaks
  * to a crawler — robots.txt, the `X-Robots-Tag` on every response, the
  * `<meta name="robots">` in `layouts.tsx` — reads this rather than deciding for

@@ -21,7 +21,7 @@ const trustProxy = (): boolean => process.env.TRUST_PROXY === "true";
  * `x-forwarded-for` is client-controlled: anyone can send a fresh value per
  * request and walk straight past a limit keyed on it. So the header is only
  * believed when TRUST_PROXY=true — deployments behind exactly one proxy that
- * rewrites or appends to the header itself (Railway does) — and even then only
+ * rewrites or appends to the header itself (most hosting platforms do) — and even then only
  * its *last* entry, the one hop the proxy added. Everything left of it arrived
  * in the client's own request and stays untrusted.
  *

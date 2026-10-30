@@ -199,14 +199,14 @@ curl -sL "<URL>" | openssl dgst -sha384 -binary | openssl base64 -A
 
 ## 5. Deploy & transport layer (host, not code)
 
-- **HTTPS / TLS.** Provided by the platform. Railway terminates TLS and redirects
+- **HTTPS / TLS.** Provided by the platform. The platform terminates TLS and redirects
   plain HTTP to HTTPS at the edge, so there is no in-app redirect. If you deploy
   elsewhere, confirm the edge does the HTTP→HTTPS redirect.
 - **HSTS preload.** The header already advertises `preload`. To get baked into
   browsers, submit the apex domain at [hstspreload.org](https://hstspreload.org)
   **after** confirming every subdomain is HTTPS-only — preload is hard to undo.
 - **`TRUST_PROXY=true` behind a reverse proxy.** The rate limiter keys requests by
-  client address (`src/server/middleware/client-ip.ts`). Behind Railway (or any
+  client address (`src/server/middleware/client-ip.ts`). Behind a hosting platform (or any
   single proxy that rewrites/appends `x-forwarded-for` itself) set `TRUST_PROXY=true`
   so it reads the last header entry — the hop the proxy added; otherwise every
   visitor shares the proxy's socket address and one busy user 429s everyone.
@@ -246,7 +246,7 @@ want a spotless console.
 
 - **CAA records (recommended).** Restrict which certificate authorities may issue
   certs for your domain. Confirm your platform's CA first — a wrong CAA blocks
-  renewals. Railway uses Let's Encrypt:
+  renewals. For example, if your platform uses Let's Encrypt:
 
   ```
   yourdomain.com.  CAA  0 issue "letsencrypt.org"

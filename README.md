@@ -15,7 +15,6 @@
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" /></a>
   <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals"><img src="https://img.shields.io/badge/JSX/TSX-20232a?style=for-the-badge&logo=javascript&logoColor=yellow" alt="JSX/TSX" /></a>
   <a href="https://typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
-  <a href="https://railway.com?referralCode=XB1wns"><img src="https://img.shields.io/badge/Deploy%20on-Railway-131415?style=for-the-badge&logo=railway&logoColor=white" alt="Railway" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -297,10 +296,6 @@ scripts/
 ├── hooks/
 │   └── no-shared-stash.ts      # Denies `git stash`, points at `bun run wip`
 └── skills/                     # Progressive-disclosure guides for agents
-
-.railway/
-├── railway.ts                  # Railway Infrastructure as Code — build, deploy and env, applied by CLI
-└── railway.test.ts             # Guards those settings against drift
 ```
 
 ---
@@ -409,69 +404,32 @@ Contributions are welcome! Please open issues or PRs.
 
 ## Deploy
 
-Billet is a single Bun process — no containers, no serverless adapters, no platform-specific runtime. Anywhere you can run `bun run start`, it'll work: Railway, Fly.io, Render, a VPS, or your own machine.
+Billet is a single Bun process — no containers, no serverless adapters, no platform-specific runtime. Anywhere you can run `bun run start`, it'll work: a PaaS, a VPS, or your own machine.
 
-### Railway
-
-Four commands, from nothing to a running app. Deployments typically go live in under 60 seconds.
-
-```bash
-railway init --name my-app                                        # new project, linked here
-railway config apply                                              # service + Postgres + env defaults
-railway domain                                                    # generates the public URL
-railway variables --set CRYPTO_PEPPER=$(bun run generate:pepper)  # the one secret you set yourself
-```
-
-Then connect your repo in the service's **Settings → Source**, and it deploys on every push.
-
-All of it comes from [`.railway/railway.ts`](.railway/railway.ts) — the build and deploy settings,
-the Postgres link, and every environment variable the server reads. Needs Railway CLI
-**5.42.1 or newer**. For a project you already have, swap the first line for `railway link` and
-read `railway config plan` before applying. Nothing applies on `git push`.
-
-Three things the plan won't warn you about:
-
-- **No deployment after the first apply is expected.** The file declares no `source`, so the
-  service has nothing to build until you connect the repo. That is deliberate — a starter can't
-  know your GitHub slug — and it means a later apply leaves your connection alone.
-- **The name must match what Railway calls your service.** It does when `railway config apply` is
-  what created it, as above. It won't if you connected a repo first, because Railway names a
-  service after the repo — then edit `export const partial` to match. The service takes its name
-  from the partial, so that one line is the whole rename.
-- **That `partial` is also what stops an apply deleting things it doesn't know about.** Without
-  it, a project holding several apps and one shared PostgreSQL reads every service the file omits
-  as one to delete.
-
-Secrets stay out of the file: everything you own is `preserve()`, which means *this name exists,
-its value lives on Railway*. The defaults that are there — `EMAIL_PROVIDER=console`, an `APP_URL`
-built from `${{RAILWAY_PUBLIC_DOMAIN}}` — exist so a fresh apply boots instead of crash-looping.
-`railway.ts` comments the reasoning behind each choice, including the two that look obvious and
-aren't.
-
-Prefer the dashboard? These are the same values, to set by hand in the service's **Settings** tab:
+Set these in your hosting platform's service settings:
 
 | Setting | Value |
 |---|---|
-| Builder | **Railpack** |
 | Build command | `bun install && bun run build` |
 | Start command | `bun run start` |
 | Healthcheck path | `/health` |
 | Healthcheck timeout | `30` |
-| Restart policy | **On failure** (Railway's default), max `3` retries |
+| Restart policy | On failure, max `3` retries |
 
-> **Tip:** If you're using Claude Code with the [Railway MCP server](https://docs.railway.com/guides/mcp), you can ask Claude to set up the project, add PostgreSQL, and configure both the environment variables and the settings above for you.
+Provision a PostgreSQL database and set the variables below. `CRYPTO_PEPPER` is the one secret you
+generate yourself (`bun run generate:pepper`).
 
 ### Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string — auto-set when you link Railway's PostgreSQL plugin to your service |
+| `DATABASE_URL` | Yes | PostgreSQL connection string — from your hosting platform's PostgreSQL service |
 | `CRYPTO_PEPPER` | Yes | Secret key for session tokens — run `bun run generate:pepper` to get one (see below) |
-| `APP_URL` | Yes | Your app's public URL — you'll get this from Railway after your first deploy (e.g. `https://my-app.up.railway.app`) |
+| `APP_URL` | Yes | Your app's public URL — the URL your hosting platform gives you after the first deploy, or your own domain (e.g. `https://my-app.example.com`) |
 | `SITE_URL` | No | Canonical origin for canonicals, Open Graph tags, the sitemap, and JSON-LD. Defaults to `APP_URL`'s origin — set it only when the canonical domain differs from the app domain |
 | `ALLOW_INDEXING` | No | Set to `true` to let search engines index the site. Unset, every response and page says `noindex` and `robots.txt` drops its `Sitemap:` line, so a preview or staging host can't be indexed by accident. Set it on production only |
-| `PORT` | No | Server port — auto-set by Railway, defaults to `3000` locally |
-| `TRUST_PROXY` | No | Set to `true` behind a proxy that rewrites `x-forwarded-for` — Railway does. Without it the rate limiter sees one shared address for every visitor. Set by `.railway/railway.ts` |
+| `PORT` | No | Server port — usually set by the hosting platform, defaults to `3000` locally |
+| `TRUST_PROXY` | No | Set to `true` behind a proxy that rewrites `x-forwarded-for`, as most hosting platforms do. Without it the rate limiter sees one shared address for every visitor |
 | `AUTH_MODE` | No | `magic-link` (default) or `password`. Mutually exclusive; any other value stops the server at boot |
 | `CAPTCHA_ENABLED` | No | Set to `true` to add a proof-of-work captcha to the login form. Off by default; `/login` is unchanged when unset |
 | `CAPTCHA_DIFFICULTY` | No | Tunes the captcha's client-side work (search-space size). Defaults to `100000` (~sub-second for a real browser) |
