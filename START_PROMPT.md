@@ -95,7 +95,7 @@ everything that points at them so nothing refers to a missing file:
   the tests that compare against it. Keep the rest of the file; the fixtures themselves stay.
 - `src/server/fixtures/personas.ts` — the header comment's mentions of `ux/personas.md`.
 - `runbooks/FIXTURES.md` — the lines that name `ux/stories/` and `ux/personas.md`.
-- Anything else `grep -rn -E 'REVIEW\.md|ux/' .` turns up, apart from `CHANGELOG.md`.
+- Anything else this turns up (it skips this file, `CHANGELOG.md`, `.git` and `node_modules`): `grep -rn -E 'REVIEW\.md|ux/' . --exclude=START_PROMPT.md --exclude=CHANGELOG.md --exclude-dir=.git --exclude-dir=node_modules`
 
 ## 4. Rewrite the home page
 
@@ -200,4 +200,4 @@ If they want to **remove** it:
 
 ## 8. Verify
 
-Run `bun run check` to make sure there are no lint or type errors from the changes. Then run `bun run test` to confirm all tests pass. `grep -rn -E 'REVIEW\.md|ux/' .` (excluding `.git`, `node_modules` and `CHANGELOG.md`) must find nothing — step 3b. Start the dev server with `bun run dev` and check it works at http://localhost:3000.
+Run `bun run check` to make sure there are no lint or type errors from the changes. Then run `bun run test` to confirm all tests pass. `grep -rn -E 'REVIEW\.md|ux/' . --exclude=START_PROMPT.md --exclude=CHANGELOG.md --exclude-dir=.git --exclude-dir=node_modules` must find nothing — step 3b. Start the dev server with `bun run dev` and check it works at http://localhost:3000.
