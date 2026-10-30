@@ -63,7 +63,6 @@ Replace **Billet** with the chosen project name across the codebase. This is a c
 | `src/server/templates/todos.tsx` | Page title |
 | `src/server/components/layouts.tsx` | Logo text in `<span>Billet</span>` |
 | `src/server/services/seo.ts` | `SITE_NAME` and `SITE_DESCRIPTION` → project name and description |
-| `.railway/railway.ts` | `project("my-app")` → slug. Ask whether they want the service renamed from `web` too — if so, change `partial` only (the service takes its name from it), and tell them the new name must match what Railway calls the service or `railway config apply` creates a second one |
 
 > **Keep `.billet-version`.** It records which Billet release this tree came from, and it is
 > deliberately not on the list above — it isn't project identity, it's provenance. `version` in
@@ -84,6 +83,19 @@ These are links specific to the original Billet repository. Remove or update the
 
 `.billet-version` names the upstream repo too, and is the exception: leave it exactly as it is. It
 is how you find out what upstream fixed after you forked — see the note in step 2.
+
+## 3b. Remove the review and UX-testing files
+
+`REVIEW.md` and `ux/` (`README.md`, `personas.md`, `stories/`) are Billet's own review rules and
+UX stories. A project made from the template has no use for them. Delete both, then remove
+everything that points at them so nothing refers to a missing file:
+
+- `CLAUDE.md` — the "Reviewing a change? `REVIEW.md` …" bullet under *Working agreements*.
+- `src/server/fixtures/personas.test.ts` — the `documented` table that reads `ux/personas.md`, and
+  the tests that compare against it. Keep the rest of the file; the fixtures themselves stay.
+- `src/server/fixtures/personas.ts` — the header comment's mentions of `ux/personas.md`.
+- `runbooks/FIXTURES.md` — the lines that name `ux/stories/` and `ux/personas.md`.
+- Anything else `grep -rn -E 'REVIEW\.md|ux/' .` turns up, apart from `CHANGELOG.md`.
 
 ## 4. Rewrite the home page
 
@@ -188,4 +200,4 @@ If they want to **remove** it:
 
 ## 8. Verify
 
-Run `bun run check` to make sure there are no lint or type errors from the changes. Then run `bun run test` to confirm all tests pass. Start the dev server with `bun run dev` and check it works at http://localhost:3000.
+Run `bun run check` to make sure there are no lint or type errors from the changes. Then run `bun run test` to confirm all tests pass. `grep -rn -E 'REVIEW\.md|ux/' .` (excluding `.git`, `node_modules` and `CHANGELOG.md`) must find nothing — step 3b. Start the dev server with `bun run dev` and check it works at http://localhost:3000.

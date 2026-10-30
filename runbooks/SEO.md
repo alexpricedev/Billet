@@ -71,7 +71,7 @@ out. If you need a host genuinely un-fetched rather than un-indexed, that is HTT
 auth in front of it; `robots.txt` is advisory and does not protect anything.
 
 Set `ALLOW_INDEXING=true` on the production host, and only there. A preview
-deploy, a staging box or a fork's first Railway URL stays out of the index by
+deploy, a staging box or a fork's first deploy URL stays out of the index by
 virtue of nobody having configured it, which is the failure mode you want.
 Anything other than exactly `true` reads as closed, typos included — the value
 is read per request, so a platform restart flips it either way.
