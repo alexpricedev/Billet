@@ -9,6 +9,7 @@ import {
 } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import {
+  BUNDLE_FILENAMES,
   getAssetUrl,
   handleAssetRequest,
   initAssets,
@@ -23,11 +24,15 @@ const originalNodeEnv = Bun.env.NODE_ENV;
 // the dev server serves the real one off disk.
 const FIXTURE_DIR = "dist/.assets-test";
 
+// Every bundle gets its own bytes, so a name served another bundle's file fails.
+const fixtureContent = (name: string) =>
+  name.endsWith(".css") ? `/* ${name} */ body{}` : `console.log("${name}")`;
+
 const writeBundles = () => {
   mkdirSync(FIXTURE_DIR, { recursive: true });
-  writeFileSync(`${FIXTURE_DIR}/main.js`, "console.log('test')");
-  writeFileSync(`${FIXTURE_DIR}/captcha.js`, "console.log('captcha')");
-  writeFileSync(`${FIXTURE_DIR}/main.css`, "body { color: red }");
+  for (const name of BUNDLE_FILENAMES) {
+    writeFileSync(`${FIXTURE_DIR}/${name}`, fixtureContent(name));
+  }
 };
 
 describe("assets (non-production)", () => {
@@ -81,6 +86,29 @@ describe("assets (production)", () => {
   test("getAssetUrl returns hashed css path", () => {
     const result = getAssetUrl("/assets/main.css");
     expect(result).toMatch(/^\/assets\/main\.[a-f0-9]{8}\.css$/);
+  });
+
+  test("every bundle in BUNDLE_FILENAMES is served under its fingerprinted URL", async () => {
+    for (const name of BUNDLE_FILENAMES) {
+      const dot = name.lastIndexOf(".");
+      const stem = name.slice(0, dot);
+      const ext = name.slice(dot + 1);
+
+      const hashedUrl = getAssetUrl(`/assets/${name}`);
+      expect(hashedUrl).toMatch(
+        new RegExp(`^/assets/${stem}\\.[a-f0-9]{8}\\.${ext}$`),
+      );
+
+      const response = handleAssetRequest(
+        new URL(`http://localhost${hashedUrl}`),
+      );
+      expect(response).not.toBeNull();
+      expect(response?.status).toBe(200);
+      expect(response?.headers.get("Content-Type")).toBe(
+        ext === "css" ? "text/css" : "application/javascript",
+      );
+      expect(await response?.text()).toBe(fixtureContent(name));
+    }
   });
 
   test("getAssetUrl returns path unchanged for unknown file", () => {
