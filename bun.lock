@@ -5,7 +5,7 @@
     "": {
       "name": "billet",
       "dependencies": {
-        "@alexpricedev/billet-cms": "^0.4.0",
+        "@alexpricedev/billet-cms": "^0.5.0",
         "lottie-web": "5.13.0",
         "preact": "^11.0.2",
         "preact-render-to-string": "^6.8.1",
@@ -25,7 +25,7 @@
     },
   },
   "packages": {
-    "@alexpricedev/billet-cms": ["@alexpricedev/billet-cms@0.4.0", "", { "peerDependencies": { "zod": "^4.0.0" }, "bin": { "billet-cms-pull": "src/cli/pull/cli.ts", "billet-cms-publish": "src/cli/publish/cli.ts" } }, "sha512-fFTIKlyT8EKoQlTxVEBGDutDkDuu8gG6eBCIs5mwKcVM2ZiFIqf7sDzF59xF5TA5n4rsMWbfiocl6kr9QiJsxw=="],
+    "@alexpricedev/billet-cms": ["@alexpricedev/billet-cms@0.5.0", "", { "peerDependencies": { "zod": "^4.0.0" }, "bin": { "billet-cms-pull": "src/cli/pull/cli.ts", "billet-cms-publish": "src/cli/publish/cli.ts" } }, "sha512-yLVSt49an00vVP6JN/X5HvVG/s+ZjlQ76VfuiLmKsKchaXynWDh/PjRE//H8LlbcLuGjFTUSTkD+tauzrGYU/w=="],
 
     "@biomejs/biome": ["@biomejs/biome@2.6.2", "", { "optionalDependencies": { "@biomejs/cli-android-arm64": "2.6.2", "@biomejs/cli-android-x64": "2.6.2", "@biomejs/cli-darwin-arm64": "2.6.2", "@biomejs/cli-darwin-x64": "2.6.2", "@biomejs/cli-linux-arm64": "2.6.2", "@biomejs/cli-linux-arm64-musl": "2.6.2", "@biomejs/cli-linux-x64": "2.6.2", "@biomejs/cli-linux-x64-musl": "2.6.2", "@biomejs/cli-win32-arm64": "2.6.2", "@biomejs/cli-win32-x64": "2.6.2" }, "bin": { "biome": "bin/biome" } }, "sha512-JLTFAFF9vfJcWwLhwuL4ZHflLg+XfTEC4IUnAlJRX1cMRt57++Xd1Ysb9Fdmlh9YUrvyCXfPEHjjEIqKJGdPKw=="],
 

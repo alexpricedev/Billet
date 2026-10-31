@@ -13,34 +13,50 @@ import {
  * resolved against the database, which a synchronous render can't do. The home
  * template renders it — see `cms/home-hero.ts`.
  */
-export const hero = block("hero", {
-  tag: text({ max: 60, label: "Eyebrow" }),
-  heading: text({ max: 80, label: "Heading" }),
-  body: text({ max: 400, label: "Intro" }),
-  // Each button is one link: the editor's Button text is the link's own
-  // `label`, which the CMS requires whenever the link goes somewhere.
-  primaryAction: link({ label: "Primary button" }),
-  secondaryAction: link({ label: "Secondary button", required: false }),
-});
+export const hero = block(
+  "hero",
+  { label: "Hero" },
+  {
+    tag: text({ max: 60, label: "Eyebrow" }),
+    heading: text({ max: 80, label: "Heading" }),
+    body: text({ max: 400, label: "Intro" }),
+    // Each button is one link: the editor's Button text is the link's own
+    // `label`, which the CMS requires whenever the link goes somewhere.
+    primaryAction: link({ label: "Primary button" }),
+    secondaryAction: link({ label: "Secondary button", required: false }),
+  },
+);
 
 // The marketing page's body blocks. Like the hero they carry no render
 // function: images and links resolve against the database, so
 // `cms/marketing-page.ts` reads them and `templates/marketing.tsx` renders.
-export const prose = block("prose", {
-  heading: text({ max: 80, label: "Heading", required: false }),
-  body: richText({ label: "Text" }),
-});
+export const prose = block(
+  "prose",
+  { label: "Text" },
+  {
+    heading: text({ max: 80, label: "Heading", required: false }),
+    body: richText({ label: "Text" }),
+  },
+);
 
-export const fullImage = block("fullImage", {
-  image: image({ label: "Image", minWidth: 1920, aspect: "16:9" }),
-  caption: text({ max: 200, label: "Caption", required: false }),
-});
+export const fullImage = block(
+  "fullImage",
+  { label: "Full-width image" },
+  {
+    image: image({ label: "Image", minWidth: 1920, aspect: "16:9" }),
+    caption: text({ max: 200, label: "Caption", required: false }),
+  },
+);
 
-export const ctaBanner = block("ctaBanner", {
-  heading: text({ max: 80, label: "Heading" }),
-  body: text({ max: 240, label: "Text", required: false }),
-  action: link({ label: "Button" }),
-});
+export const ctaBanner = block(
+  "ctaBanner",
+  { label: "Call-to-action banner" },
+  {
+    heading: text({ max: 80, label: "Heading" }),
+    body: text({ max: 240, label: "Text", required: false }),
+    action: link({ label: "Button" }),
+  },
+);
 
 export const homeHero = slot("home.hero", hero, {
   previewPath: "/",
