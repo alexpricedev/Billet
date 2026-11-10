@@ -7,6 +7,106 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 6.0.0
+
+Billet is light by default and dark when the OS asks for it, on a design system that is written
+down instead of implied. `DESIGN.md` is that system — semantic colour tokens, one type and spacing
+scale, borders before shadows, one restrained accent — following the definitions billet-cms has
+carried since v5.1.0, with the handful of deliberate divergences named where they happen. The
+tokens live in `src/client/base.css`, and the old `--color-*` names survive as aliases onto them,
+which is why no page file had to be rewritten to pick up the new palette. A System/Light/Dark
+toggle in the header stores the choice in `localStorage`, and a one-line inline script applies it
+in `<head>` before the first paint, so a stored theme never flashes the other one.
+
+The marketing site moved to its own repository. `/` is a demo index now — a card per demo surface,
+the same shape `START_PROMPT.md` tells a fork to replace — and the Lottie hero left with the sales
+page, taking `lottie-web`, `bun run build:vendor`, `public/cube.json` and the last vendored
+`<script>` in `layouts.tsx` with it. Every script a page ships now comes from the first-party
+bundle set.
+
+Flash messages are banners. `Flash` takes a `tone` from one shared vocabulary instead of a second
+set of words of its own, draws a 20px line icon per tone so state never rests on colour alone, and
+grew the parts a real message needs: a `title`, a `detail`, links under the text, and a list of
+invalid fields linked to their controls. The × ships hidden and `client/components/flash-dismiss.ts`
+reveals it, so a page without JavaScript still shows the message and simply cannot close it. The
+flash cookie keeps its own words — `error`, not `danger` — because it is a wire format written
+before a deploy and read after one; `components/tone.ts` translates at the single point where a
+message becomes something drawn.
+
+### Breaking changes
+
+- **`Flash` takes `tone`, not `type`, and a message is a `title`.** A fork renders it in its own
+  templates, so every call site changes: `<Flash type="error">{message.text}</Flash>` becomes
+  `<Flash tone={toneForMessage(message.type)} title={message.text} />`, importing
+  `toneForMessage` from `@server/components/tone`. `error` is `danger` now, and `info` is new.
+  Leaving the attribute off throws nothing — the banner renders with no icon and `role="status"` —
+  which is exactly the kind of wrong a fork merging without `bun run typecheck` would not notice.
+- **The palette is semantic tokens, and light is the default.** Rules read `--canvas`, `--surface`,
+  `--surface-subtle`, `--text`, `--text-secondary`, `--text-muted`, `--border`, `--border-control`,
+  `--accent` and the `-soft` / `-hover` pairs beside them. `--color-*` still resolves, but only as
+  an alias *onto* the new tokens, so a fork that rebranded by overriding `--color-bg` or
+  `--color-primary` in its own stylesheet now overrides something upstream no longer reads: the app
+  keeps the default palette, and the fork's brand survives only in the component CSS it owns.
+  Retune the semantic tokens instead, in both themes. `<html>` is `color-scheme: light dark` now,
+  so a fork whose own CSS assumed a dark canvas — white text, black fills — renders light-on-light
+  until it is fixed, with nothing failing.
+- **`lottie-web` and `/assets/lottie.js` are gone.** `build:vendor` no longer exists, and
+  `BUNDLE_FILENAMES` lists `main.js`, `captcha.js` and `main.css` only, so a fork that kept the hero
+  and its `<script async src={getAssetUrl("/assets/lottie.js")} />` requests a URL nothing builds.
+  Re-add the dependency and copy the player yourself if the hero is worth keeping, and put it back
+  in `BUNDLE_FILENAMES` if a missing build should answer 503 rather than 404.
+
+### Added
+
+- **The theme toggle.** System / Light / Dark in the header, the choice remembered in
+  `localStorage["billet-theme"]` and applied before first paint. `components/theme-toggle.tsx`,
+  `client/components/theme-toggle.ts` and the init script in `components/layouts.tsx`;
+  `theme-toggle.test.tsx` pins the storage key in all three places.
+- **`components/tone.ts`** — one vocabulary for badge and banner tones, narrowed per component, so
+  a tone a component has no rule for fails `bun run typecheck` instead of rendering untinted.
+- **`components/page-header.tsx`** and its `.page-header` rules, so a page's title, supporting line
+  and actions are one block rather than three ad-hoc margins.
+
+### Changed
+
+- **The home page is a demo index.** One card per demo surface — todos, forms, stack, admin — with
+  the quick-start link. `client/pages/home.ts` and `public/cube.json` are gone with the hero.
+- **Railway's IaC is no longer vendored.** `.railway/railway.ts` and its test left the tree, along
+  with the `railway` dev dependency, the hosting references in `README.md`, and the `.env.example`
+  note that named one platform; `START_PROMPT.md` gains a step for deleting `REVIEW.md` and `ux/`
+  in a fork. A fork deploying through Railway keeps its own copy of that config.
+- **The dev server's startup line is a link.** `[INFO] [server] Listening on
+  http://localhost:3000` is wrapped in an OSC 8 hyperlink where a terminal can use one, and stays
+  plain text where output is being captured (`CI`, `NO_COLOR`, `NO_HYPERLINK`).
+  (`services/logger.ts`, `main.ts`.)
+- **Docs.** `PRIVACY.md` records the one client-side store now that a theme choice exists,
+  `SECURITY.md`'s nonce plan names both inline scripts, `ACCESSIBILITY.md` stops pointing at
+  deleted files and tokens, and the README's test counts match the suite.
+- **Six dependencies.** preact 11.0.1 → 11.2.0, preact-render-to-string 6.8.1 → 6.8.2, resend
+  6.34.1 → 6.37.0, `@biomejs/biome` 2.5.15 → 2.6.6, `@types/node` 26.6.5 → 26.6.6, `@types/bun`
+  1.4.3 → 1.4.4.
+
+### Fixed
+
+- **A fingerprinted bundle whose name has a hyphen is served.** `HASHED_ASSET_PATTERN` matched
+  `(\w+)`, which excludes `-`, so `cms-form.53b87d59.js` fell through `handleAssetRequest` as
+  `null` and 404'd. It matches `([\w-]+)` now, a strict superset. Billet's own bundles have no
+  hyphen, so this only ever broke a fork. (`services/assets.ts`.)
+- **Link-as-a-button has a box.** The button box lived on `.btn` while templates write
+  `class="btn-ghost"`, so every such control collapsed to the height of its text.
+- **`hidden` buttons are hidden.** `.btn`'s `display: inline-flex` beat the user agent's
+  `[hidden] { display: none }`, so any button shipped `hidden` rendered anyway.
+- **The theme toggle's icons swap.** `SVGElement` has no `hidden` property, so setting it did
+  nothing.
+- **Badges carry their tone.** `Badge` never emitted `data-tone`, leaving its colour rules
+  unreachable.
+- **Badges and banners agree on the destructive tone.** One said `danger`, the other `error`, so
+  copying a tone from one to the other fell through to the default in silence. The shared `Tone`
+  union makes that a typecheck failure.
+
+**Migration, in full: rename the `Flash` attribute, retune the semantic tokens, and drop the Lottie
+script.** Nothing else here asks a fork to change its own code.
+
 ## 5.5.0
 
 Signing in can now return you to the page that asked for it. `?next=` on `/login` or `/signup` is
