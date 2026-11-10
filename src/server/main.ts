@@ -7,7 +7,7 @@ import { appRoutes } from "./routes/app";
 import { initAssets, warnOnMissingDevBundles } from "./services/assets";
 import { startCleanupSweep } from "./services/cleanup";
 import { closeDatabase } from "./services/database";
-import { log } from "./services/logger";
+import { link, log } from "./services/logger";
 import { validateEnv } from "./utils/env";
 import { render500 } from "./utils/errors";
 import { handleFallback } from "./utils/fallback";
@@ -61,4 +61,8 @@ setIpSource(server);
 
 registerShutdown({ stopSweep, server, db: { close: closeDatabase } });
 
-log.info("server", `Listening on port ${server.port}`);
+// Built from the bound port rather than APP_URL so the link always points at
+// the process that just started: `dev` and each Conductor workspace listen on
+// their own port, and outside dev APP_URL would send the click to the deployed
+// site instead of the local listen this line reports.
+log.info("server", `Listening on ${link(`http://localhost:${server.port}`)}`);
