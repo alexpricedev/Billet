@@ -58,6 +58,17 @@ the magic-link confirm page and the signed-in bounce from a guest page all use
 it, so a page that wants to send someone back after sign-in does not need its
 own validation.
 
+**Dev sign-in links** (`DEV_LOGIN=true`, off by default) are the one route that
+signs a browser in without a credential:
+[`controllers/auth/dev-login.ts`](../src/server/controllers/auth/dev-login.ts)
+answers `/dev/login` for the two seeded accounts named in
+[`services/dev-login.ts`](../src/server/services/dev-login.ts) when the link
+carries a token derived from `CRYPTO_PEPPER`. It is a 404 unless the flag is on
+and `NODE_ENV` is not `production`, and `validateEnv()` refuses to boot with the
+flag on in production or against a database that is not on localhost — so a
+deploy that inherited the variable does not come up. Leave it out of every
+hosted environment's variables regardless.
+
 ## 2. Set the security.txt contact (required before launch)
 
 [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116) `security.txt` tells

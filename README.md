@@ -88,6 +88,7 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 - **Auto-migrations on startup** — pending migrations run before the server accepts requests; if one fails, the server won't start
 - **Migration CLI** for manual operations (`migrate:up`, `migrate:status`, `migrate:create`)
 - **Seed script** scaffold for development data (`bun run seed`)
+- **Dev sign-in links** — `DEV_LOGIN=true` prints an admin and a non-admin sign-in link at startup, so a new worktree doesn't mean signing in by hand; development only, refused in production — see `.env.example`
 - **Persona fixtures** — a deterministic cast (`bun run fixtures`) and a session for any persona (`scripts/persona-session.ts`) — see [runbooks/FIXTURES.md](runbooks/FIXTURES.md)
 - **Parameterised queries** throughout — no string concatenation, no SQL injection surface
 

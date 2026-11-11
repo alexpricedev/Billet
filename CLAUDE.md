@@ -77,6 +77,24 @@ so a developer who never runs an agent never sees the rows.
 human's cookie out of their browser instead of minting one: it works, and it makes the agent's
 requests indistinguishable from the developer's in the logs.
 
+### The dev sign-in links are for the person, not the agent
+
+With `DEV_LOGIN=true` the dev server prints two links under "Listening on" —
+`/dev/login?as=admin&token=…` for `admin@example.com` and `as=user` for `alice@example.com` — and
+following one signs that browser in (`services/dev-login.ts`, `controllers/auth/dev-login.ts`).
+They exist so a new worktree, with its own database and cookie name, doesn't mean signing in by
+hand. The flag goes in the root checkout's `.env`, which workspace setup copies.
+
+An agent still mints its session with `scripts/qa-session.ts`. The links sign in as the accounts
+the developer is using, so driving a page through one is the same shared-account problem as above
+with a shorter path to it.
+
+The token is `computeHMAC("dev-login:<account>")`, so it is stable across restarts and as secret as
+`CRYPTO_PEPPER`. The route 404s unless the flag is on and `NODE_ENV` isn't `production`;
+`validateEnv()` is fatal on the flag in production or with a `DATABASE_URL` that isn't on
+localhost. It never creates or repairs an account — a missing row, or a role that no longer
+matches the link, redirects to `/login` with the reason. `test-env.ts` pins the flag off.
+
 ### JSX is a server-side template engine, nothing more
 
 Everything compiles with Preact (`jsxImportSource: preact` in `tsconfig.json`) — there is no React

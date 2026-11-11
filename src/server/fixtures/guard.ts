@@ -20,6 +20,19 @@ export const assertNotProduction = (
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /**
+ * Whether a database URL points at this machine. The rule on its own, for
+ * callers that report a refusal their own way — `validateEnv` logs and exits,
+ * where the fixture scripts print to stderr. Missing or unparseable is not local.
+ */
+export const isLocalDatabaseUrl = (url: string | undefined): boolean => {
+  try {
+    return LOCAL_HOSTS.has(new URL(url ?? "").hostname);
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Refuse to run against a database that isn't on this machine.
  *
  * `NODE_ENV` is usually unset on a laptop, so a `.env` pointing at a hosted

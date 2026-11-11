@@ -7,6 +7,12 @@ import { appRoutes } from "./routes/app";
 import { initAssets, warnOnMissingDevBundles } from "./services/assets";
 import { startCleanupSweep } from "./services/cleanup";
 import { closeDatabase } from "./services/database";
+import {
+  DEV_LOGIN_ACCOUNTS,
+  type DevLoginAccount,
+  devLoginEnabled,
+  devLoginUrl,
+} from "./services/dev-login";
 import { link, log } from "./services/logger";
 import { validateEnv } from "./utils/env";
 import { render500 } from "./utils/errors";
@@ -66,3 +72,12 @@ registerShutdown({ stopSweep, server, db: { close: closeDatabase } });
 // their own port, and outside dev APP_URL would send the click to the deployed
 // site instead of the local listen this line reports.
 log.info("server", `Listening on ${link(`http://localhost:${server.port}`)}`);
+
+if (devLoginEnabled() && server.port !== undefined) {
+  for (const account of Object.keys(DEV_LOGIN_ACCOUNTS) as DevLoginAccount[]) {
+    log.info(
+      "server",
+      `Sign in as ${DEV_LOGIN_ACCOUNTS[account].email} (${account}): ${link(devLoginUrl(server.port, account))}`,
+    );
+  }
+}

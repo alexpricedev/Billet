@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { isLocalDatabaseUrl } from "./guard";
 
 // The scripts are run for real, in a child process: the guard's whole job is to
 // exit before anything else happens, and that cannot be observed in-process.
@@ -84,5 +85,25 @@ describe("local database guard", () => {
     const { stderr, code } = await runWithUrl("not a url");
     expect(code).toBe(1);
     expect(stderr).toContain("cannot be parsed");
+  });
+});
+
+describe("isLocalDatabaseUrl", () => {
+  test.each([
+    "postgres://u:p@localhost:5432/app",
+    "postgres://u:p@127.0.0.1:5432/app",
+    "postgres://u:p@[::1]:5432/app",
+  ])("%s is local", (url) => {
+    expect(isLocalDatabaseUrl(url)).toBe(true);
+  });
+
+  test.each([
+    "postgres://u:p@db.example.com:5432/app",
+    "postgres://u:p@localhost.example.com/app",
+    "not a url",
+    "",
+    undefined,
+  ])("%p is not", (url) => {
+    expect(isLocalDatabaseUrl(url)).toBe(false);
   });
 });

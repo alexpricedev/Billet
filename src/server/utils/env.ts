@@ -1,4 +1,5 @@
 import { AUTH_MODES, isAuthMode } from "../services/auth-mode";
+import { devLoginProblem } from "../services/dev-login";
 import { log } from "../services/logger";
 import { isTeamsFlagValue, TEAMS_FLAG_VALUES } from "../services/teams-mode";
 
@@ -161,6 +162,20 @@ export function validateEnv(): void {
       "env",
       "Trusting x-forwarded-for from the proxy for rate limiting",
     );
+  }
+
+  // DEV_LOGIN is optional and off by default. Beyond the usual typo check it
+  // is fatal in production and against a database that isn't on this machine:
+  // it hands out a platform admin session without a credential, so a deploy
+  // that inherited the flag must not come up at all.
+  const devLoginIssue = devLoginProblem();
+  if (devLoginIssue) {
+    log.error("env", devLoginIssue);
+    process.exit(1);
+  }
+
+  if (process.env.DEV_LOGIN === "true") {
+    log.info("env", "Dev sign-in links enabled (printed at startup)");
   }
 
   // CAPTCHA_ENABLED is optional and self-contained: the proof-of-work captcha signs
