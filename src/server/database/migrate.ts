@@ -116,7 +116,7 @@ export const runMigrations = async (): Promise<void> => {
   const pendingMigrations = await getPendingMigrations();
 
   if (pendingMigrations.length === 0) {
-    log.info("migrations", "No pending migrations");
+    log.detail("migrations", "No pending migrations");
     return;
   }
 

@@ -1,4 +1,5 @@
 import { AUTH_MODES, isAuthMode } from "../services/auth-mode";
+import { devLoginProblem } from "../services/dev-login";
 import { log } from "../services/logger";
 import { isTeamsFlagValue, TEAMS_FLAG_VALUES } from "../services/teams-mode";
 
@@ -163,6 +164,20 @@ export function validateEnv(): void {
     );
   }
 
+  // DEV_LOGIN is optional and off by default. Beyond the usual typo check it
+  // is fatal in production and against a database that isn't on this machine:
+  // it hands out a platform admin session without a credential, so a deploy
+  // that inherited the flag must not come up at all.
+  const devLoginIssue = devLoginProblem();
+  if (devLoginIssue) {
+    log.error("env", devLoginIssue);
+    process.exit(1);
+  }
+
+  if (process.env.DEV_LOGIN === "true") {
+    log.detail("env", "Dev sign-in links enabled (printed at startup)");
+  }
+
   // CAPTCHA_ENABLED is optional and self-contained: the proof-of-work captcha signs
   // challenges with the already-required CRYPTO_PEPPER, so there is no new secret to
   // conditionally require. Just surface that it's on.
@@ -170,5 +185,5 @@ export function validateEnv(): void {
     log.info("env", "Login captcha enabled (proof-of-work)");
   }
 
-  log.info("env", "Environment variables validated");
+  log.detail("env", "Environment variables validated");
 }

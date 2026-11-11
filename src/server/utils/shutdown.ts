@@ -61,7 +61,9 @@ export const registerShutdown = ({
   const shutdown = async (signal: string): Promise<void> => {
     if (draining) return;
     draining = true;
-    log.info("server", `${signal} received, draining`);
+    // `bun --watch` sends this on every save, so in a dev terminal it is one
+    // line of noise per restart; a captured log keeps it.
+    log.detail("server", `${signal} received, draining`);
 
     await step("cleanup sweep", stopSweep);
     await step("server drain", () => server.stop());

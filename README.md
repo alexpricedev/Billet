@@ -88,6 +88,7 @@ PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 - **Auto-migrations on startup** — pending migrations run before the server accepts requests; if one fails, the server won't start
 - **Migration CLI** for manual operations (`migrate:up`, `migrate:status`, `migrate:create`)
 - **Seed script** scaffold for development data (`bun run seed`)
+- **Dev sign-in links** — `DEV_LOGIN=true` prints an admin and a non-admin sign-in link at startup, so a new worktree doesn't mean signing in by hand; development only, refused in production — see `.env.example`
 - **Persona fixtures** — a deterministic cast (`bun run fixtures`) and a session for any persona (`scripts/persona-session.ts`) — see [runbooks/FIXTURES.md](runbooks/FIXTURES.md)
 - **Parameterised queries** throughout — no string concatenation, no SQL injection surface
 
@@ -188,6 +189,29 @@ bun run wip drop                               # forget the newest
 A `PreToolUse` hook in [`.claude/settings.json`](.claude/settings.json) denies `git stash` and points the agent at the table above, so this isn't a convention an agent can forget — it's enforced.
 
 The other thing worktrees share is everything in `.env`. [`.conductor/settings.toml`](.conductor/settings.toml) runs `scripts/workspace.ts provision` on setup, which gives each workspace its own port (`CONDUCTOR_PORT`), its own dev and test databases (`<base>-<workspace>`), and its own session cookie name — cookies aren't scoped by port, so two apps on localhost otherwise share one. The test database matters most: `cleanupTestData` truncates every table, so two agents on one `billet-test` fail each other's suites at random. `scripts/workspace.ts destroy` runs on archive and drops the pair, refusing any name that doesn't carry that workspace's slug. Both are no-ops in cloud workspaces. If you don't use Conductor, run `bun run scripts/workspace.ts provision` with `CONDUCTOR_WORKSPACE_NAME` and `CONDUCTOR_PORT` set, or ignore it — the defaults are unchanged.
+
+A new database and a new cookie name also mean a new workspace starts signed out. Set `DEV_LOGIN=true` in the root checkout's `.env` (workspace setup copies that file) and the dev server prints sign-in links once it is listening — in a terminal, the clickable words `admin` and `user`:
+
+```
+Server   localhost:55300
+Sign in  admin · user
+```
+
+One click signs the browser in as the seeded admin or a seeded non-admin. It is development only: the server refuses to boot with the flag on in production or against a database that isn't on localhost. `.env.example` has the detail.
+
+A terminal hands a clicked link to your default browser. If you develop in a different one, a link router fixes that without changing your default for everything else. With [Finicky](https://github.com/johnste/finicky) on macOS (`brew install --cask finicky`, then make it the default browser), this `~/.finicky.js` sends every local dev server to Chrome and leaves the rest alone:
+
+```js
+export default {
+  defaultBrowser: "Safari", // the browser you use for everything else
+  handlers: [
+    {
+      match: (url) => ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname),
+      browser: "Google Chrome",
+    },
+  ],
+};
+```
 
 ---
 

@@ -12,6 +12,7 @@ import {
 import {
   account,
   callback,
+  devLogin,
   login,
   logout,
   passwordReset,
@@ -51,10 +52,14 @@ export const appRoutes = {
     GET: signup.index,
     POST: signup.create,
   }),
-  // Password-mode and team routes are registered unconditionally and 404 from
-  // inside the controller when AUTH_MODE isn't "password" or TEAMS_ENABLED
-  // isn't "true", so the route table stays static and testable rather than
-  // being rebuilt from the environment at import time.
+  // Password-mode, team and dev sign-in routes are registered unconditionally
+  // and 404 from inside the controller when AUTH_MODE isn't "password",
+  // TEAMS_ENABLED isn't "true" or DEV_LOGIN isn't "true", so the route table
+  // stays static and testable rather than being rebuilt from the environment
+  // at import time.
+  "/dev/login": createRouteHandler({
+    GET: devLogin.index,
+  }),
   "/forgot-password": createRouteHandler({
     GET: passwordReset.index,
     POST: passwordReset.create,

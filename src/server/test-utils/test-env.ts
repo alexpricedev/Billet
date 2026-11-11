@@ -37,6 +37,14 @@ const TEST_ENV: Record<string, string> = {
   TEAMS_ENABLED: "false",
   TRUST_PROXY: "false",
 
+  // A developer who uses the dev sign-in links has this on in `.env`. Off here
+  // so /dev/login 404s unless a test opens it.
+  DEV_LOGIN: "false",
+
+  // Logs are pretty when a terminal is reading, and a developer's terminal is
+  // reading the suite. Plain is the format the assertions are written against.
+  LOG_FORMAT: "plain",
+
   // Tests build request URLs as http://localhost:3000, and `services/csrf.ts`
   // compares the request Origin against APP_URL: the two disagreeing 403s every
   // form post. Pinned rather than inherited so a workspace's own port can't
