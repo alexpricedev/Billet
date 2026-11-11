@@ -7,13 +7,7 @@ import { appRoutes } from "./routes/app";
 import { initAssets, warnOnMissingDevBundles } from "./services/assets";
 import { startCleanupSweep } from "./services/cleanup";
 import { closeDatabase } from "./services/database";
-import {
-  DEV_LOGIN_ACCOUNTS,
-  type DevLoginAccount,
-  devLoginEnabled,
-  devLoginUrl,
-} from "./services/dev-login";
-import { link, log } from "./services/logger";
+import { linksSupported, log, prettyLogs } from "./services/logger";
 import { validateEnv } from "./utils/env";
 import { render500 } from "./utils/errors";
 import { handleFallback } from "./utils/fallback";
@@ -23,6 +17,7 @@ import {
   withSecurityHeaders,
 } from "./utils/security-headers";
 import { registerShutdown } from "./utils/shutdown";
+import { startupLines } from "./utils/startup";
 
 validateEnv();
 await runMigrations();
@@ -67,17 +62,16 @@ setIpSource(server);
 
 registerShutdown({ stopSweep, server, db: { close: closeDatabase } });
 
-// Built from the bound port rather than APP_URL so the link always points at
-// the process that just started: `dev` and each Conductor workspace listen on
-// their own port, and outside dev APP_URL would send the click to the deployed
-// site instead of the local listen this line reports.
-log.info("server", `Listening on ${link(`http://localhost:${server.port}`)}`);
-
-if (devLoginEnabled() && server.port !== undefined) {
-  for (const account of Object.keys(DEV_LOGIN_ACCOUNTS) as DevLoginAccount[]) {
-    log.info(
-      "server",
-      `Sign in as ${DEV_LOGIN_ACCOUNTS[account].email} (${account}): ${link(devLoginUrl(server.port, account))}`,
-    );
+// Number(PORT) only when Bun reports no port, which it does for a unix socket.
+const pretty = prettyLogs();
+for (const line of startupLines({
+  port: server.port ?? Number(process.env.PORT),
+  pretty,
+  links: linksSupported(),
+})) {
+  if (pretty) {
+    log.line(line);
+  } else {
+    log.info("server", line);
   }
 }

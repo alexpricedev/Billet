@@ -175,7 +175,7 @@ export function validateEnv(): void {
   }
 
   if (process.env.DEV_LOGIN === "true") {
-    log.info("env", "Dev sign-in links enabled (printed at startup)");
+    log.detail("env", "Dev sign-in links enabled (printed at startup)");
   }
 
   // CAPTCHA_ENABLED is optional and self-contained: the proof-of-work captcha signs
@@ -185,5 +185,5 @@ export function validateEnv(): void {
     log.info("env", "Login captcha enabled (proof-of-work)");
   }
 
-  log.info("env", "Environment variables validated");
+  log.detail("env", "Environment variables validated");
 }

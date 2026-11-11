@@ -79,9 +79,10 @@ requests indistinguishable from the developer's in the logs.
 
 ### The dev sign-in links are for the person, not the agent
 
-With `DEV_LOGIN=true` the dev server prints two links under "Listening on" —
+With `DEV_LOGIN=true` the dev server prints two links once it is listening —
 `/dev/login?as=admin&token=…` for `admin@example.com` and `as=user` for `alice@example.com` — and
 following one signs that browser in (`services/dev-login.ts`, `controllers/auth/dev-login.ts`).
+In a terminal they are the words `admin` and `user` in the startup block, not visible URLs.
 They exist so a new worktree, with its own database and cookie name, doesn't mean signing in by
 hand. The flag goes in the root checkout's `.env`, which workspace setup copies.
 
@@ -376,6 +377,20 @@ CHANGELOG, and every release documents what a fork must change under **Breaking 
 
 Bump it in the release commit, next to the `package.json` bump and the CHANGELOG entry — which is
 its own PR, after the feature PR has merged. `runbooks/RELEASE.md` has the whole process.
+
+### Logs have two formats, and tests only ever see one
+
+`log` (`src/server/services/logger.ts`) writes `[INFO] [category] message` — plain — in
+production, in CI, and whenever nothing says a terminal is reading. In a dev terminal it writes
+pretty instead: no level, no brackets, and `utils/startup.ts` prints a compact block where the
+sign-in links are the words `admin` and `user`. It exists because `bun run dev` mostly runs in a
+panel about forty columns wide, thirteen of which Bun's `dev:server | ` prefix already takes.
+
+`LOG_FORMAT=pretty|plain` forces one, and `test-env.ts` pins `plain` — so an assertion on a log
+line is always against plain, whatever terminal runs the suite. A test about the pretty format sets
+`LOG_FORMAT` per case. Use `log.detail` rather than `log.info` for a boot line nobody watching acts
+on ("Environment variables validated"): plain prints it, pretty drops it. If you need to read the
+full sign-in URLs out of a running dev server, they are in plain output only.
 
 ### Linting
 

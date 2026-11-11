@@ -1,5 +1,6 @@
 // Dev sign-in links. With DEV_LOGIN=true the server prints one link per account
-// below under its "Listening on" line, and following one signs the browser in.
+// below once it is listening (utils/startup.ts), and following one signs the
+// browser in.
 // It exists because every Conductor workspace has its own database and its own
 // session cookie name, so no session survives into a new worktree and the
 // developer would otherwise sign in by hand in each one.
