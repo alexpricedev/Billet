@@ -7,6 +7,68 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 6.1.0
+
+A new worktree no longer means signing in by hand. Each Conductor workspace has its own dev
+database and its own session cookie name, which is what keeps two agents from failing each other's
+suites — and also what guarantees that no browser session survives into the next workspace. With
+`DEV_LOGIN=true` the dev server prints a sign-in link for the seeded platform admin
+(`admin@example.com`) and one for a seeded non-admin (`alice@example.com`); following one signs the
+browser in as that account, and following the other switches. It is off by default and cannot run
+in production: `/dev/login` is a 404 without the flag, and the server refuses to boot with the flag
+on under `NODE_ENV=production` or against a database that is not on localhost.
+
+The dev server's output also fits where it is usually read. `bun run dev` mostly runs in a panel
+about forty columns wide, thirteen of which Bun's `dev:server | ` prefix already takes, and the
+startup lines wrapped into a block nobody could scan. In a dev terminal the logger now drops the
+level and the brackets, leaves out the boot lines nobody acts on, and startup prints three short
+rows under a rule carrying the start time — the server address and the sign-in links as clickable
+words. Production, CI and captured logs are byte-for-byte what they were.
+
+**No migration, and no fork has code to change.** Both features are additive: `DEV_LOGIN` is unset
+by default, and a log line only changes shape when a terminal is reading it outside CI and
+production. The test environment pins `LOG_FORMAT=plain`, so a fork's own assertions on
+`[INFO] [category] message` keep passing whatever terminal runs the suite.
+
+### Added
+
+- **Dev sign-in links, behind `DEV_LOGIN=true`.** `services/dev-login.ts` names the two accounts
+  and `controllers/auth/dev-login.ts` answers `/dev/login?as=admin|user&token=…`. The address is
+  never read from the URL — `as` indexes a two-entry map — and each account has its own token, so
+  one link cannot be edited into the other. A missing or wrong token is the same 404 as the flag
+  being off, so the route cannot be probed. Put the flag in the root checkout's `.env`: workspace
+  setup copies that file, so every new workspace inherits it.
+- **The token is derived from `CRYPTO_PEPPER`**, not generated at boot, so a link survives the
+  restart `bun --watch` does on every save and can be bookmarked. It is as secret as the pepper
+  is, and rotating the pepper rotates it.
+- **The accounts are never created or repaired.** If the row is missing — a database that was not
+  seeded — or its role no longer matches the link, `/dev/login` redirects to `/login` with the
+  reason. Creating a platform admin on demand is the hole `seedIfEmpty` avoids, and a "user" link
+  that signed in a promoted admin would be worse than one that refused.
+- **`validateEnv()` is fatal on `DEV_LOGIN=true` in production and against a non-local
+  `DATABASE_URL`**, as well as on any value other than `true`/`false`. `NODE_ENV` is usually unset
+  on a laptop, so the production check alone would pass an `.env` pointed at a hosted database;
+  `isLocalDatabaseUrl` in `fixtures/guard.ts` is the second gate.
+- **`LOG_FORMAT=pretty|plain`** forces one log format. Unset, the logger decides: pretty when a
+  terminal is reading, outside CI and outside production; plain otherwise.
+- **`log.detail`**, for a boot line nobody watching acts on. Plain prints it as an info line;
+  pretty drops it. "Environment variables validated", "No pending migrations" and the shutdown
+  drain line use it.
+- **`README.md` documents routing localhost links to a non-default browser.** A terminal hands a
+  clicked link to the default browser; the Finicky config there sends local dev servers to another
+  one without changing the default for everything else.
+
+### Changed
+
+- **Startup output in a dev terminal is a compact block**, built by `utils/startup.ts`: a dimmed
+  rule with the start time, then `Server   localhost:<port>` and `Sign in  admin · user`, each
+  value an OSC 8 link. The rule is there because the watcher prints the block again on every save.
+  Where links cannot render (`NO_HYPERLINK`, `NO_COLOR`) the full sign-in URLs are printed
+  instead, because a word that cannot be clicked would hide the only way in.
+- **Log lines in a dev terminal are `category  message`**, with `warn` / `error` in front for those
+  levels. Plain — `[INFO] [category] message`, every URL spelled out — is unchanged and remains
+  what production, CI and any captured log get.
+
 ## 6.0.0
 
 Billet is light by default and dark when the OS asks for it, on a design system that is written
