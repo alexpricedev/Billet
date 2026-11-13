@@ -140,6 +140,44 @@ describe("getSessionContextFromDB", () => {
   });
 });
 
+describe("idle expiry", () => {
+  const daysAgo = (days: number): string =>
+    new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  test("an authenticated session idle for longer than the window is gone", async () => {
+    const user = await findOrCreateUser("idle@example.com");
+    const rawId = await createAuthenticatedSession(user.id);
+    const hash = computeHMAC(rawId);
+    await db`UPDATE sessions SET last_activity_at = ${daysAgo(15)} WHERE id_hash = ${hash}`;
+
+    expect(await getSessionContextFromDB(rawId)).toBeNull();
+    // Nor can a late request revive it.
+    expect(await renewSession(rawId)).toBe(false);
+  });
+
+  test("activity inside the window keeps the session", async () => {
+    const user = await findOrCreateUser("active@example.com");
+    const rawId = await createAuthenticatedSession(user.id);
+    const hash = computeHMAC(rawId);
+    await db`UPDATE sessions SET last_activity_at = ${daysAgo(13)} WHERE id_hash = ${hash}`;
+
+    const ctx = await getSessionContextFromDB(rawId);
+
+    expect(ctx?.isAuthenticated).toBe(true);
+    expect(await renewSession(rawId)).toBe(true);
+  });
+
+  test("a guest session is bounded by its own expiry, not the idle window", async () => {
+    const rawId = await createGuestSession();
+    const hash = computeHMAC(rawId);
+    // Older than the idle window but still inside the guest day — only
+    // possible by editing the row, which is the point of the test.
+    await db`UPDATE sessions SET last_activity_at = ${daysAgo(15)} WHERE id_hash = ${hash}`;
+
+    expect((await getSessionContextFromDB(rawId))?.isGuest).toBe(true);
+  });
+});
+
 describe("convertGuestToAuthenticated", () => {
   test("converts guest session to authenticated", async () => {
     const rawId = await createGuestSession();
