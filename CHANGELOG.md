@@ -7,6 +7,109 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 7.0.0
+
+Started as "what can we remove?" and ended as a hardening pass. Two of the three runtime
+dependencies are gone: the Resend provider calls Resend's HTTP API with `fetch` instead of an SDK
+that wrapped one POST and pulled in four packages for webhook and MIME parsing nothing used, and
+the pre-commit hook moved from husky to a tracked `.githooks/` directory and one `git config` line.
+The lockfile goes from 52 packages to 46, and nothing was added in their place.
+
+The rest protects the people signed in to the app, not just the repository. `script-src` no longer
+allows `'unsafe-inline'`; it is `'self'` plus the SHA-256 of the theme bootstrap, so an injected
+inline script is refused by the browser. The production session cookie carries the `__Host-`
+prefix, which stops a sibling subdomain planting one. A session nobody uses for 14 days ends inside
+the existing 30-day limit. Boot now checks that `CRYPTO_PEPPER` is long enough and isn't the
+`.env.example` placeholder, that a production database on another host isn't silently plaintext,
+and that a configured cookie name keeps its prefix. And the supply chain got a cooldown: neither
+`bun add` nor Dependabot will pick a version less than three days old — the window in which a
+hijacked publish is usually pulled — and GitHub Actions are pinned to commit SHAs.
+
+**No migration, but a running deploy and a fork both have things to do** — the list below. The
+first two act at the deploy, not at the merge.
+
+### Breaking changes
+
+- **Every signed-in user is signed out once on deploy.** The session cookie is named
+  `__Host-session_id` in production (it was `session_id`), and the old cookie is no longer read.
+  Set `SESSION_COOKIE_NAME` explicitly to keep the old name, but keep the `__Host-` prefix if you
+  do: it is what stops a sibling subdomain planting a session cookie, and boot warns without it.
+- **`CRYPTO_PEPPER` under 32 characters, or the `.env.example` placeholder, refuses to boot in
+  production.** It is a warning everywhere else. `bun run generate:pepper` prints a 64-character
+  one. Rotating the pepper invalidates every session, token and signed cookie, so rotate it on a
+  deploy you would accept that from.
+- **Inline scripts and `onclick=` attributes are now blocked by the browser.** A fork that added
+  its own inline script needs a hash for it in `security-headers.ts`; a fork with inline event
+  handlers binds them in the bundle instead. The symptom is silent: the unit suite passes, and only
+  the browser smoke suite (`bun run test:browser`) fails.
+- **Signed-in sessions end after 14 days without a request** (`AUTH_IDLE_MS` in
+  `services/sessions.ts`). Every authenticated request renews the idle clock, so only a session
+  nobody is using reaches it.
+- **The `resend` package is gone.** A fork that imported `resend` anywhere else must add it back
+  itself. `ResendProvider` keeps its constructor signature and gains an optional second argument, a
+  `fetch` implementation for tests.
+- **Husky is gone.** The pre-commit hook lives in `.githooks/pre-commit`, and `prepare` runs
+  `scripts/install-hooks`, which sets `core.hooksPath`. A fork that added other hooks under
+  `.husky/` moves them to `.githooks/` and makes them executable with a shebang line.
+- **`bun add` writes exact versions and refuses a package version less than three days old**
+  (`exact` and `minimumReleaseAge` in `bunfig.toml`). Pass `--minimum-release-age=0` for a
+  deliberate exception.
+- **The Bun version workflow needs one repository setting.** Under Settings → Actions → General,
+  "Allow GitHub Actions to create and approve pull requests" must be on, or its `gh pr create`
+  fails with a permissions error.
+
+### Added
+
+- **A Resend provider with no SDK.** `email-providers/resend.ts` posts to
+  `https://api.resend.com/emails` with the API key as a bearer token, maps `replyTo` to Resend's
+  `reply_to`, and surfaces Resend's error message with the status. It takes a `fetch` in its
+  constructor so the tests capture the request without a network and without going through
+  happy-dom's same-origin fetch. The file is typechecked for the first time: it had been excluded
+  in `tsconfig.json`, so it was the one piece of server code `bun run check` never saw.
+- **A tracked `.githooks/` directory and `scripts/install-hooks`.** The script sets
+  `core.hooksPath` and exits quietly outside a git checkout, so a production image build still
+  installs.
+- **Install cooldown.** `minimumReleaseAge = 259200` in `bunfig.toml` and a matching three-day
+  `cooldown` in `.github/dependabot.yml`. The lockfile already fixes what is installed; this
+  governs what gets picked next.
+- **A weekly `Bun version` workflow** (`.github/workflows/bun-version.yml`) that compares
+  `.bun-version` with Bun's latest release and, once that release is three days old, opens a PR
+  bumping it and the `engines.bun` floor together. A PR opened with the job token does not trigger
+  `pull_request` workflows, so the run dispatches `ci.yml` on the branch itself; `ci.yml` gains a
+  `workflow_dispatch` trigger for that. Nothing else bumped the runtime, and Bun ships security
+  fixes in patch releases.
+- **Three boot checks in `validateEnv()`**, each exported as a pure function with tests:
+  `pepperProblem` (length and placeholder), `databaseTlsProblem` (a production `DATABASE_URL` on a
+  non-loopback host with no `sslmode` warns and names the host; `sslmode=disable` silences it,
+  because a stated choice is not an oversight), and `cookieNameProblem` (a configured
+  `SESSION_COOKIE_NAME` without the `__Host-` prefix warns).
+- **A CSP test that derives the expected hash from the script the layout ships**, so editing
+  `THEME_INIT_SCRIPT` without the header following is caught in the unit suite, not as a flash of
+  the wrong palette in a browser.
+
+### Changed
+
+- **GitHub Actions are pinned to commit SHAs** with the version in a trailing comment, the form
+  Dependabot keeps current. A tag can be moved by whoever controls the action; a commit cannot.
+- **The existing workflows declare `permissions: contents: read`**, so a job token can only read
+  the checkout.
+- **The six caret ranges in `package.json` are exact versions**, matching what the lockfile
+  already held.
+- **`biome.json` points `$schema` at the schema inside the installed package** rather than a
+  versioned URL, so a Biome bump can no longer leave every lint run warning about a mismatch until
+  someone runs `biome migrate`.
+- **`THEME_INIT_SCRIPT` is exported from `layouts.tsx`**, because `security-headers.ts` hashes it.
+  The JSON-LD block needs no allowance: a data block is never executed, so CSP does not apply.
+
+### Removed
+
+- `resend`, and its transitive `postal-mime`, `standardwebhooks`, `@stablelib/base64` and
+  `fast-sha256`.
+- `husky`.
+- The `tsconfig.json` exclusion for `email-providers/resend.ts`.
+- `'unsafe-inline'` from `script-src`. It stays on `style-src` for the five inline `style`
+  attributes in templates; an injected style is a far smaller prize than a script.
+
 ## 6.1.0
 
 A new worktree no longer means signing in by hand. Each Conductor workspace has its own dev
