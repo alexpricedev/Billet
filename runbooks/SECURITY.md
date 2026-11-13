@@ -224,6 +224,17 @@ curl -sL "<URL>" | openssl dgst -sha384 -binary | openssl base64 -A
   Never set it on a deployment reached directly: the header is client-controlled
   there, and trusting it lets an attacker walk past the `/login` limit with a
   fresh value per request.
+- **TLS to the database.** A `DATABASE_URL` on another host with no `sslmode`
+  is a plaintext connection, and boot warns about it in production. Put
+  `?sslmode=verify-full` on the URL (managed Postgres hosts all support it);
+  write `sslmode=disable` only when the database shares a private network with
+  nothing else on it, so the choice is recorded rather than defaulted into.
+- **The session cookie is `__Host-session_id` in production.** The prefix is
+  the browser's guarantee the cookie came from this origin over HTTPS with
+  `Path=/` and no `Domain`, so a sibling subdomain can't plant one. If you set
+  `SESSION_COOKIE_NAME`, keep the prefix — boot warns when it is missing.
+- **`CRYPTO_PEPPER` is checked at boot.** Under 32 characters, or the
+  `.env.example` placeholder, is fatal in production and a warning elsewhere.
 
 ## 6. Verify in production
 

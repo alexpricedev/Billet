@@ -23,8 +23,12 @@ export interface SessionContext {
 const GUEST_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const AUTH_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
+// `__Host-` only in production, where the cookie is also `secure` — the prefix
+// is refused by the browser without it, and local dev is plain http.
+// validateEnv() warns when a configured name drops the prefix.
 export const SESSION_COOKIE_NAME =
-  process.env.SESSION_COOKIE_NAME ?? "session_id";
+  process.env.SESSION_COOKIE_NAME ??
+  (process.env.NODE_ENV === "production" ? "__Host-session_id" : "session_id");
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
