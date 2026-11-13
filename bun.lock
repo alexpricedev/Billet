@@ -5,16 +5,16 @@
     "": {
       "name": "billet",
       "dependencies": {
-        "preact": "^11.2.0",
-        "preact-render-to-string": "^6.8.2",
+        "preact": "11.2.0",
+        "preact-render-to-string": "6.8.2",
       },
       "devDependencies": {
         "@biomejs/biome": "2.6.6",
-        "@happy-dom/global-registrator": "^21.0.4",
+        "@happy-dom/global-registrator": "21.0.4",
         "@types/bun": "1.4.4",
-        "@types/node": "^26.6.6",
-        "happy-dom": "^21.0.4",
-        "typescript": "^7.0.2",
+        "@types/node": "26.6.6",
+        "happy-dom": "21.0.4",
+        "typescript": "7.0.2",
       },
     },
   },
