@@ -293,10 +293,14 @@ Password hashing lives in `src/server/utils/crypto.ts` and is deliberately *not*
 Every response gets its headers from `secureRoutes` / `handleGuarded` in
 `src/server/utils/security-headers.ts`. Controllers set only content-specific headers.
 
-The CSP script allowlist is `'self' 'unsafe-inline'` — every script is same-origin, and there is
-no vendored third-party bundle at all since the Lottie hero left with the sales site. Any new
-third-party script needs the CSP entry, an SRI `integrity` hash, and ideally a `preconnect` in
-`layouts.tsx` — otherwise it is silently blocked in the browser but passes every test.
+The CSP script allowlist is `'self'` plus the SHA-256 of the theme bootstrap — there is no
+`'unsafe-inline'`, so an inline `<script>` or an `onclick=` attribute is refused by the browser,
+and every script is same-origin; there is no vendored third-party bundle at all since the Lottie
+hero left with the sales site. The hash is computed in `security-headers.ts` from the
+`THEME_INIT_SCRIPT` constant `layouts.tsx` exports, so editing the script re-hashes it; a second
+inline script needs a hash of its own. Any new third-party script needs the CSP entry, an SRI
+`integrity` hash, and ideally a `preconnect` in `layouts.tsx` — otherwise it is silently blocked
+in the browser but passes every test.
 
 `X-Robots-Tag: noindex, nofollow` is one of those headers, and it is on **by default**:
 `indexingAllowed()` (`services/seo.ts`) is true only when `ALLOW_INDEXING=true`, so an

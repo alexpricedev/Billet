@@ -24,7 +24,9 @@ import { VerifyBanner } from "./verify-banner";
 // a try/catch — storage throws in private modes — and it writes the attribute
 // `base.css` scopes its dark rules to. The key is duplicated from
 // `src/client/components/theme-toggle.ts`; `theme-toggle.test.ts` pins both.
-const THEME_INIT_SCRIPT =
+// Exported because the CSP allows this script by its hash — see
+// `utils/security-headers.ts` — so a change here changes the policy with it.
+export const THEME_INIT_SCRIPT =
   'try{var t=localStorage.getItem("billet-theme");' +
   'if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}';
 

@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
+import { THEME_INIT_SCRIPT } from "../components/layouts";
 import { SITE_NAME } from "../services/seo";
 import { createBunRequest } from "../test-utils/bun-request";
 import { render404 } from "./errors";
@@ -62,11 +64,22 @@ describe("withSecurityHeaders", () => {
     expect(csp).toContain("base-uri 'none'");
   });
 
-  test("allows scripts from self and inline only, with no third-party host", () => {
+  test("allows scripts from self and the theme bootstrap by hash, nothing inline", () => {
     const res = withSecurityHeaders(new Response("ok"));
     const csp = res.headers.get("Content-Security-Policy") ?? "";
+    const scriptSrc = csp
+      .split(";")
+      .map((d) => d.trim())
+      .find((d) => d.startsWith("script-src"));
 
-    expect(csp).toContain("script-src 'self' 'unsafe-inline';");
+    // The hash is derived from the script the layout actually ships, so a
+    // change to one without the other is caught here rather than as a flash
+    // of the wrong palette in a browser.
+    const expectedHash = createHash("sha256")
+      .update(THEME_INIT_SCRIPT)
+      .digest("base64");
+    expect(scriptSrc).toBe(`script-src 'self' 'sha256-${expectedHash}'`);
+    expect(scriptSrc).not.toContain("unsafe-inline");
   });
 
   test("omits upgrade-insecure-requests outside production", () => {
