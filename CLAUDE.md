@@ -399,8 +399,10 @@ Biome runs with `recommended` on and `noConsole: error` — use `log` from
 scripts, and `test-utils/bootstrap.ts` have targeted overrides in `biome.json`; add an override
 there rather than sprinkling ignore comments.
 
-`tsconfig.json` excludes `src/server/services/email-providers/resend.ts` from typechecking —
-changes to it are not covered by `bun run check`.
+The Resend provider (`src/server/services/email-providers/resend.ts`) calls Resend's HTTP API
+with `fetch` directly — there is no SDK, and nothing else in the runtime tree is a third-party
+service client. It takes a `fetch` implementation in its constructor so the tests can capture the
+request; the happy-dom preload's fetch enforces same-origin and would refuse the call.
 
 ### Naming that isn't inferable
 

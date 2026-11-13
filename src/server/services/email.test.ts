@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import {
   type EmailMessage,
   type EmailProvider,
@@ -450,36 +450,55 @@ describe("ConsoleLogProvider", () => {
 });
 
 describe("ResendProvider", () => {
-  type SentPayload = {
-    from: string;
-    to: string;
-    replyTo?: string;
-    headers?: Record<string, string>;
+  const { ResendProvider } =
+    require("./email-providers/resend") as typeof import("./email-providers/resend");
+  type SentPayload = import("./email-providers/resend").ResendSendPayload;
+
+  type Captured = { url: string; init: RequestInit; payload: SentPayload };
+
+  // A fetch stand-in that records the one request and answers as Resend does.
+  const capturingFetch = (
+    reply: () => Response,
+  ): { fetch: typeof fetch; sent: () => Captured | undefined } => {
+    let captured: Captured | undefined;
+    const fetchImpl = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      captured = {
+        url: String(input),
+        init: init ?? {},
+        payload: JSON.parse(init?.body as string) as SentPayload,
+      };
+      return reply();
+    }) as typeof fetch;
+    return { fetch: fetchImpl, sent: () => captured };
   };
 
-  const loadProvider = async (
-    capture: (payload: SentPayload) => void,
-  ): Promise<typeof import("./email-providers/resend").ResendProvider> => {
-    mock.module("resend", () => ({
-      Resend: class {
-        emails = {
-          send: async (payload: SentPayload) => {
-            capture(payload);
-            return { data: { id: "test" }, error: null };
-          },
-        };
-      },
-    }));
-    const mod = await import("./email-providers/resend");
-    return mod.ResendProvider;
-  };
+  const accepted = () => Response.json({ id: "test" }, { status: 200 });
 
-  test("forwards replyTo and headers to the Resend client", async () => {
-    let sent: SentPayload | undefined;
-    const ResendProvider = await loadProvider((p) => {
-      sent = p;
+  test("posts to the send endpoint with the API key as a bearer token", async () => {
+    const { fetch, sent } = capturingFetch(accepted);
+    const provider = new ResendProvider("re_test_key", fetch);
+
+    await provider.send({
+      to: { email: "user@example.com" },
+      from: { email: "hello@billet.example" },
+      subject: "Hello",
+      html: "<p>Hi</p>",
     });
-    const provider = new ResendProvider("re_test_key");
+
+    expect(sent()?.url).toBe("https://api.resend.com/emails");
+    expect(sent()?.init.method).toBe("POST");
+    expect(sent()?.init.headers).toEqual({
+      Authorization: "Bearer re_test_key",
+      "Content-Type": "application/json",
+    });
+  });
+
+  test("forwards replyTo and headers in Resend's field names", async () => {
+    const { fetch, sent } = capturingFetch(accepted);
+    const provider = new ResendProvider("re_test_key", fetch);
 
     await provider.send({
       to: { email: "user@example.com" },
@@ -488,19 +507,23 @@ describe("ResendProvider", () => {
       headers: { "X-Entity-Ref-ID": "ref-1" },
       subject: "Hello",
       html: "<p>Hi</p>",
+      text: "Hi",
     });
 
-    expect(sent?.replyTo).toBe("support@billet.example");
-    expect(sent?.headers).toEqual({ "X-Entity-Ref-ID": "ref-1" });
-    expect(sent?.from).toBe("Billet <hello@billet.example>");
+    expect(sent()?.payload).toEqual({
+      from: "Billet <hello@billet.example>",
+      to: "user@example.com",
+      subject: "Hello",
+      html: "<p>Hi</p>",
+      text: "Hi",
+      reply_to: "support@billet.example",
+      headers: { "X-Entity-Ref-ID": "ref-1" },
+    });
   });
 
   test("RFC 5322-quotes a From display name containing a comma", async () => {
-    let sent: SentPayload | undefined;
-    const ResendProvider = await loadProvider((p) => {
-      sent = p;
-    });
-    const provider = new ResendProvider("re_test_key");
+    const { fetch, sent } = capturingFetch(accepted);
+    const provider = new ResendProvider("re_test_key", fetch);
 
     await provider.send({
       to: { email: "user@example.com" },
@@ -509,6 +532,49 @@ describe("ResendProvider", () => {
       html: "<p>Hi</p>",
     });
 
-    expect(sent?.from).toBe('"Billet, Inc." <hello@billet.example>');
+    expect(sent()?.payload.from).toBe('"Billet, Inc." <hello@billet.example>');
+  });
+
+  test("throws with Resend's message on a rejected send", async () => {
+    const { fetch } = capturingFetch(() =>
+      Response.json(
+        {
+          statusCode: 422,
+          message: "Invalid `from` field",
+          name: "validation_error",
+        },
+        { status: 422 },
+      ),
+    );
+    const provider = new ResendProvider("re_test_key", fetch);
+
+    await expect(
+      provider.send({
+        to: { email: "user@example.com" },
+        from: { email: "hello@billet.example" },
+        subject: "Hello",
+        html: "<p>Hi</p>",
+      }),
+    ).rejects.toThrow("Resend API error: 422 Invalid `from` field");
+  });
+
+  test("throws with the status alone when the error body is not JSON", async () => {
+    const { fetch } = capturingFetch(
+      () => new Response("Bad Gateway", { status: 502 }),
+    );
+    const provider = new ResendProvider("re_test_key", fetch);
+
+    await expect(
+      provider.send({
+        to: { email: "user@example.com" },
+        from: { email: "hello@billet.example" },
+        subject: "Hello",
+        html: "<p>Hi</p>",
+      }),
+    ).rejects.toThrow("Resend API error: HTTP 502");
+  });
+
+  test("refuses to construct without an API key", () => {
+    expect(() => new ResendProvider("")).toThrow("Resend API key is required");
   });
 });

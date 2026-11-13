@@ -70,8 +70,6 @@ and the rest — so your `.env` can't reach a test run whichever command started
 - **Auth or session assertions failing across many files** — no longer your `.env`; the preload
   pins those. Check that `test-env.ts` is still first in `bunfig.toml`'s `preload`, and that you
   ran the script rather than `bun test` against a stale schema.
-- **Type errors in `email-providers/resend.ts`** — that file is excluded in `tsconfig.json`, so
-  `bun run check` will not catch regressions there.
 
 ## Browser checks
 
