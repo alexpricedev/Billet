@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import type { BunRequest } from "bun";
+import { THEME_INIT_SCRIPT } from "../components/layouts";
 import { log } from "../services/logger";
 import { indexingAllowed, SITE_NAME } from "../services/seo";
 import { withCompression } from "./compression";
@@ -12,12 +14,27 @@ import { maintenanceResponse } from "./maintenance";
 
 const isProduction = process.env.NODE_ENV === "production";
 
-// Content Security Policy. Enforcing, but deliberately host-allowlist based
-// rather than nonce + 'strict-dynamic': the page ships inline JSON-LD, and that
-// inline block forces 'unsafe-inline' here. Every script is same-origin. The real wins this still buys:
-// frame-ancestors (clickjacking), object-src/base-uri lockdown, a tight source
-// allowlist, and upgrade-insecure-requests. Hardening to nonce + 'strict-dynamic'
-// (which lets us drop 'unsafe-inline') is the documented follow-up.
+// The one inline script — the theme bootstrap in layouts.tsx — is allowed by
+// its hash, so `script-src` carries no 'unsafe-inline': an injected
+// `<script>` or `onclick=` is refused by the browser even if it reaches the
+// page. The script is a constant, which is what makes a hash enough; a
+// per-request nonce would buy nothing here. The JSON-LD block is not a script
+// to the browser (its type is a data block, never executed) and needs no
+// allowance. Keep the hash and the source in step: a change to
+// THEME_INIT_SCRIPT re-hashes on the next boot, and the browser smoke tests
+// fail on a hash that no longer matches — it fails silently in the page, as a
+// flash of the wrong palette.
+const THEME_INIT_SCRIPT_HASH = `'sha256-${createHash("sha256")
+  .update(THEME_INIT_SCRIPT)
+  .digest("base64")}'`;
+
+// Content Security Policy. Enforcing, and host-allowlist based: every script
+// is same-origin, so 'self' plus the one hash above is the whole script
+// policy. Styles keep 'unsafe-inline' for the handful of inline `style`
+// attributes in templates; an injected style is a far smaller prize than an
+// injected script, and the attributes can move to classes when it is worth
+// closing. The rest: frame-ancestors (clickjacking), object-src/base-uri
+// lockdown, a tight source allowlist, and upgrade-insecure-requests.
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "base-uri 'none'",
@@ -26,7 +43,7 @@ const CONTENT_SECURITY_POLICY = [
   "img-src 'self' data:",
   "font-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' ${THEME_INIT_SCRIPT_HASH}`,
   "connect-src 'self'",
   // Production only, like HSTS below: WebKit applies the upgrade to
   // http://localhost subresources too (Chrome exempts localhost), so in dev it

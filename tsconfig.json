@@ -17,5 +17,5 @@
     }
   },
   "include": ["src/**/*", "scripts/**/*.ts", ".claude/hooks/**/*"],
-  "exclude": ["node_modules", "dist", "src/server/services/email-providers/resend.ts"]
+  "exclude": ["node_modules", "dist"]
 }

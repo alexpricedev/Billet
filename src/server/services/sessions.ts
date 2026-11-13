@@ -22,9 +22,24 @@ export interface SessionContext {
 
 const GUEST_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const AUTH_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+// A signed-in session also ends after this long with no request. The absolute
+// limit above bounds how long a stolen cookie works for someone who keeps
+// using it; this bounds how long one works for someone who found it on a
+// device its owner put down. Every authenticated request touches
+// `last_activity_at` (renewSession, from the auth middleware), so anyone
+// still using the app never sees it. Guest sessions are exempt: they last a
+// day in total and carry no account.
+export const AUTH_IDLE_MS = 14 * 24 * 60 * 60 * 1000;
 
+const idleCutoff = (): string =>
+  new Date(Date.now() - AUTH_IDLE_MS).toISOString();
+
+// `__Host-` only in production, where the cookie is also `secure` — the prefix
+// is refused by the browser without it, and local dev is plain http.
+// validateEnv() warns when a configured name drops the prefix.
 export const SESSION_COOKIE_NAME =
-  process.env.SESSION_COOKIE_NAME ?? "session_id";
+  process.env.SESSION_COOKIE_NAME ??
+  (process.env.NODE_ENV === "production" ? "__Host-session_id" : "session_id");
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -92,6 +107,7 @@ export const getSessionContextFromDB = async (
       LEFT JOIN users u ON s.user_id = u.id
       WHERE s.id_hash = ${sessionIdHash}
         AND s.expires_at > CURRENT_TIMESTAMP
+        AND (s.session_type <> 'authenticated' OR s.last_activity_at > ${idleCutoff()})
     `;
 
     if (result.length === 0) return null;
@@ -217,6 +233,7 @@ export const renewSession = async (rawSessionId: string): Promise<boolean> => {
       SET last_activity_at = CURRENT_TIMESTAMP
       WHERE id_hash = ${sessionIdHash}
         AND expires_at > CURRENT_TIMESTAMP
+        AND last_activity_at > ${idleCutoff()}
     `;
 
     return hasAffectedRows(result as DatabaseMutationResult);

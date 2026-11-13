@@ -1,0 +1,10 @@
+#!/bin/sh
+# Point git at the tracked hooks directory. `prepare` runs this on every
+# `bun install`, which is how a fresh clone gets the pre-commit check without
+# a package to do it: the hooks are plain scripts in `.githooks/`, and
+# `core.hooksPath` is the one line of config git needs to find them.
+#
+# Outside a git checkout (a tarball build, a production image) there is
+# nothing to configure, so it exits quietly rather than failing the install.
+git rev-parse --git-dir >/dev/null 2>&1 || exit 0
+exec git config core.hooksPath .githooks

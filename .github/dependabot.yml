@@ -11,6 +11,11 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    # Matches `minimumReleaseAge` in bunfig.toml: a version has to be three
+    # days old before a PR proposes it, so the PR's own install never trips the
+    # cooldown, and a bad publish is usually unpublished before either sees it.
+    cooldown:
+      default-days: 3
     groups:
       # Majors are excluded on purpose: a major arriving inside a group PR
       # titled "4 updates" reads as routine, and the one bump that needs a

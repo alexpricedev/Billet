@@ -1,0 +1,81 @@
+name: Bun version
+
+# Dependabot bumps the packages; nothing bumps the runtime, and Bun ships
+# security fixes in patch releases. This opens a pull request moving
+# `.bun-version` (and the `engines.bun` floor, which runbooks/CI.md says travels
+# with it) to the latest release once it is three days old — the same cooldown
+# bunfig.toml applies to packages. The PR's CI run is the evidence the new
+# version works; a red run is the signal to look at the release notes.
+#
+# A pull request opened with the job token does not trigger `pull_request`
+# workflows on its own (GitHub's guard against runaway automation), so the
+# last step dispatches ci.yml on the branch by hand. Its check runs attach to
+# the branch head, which is what the required checks on main look at.
+on:
+  schedule:
+    # Tuesdays, 06:41 UTC — a day after Dependabot, so the two never race.
+    - cron: "41 6 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  # `gh workflow run` below.
+  actions: write
+
+jobs:
+  bump:
+    name: Check for a new Bun release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compare .bun-version with the latest release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current="$(tr -d '[:space:]' < .bun-version)"
+          release="$(gh release view --repo oven-sh/bun --json tagName,publishedAt --jq '"\(.tagName) \(.publishedAt)"')"
+          latest="${release%% *}"; latest="${latest#bun-v}"
+          published="${release##* }"
+          age_days=$(( ( $(date -u +%s) - $(date -u -d "$published" +%s) ) / 86400 ))
+          echo "current=$current"  >> "$GITHUB_OUTPUT"
+          echo "latest=$latest"    >> "$GITHUB_OUTPUT"
+          echo "Current $current, latest $latest (published $published, ${age_days}d ago)"
+          if [ "$current" = "$latest" ]; then
+            echo "Up to date."
+          elif [ "$age_days" -lt 3 ]; then
+            echo "Inside the three-day cooldown; trying again next week."
+            echo "latest=$current" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open the pull request
+        if: steps.release.outputs.current != steps.release.outputs.latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT: ${{ steps.release.outputs.current }}
+          LATEST: ${{ steps.release.outputs.latest }}
+        run: |
+          branch="bun/$LATEST"
+          if [ "$(gh pr list --head "$branch" --state open --json number --jq length)" != "0" ]; then
+            echo "A pull request for $branch is already open."
+            exit 0
+          fi
+
+          printf '%s\n' "$LATEST" > .bun-version
+          sed -i "s/\"bun\": \">=[0-9.]*\"/\"bun\": \">=$LATEST\"/" package.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "Bump Bun to $LATEST"
+          git push -u origin "$branch"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "Bump Bun to $LATEST" \
+            --body "$(printf 'Moves `.bun-version` and the `engines.bun` floor from %s to %s.\n\nRelease notes: https://github.com/oven-sh/bun/releases/tag/bun-v%s\n\nOpened by the `Bun version` workflow; CI was dispatched on this branch by the same run.' "$CURRENT" "$LATEST" "$LATEST")"
+
+          gh workflow run ci.yml --ref "$branch"

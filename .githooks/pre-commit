@@ -1,0 +1,4 @@
+#!/bin/sh
+# Installed by `scripts/install-hooks` (run from `prepare` on every `bun install`).
+bun run build
+bun run check

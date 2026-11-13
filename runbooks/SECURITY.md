@@ -103,7 +103,7 @@ The policy is enforcing and host-allowlist based. Current directives:
 ```
 default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none';
 img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline';
-script-src 'self' 'unsafe-inline';
+script-src 'self' 'sha256-…';
 connect-src 'self'; upgrade-insecure-requests
 ```
 
@@ -128,23 +128,29 @@ API from a new origin, add that origin to the matching directive in
 Forget one and the browser blocks the resource with a `Refused to load…` console
 error. Test in a real browser after any change (see §6).
 
-**The `'unsafe-inline'` tradeoff.** `script-src` includes `'unsafe-inline'`
-because the page ships two inline scripts, both in
-[`layouts.tsx`](../src/server/components/layouts.tsx):
+**No `'unsafe-inline'` for scripts.** `script-src` is `'self'` plus one
+hash: the SHA-256 of the theme bootstrap in
+[`layouts.tsx`](../src/server/components/layouts.tsx), the one statement that
+reads the `billet-theme` key and sets `data-theme` on `<html>` before the
+first paint. `security-headers.ts` computes the hash from the exported
+constant at boot, so the two can't drift, and `security-headers.test.ts`
+asserts the header carries the hash of the script the layout ships. That is
+what makes an injected `<script>` or `onclick=` a non-event: the browser
+refuses it even when it reaches the page. The JSON-LD block needs no
+allowance — a data block is never executed, so CSP does not apply to it.
 
-1. the JSON-LD block, and
-2. the theme script — one statement that reads the `billet-theme` key and sets
-   `data-theme` on `<html>`. It has to be inline and in `<head>`: the bundle is
-   deferred, so anywhere later the reader would see the OS theme and watch it
-   swap.
+A hash rather than a per-request nonce because the script is a constant;
+nonces earn their plumbing only when inline scripts vary per response. Two
+consequences to keep in mind:
 
-That weakens CSP's XSS protection. The hardening path (a follow-up, not done
-here) is nonce + `'strict-dynamic'`: generate a per-request nonce, stamp it on
-every inline and first-party `<script>`, add `'nonce-…' 'strict-dynamic'` to
-`script-src`, and drop `'unsafe-inline'`. Every script is already same-origin,
-so **those two are the only things left to nonce** — and the theme script is
-the one to check first, because missing it doesn't throw. It fails silently,
-and the symptom is a flash of the wrong palette on every load.
+- Any new inline script needs its own hash in `script-src`, and inline event
+  handlers (`onclick=`) are refused outright — bind in the bundle instead.
+  Forgetting is caught by the browser smoke tests (a blocked script passes
+  every unit test), and for the theme script the symptom is a flash of the
+  wrong palette, not an error.
+- `style-src` still carries `'unsafe-inline'` for the handful of inline
+  `style` attributes in templates. An injected style is a far smaller prize
+  than a script; move the attributes to classes when it is worth closing.
 
 **No `'unsafe-eval'`, by design.** The client's reactive layer
 (`src/client/reactive/`) binds state to markup through `data-*` attributes that
@@ -224,6 +230,17 @@ curl -sL "<URL>" | openssl dgst -sha384 -binary | openssl base64 -A
   Never set it on a deployment reached directly: the header is client-controlled
   there, and trusting it lets an attacker walk past the `/login` limit with a
   fresh value per request.
+- **TLS to the database.** A `DATABASE_URL` on another host with no `sslmode`
+  is a plaintext connection, and boot warns about it in production. Put
+  `?sslmode=verify-full` on the URL (managed Postgres hosts all support it);
+  write `sslmode=disable` only when the database shares a private network with
+  nothing else on it, so the choice is recorded rather than defaulted into.
+- **The session cookie is `__Host-session_id` in production.** The prefix is
+  the browser's guarantee the cookie came from this origin over HTTPS with
+  `Path=/` and no `Domain`, so a sibling subdomain can't plant one. If you set
+  `SESSION_COOKIE_NAME`, keep the prefix — boot warns when it is missing.
+- **`CRYPTO_PEPPER` is checked at boot.** Under 32 characters, or the
+  `.env.example` placeholder, is fatal in production and a warning elsewhere.
 
 ## 6. Verify in production
 
@@ -288,7 +305,8 @@ want a spotless console.
   cross-origin script or image that doesn't send CORP/CORS headers, and a strict `Cross-Origin-Resource-Policy` would block social scrapers
   from fetching the OG image. Only `Cross-Origin-Opener-Policy` is set. Revisit
   COEP if you ever need cross-origin isolation (e.g. `SharedArrayBuffer`).
-- **Trusted Types** (`require-trusted-types-for 'script'`) — pairs naturally with
-  the nonce-based CSP upgrade in §3.
+- **Trusted Types** (`require-trusted-types-for 'script'`) — the next step
+  past the hash-based `script-src` in §3; needs every DOM sink in the client
+  bundle to go through a policy.
 - **Digest Fields (`Content-Digest`)** — transit-integrity hashes, optional and
   niche for a site behind HTTPS.

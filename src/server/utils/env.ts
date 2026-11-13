@@ -43,7 +43,65 @@ export const urlProblem = (key: string, value: string): string | null => {
   return null;
 };
 
+// CRYPTO_PEPPER keys every HMAC in the app — session id hashes, CSRF secrets,
+// magic-link and reset tokens, the dev sign-in links. Presence used to be the
+// only check, so a one-character value or the .env.example placeholder booted
+// and keyed all of that off a guessable string. 32 characters is the floor
+// (`bun run generate:pepper` emits 64); the placeholder is refused by name so
+// it can't slip through by being long enough.
+export const PEPPER_MIN_LENGTH = 32;
+const PEPPER_PLACEHOLDER = "something-random";
+
+export const pepperProblem = (value: string): string | null => {
+  if (value === PEPPER_PLACEHOLDER) {
+    return "CRYPTO_PEPPER is still the .env.example placeholder — run `bun run generate:pepper`";
+  }
+  if (value.length < PEPPER_MIN_LENGTH) {
+    return `CRYPTO_PEPPER must be at least ${PEPPER_MIN_LENGTH} characters (got ${value.length}) — run \`bun run generate:pepper\``;
+  }
+  return null;
+};
+
+// A database on another host is reached over a network, and without `sslmode`
+// in the URL the driver connects in plaintext: every session hash, email and
+// password hash crosses that network readable. A warning rather than a refusal,
+// because a database alone with the app on a private network is a legitimate
+// choice — and `sslmode=disable` written into the URL says it was one, which is
+// the difference between a decision and an oversight. Local sockets and
+// loopback never leave the machine and are exempt.
+const LOCAL_DATABASE_HOSTS = new Set(["", "localhost", "127.0.0.1", "[::1]"]);
+
+export const databaseTlsProblem = (url: string): string | null => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    // The driver reports a malformed URL in its own words at connect time.
+    return null;
+  }
+  if (LOCAL_DATABASE_HOSTS.has(parsed.hostname)) {
+    return null;
+  }
+  if (parsed.searchParams.has("sslmode")) {
+    return null;
+  }
+  return `DATABASE_URL connects to ${parsed.hostname} without sslmode — traffic to the database is unencrypted. Add ?sslmode=verify-full, or sslmode=disable to record that plaintext on this network is deliberate`;
+};
+
+// The session cookie is the credential, and a `__Host-` name is the browser's
+// guarantee that it was set by this origin over HTTPS with Path=/ and no
+// Domain — so a compromised or sibling subdomain can't plant one (session
+// fixation by cookie tossing). The default name carries the prefix in
+// production; an operator who sets their own name is told when it doesn't.
+export const COOKIE_HOST_PREFIX = "__Host-";
+
+export const cookieNameProblem = (name: string): string | null =>
+  name.startsWith(COOKIE_HOST_PREFIX)
+    ? null
+    : `SESSION_COOKIE_NAME "${name}" lacks the ${COOKIE_HOST_PREFIX} prefix, so a subdomain could set a session cookie for this host — prefer ${COOKIE_HOST_PREFIX}${name}`;
+
 export function validateEnv(): void {
+  const isProduction = process.env.NODE_ENV === "production";
   const missing: string[] = [];
 
   for (const key of REQUIRED) {
@@ -78,6 +136,32 @@ export function validateEnv(): void {
       "Set FROM_EMAIL to an address on a Resend-verified domain (see runbooks/EMAIL.md)",
     );
     process.exit(1);
+  }
+
+  // A weak pepper is fatal where it matters and loud everywhere else: a dev
+  // checkout with a short value keeps booting, but says so on every start.
+  const pepperIssue = pepperProblem(process.env.CRYPTO_PEPPER as string);
+  if (pepperIssue) {
+    if (isProduction) {
+      log.error("env", pepperIssue);
+      process.exit(1);
+    }
+    log.warn("env", pepperIssue);
+  }
+
+  if (isProduction) {
+    const tlsIssue = databaseTlsProblem(process.env.DATABASE_URL as string);
+    if (tlsIssue) {
+      log.warn("env", tlsIssue);
+    }
+
+    const configuredCookieName = process.env.SESSION_COOKIE_NAME;
+    const cookieIssue = configuredCookieName
+      ? cookieNameProblem(configuredCookieName)
+      : null;
+    if (cookieIssue) {
+      log.warn("env", cookieIssue);
+    }
   }
 
   // APP_URL is the origin CSRF validation compares against, the base for every

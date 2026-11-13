@@ -1,3 +1,16 @@
+[install]
+# Refuse any package version published less than three days ago. A hijacked
+# maintainer account publishes, and the malicious version is usually pulled
+# within a day or two — this window is the one defence against installing it
+# in between. `bun.lock` keeps the installed tree fixed; this only bites when a
+# version is being *chosen*: `bun add`, `bun update`, or a Dependabot bump,
+# whose own `cooldown` in .github/dependabot.yml is set to match so it never
+# proposes a version the install here would refuse.
+minimumReleaseAge = 259200
+# `bun add` writes the exact version, not a ^range, so package.json says what
+# the lockfile says and a bare `bun update` has nothing to float.
+exact = true
+
 [test]
 # test-env.ts pins every environment variable the suite needs and must run
 # first: a preload is the only place early enough to beat the values modules

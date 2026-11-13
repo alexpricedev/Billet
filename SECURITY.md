@@ -171,6 +171,11 @@ also closes the race against a reset landing at the same moment.
 
 ### Session invalidation
 
+- A signed-in session ends after **30 days** outright, or after **14 days
+  without a request**, whichever comes first (`AUTH_IDLE_MS` in
+  `services/sessions.ts`). Every authenticated request renews the idle clock,
+  so the second limit only ever reaches a cookie whose owner stopped using it —
+  on a device they put down, or one they no longer have.
 - A **password reset** destroys every session the user had — it's the flow you
   use when you believe someone else has your account, so nothing prior is
   trusted. A fresh session is issued afterwards.
