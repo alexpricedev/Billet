@@ -37,6 +37,15 @@ with nothing in the diff to explain it. `.bun-version` and the `engines.bun`
 floor in `package.json` are the same number; bump both together, in a commit
 whose CI run is the evidence the new version works.
 
+Nothing on Dependabot's side touches either file, so
+[`.github/workflows/bun-version.yml`](../.github/workflows/bun-version.yml)
+does: weekly, it compares `.bun-version` with Bun's latest release and, once
+that release is three days old (the same cooldown `bunfig.toml` applies to
+packages), opens a PR bumping both. A PR opened with the job token does not
+trigger `pull_request` workflows, so the same run dispatches `ci.yml` on the
+branch — which is why `ci.yml` carries a `workflow_dispatch` trigger. Review it
+like any other dependency PR: green CI, then merge.
+
 > **The `Tests` job env is deliberately generic** — `APP_NAME: CI Test`, with
 > `POSTGRES_DB` / `DATABASE_URL` on `ci-test` — so a fork inherits nothing it has
 > to rename. Tests read `APP_NAME` from the environment rather than asserting a

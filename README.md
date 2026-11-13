@@ -113,7 +113,7 @@ parallel with a database per worker.
 - **TypeScript** strict mode with `noUnusedLocals` and `noUnusedParameters`
 - **Pre-commit hook** in `.githooks/` that runs the build, lint and typecheck before every commit — `bun install` points git at it (`scripts/install-hooks`), no hook manager involved
 - **GitHub Actions CI** — lint, build, and the full test suite run on every PR (`.github/workflows/ci.yml`); gate merges behind them with required status checks (see [runbooks/CI.md](runbooks/CI.md))
-- **Pinned toolchain** — `.bun-version` and `engines.bun` fix the Bun version, and CI installs from the same file, so the toolchain changes on a commit rather than on Bun's release schedule
+- **Pinned toolchain** — `.bun-version` and `engines.bun` fix the Bun version, and CI installs from the same file, so the toolchain changes on a commit rather than on Bun's release schedule; a weekly workflow opens the PR for each new Bun release (`.github/workflows/bun-version.yml`)
 - **Dependency audit** — `bun run audit` fails on high-severity advisories, run on every PR and weekly on a schedule (`.github/workflows/audit.yml`), with Dependabot opening the routine bumps
 - **Structured logging** via `src/server/services/logger.ts` — replaces `console.*` with levelled output (info, warn, error)
 
