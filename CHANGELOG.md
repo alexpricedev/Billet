@@ -7,6 +7,25 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 7.1.0
+
+A dependency window and nothing else. Both bumps are patch releases of something already here,
+they arrived through Dependabot after the three-day cooldown 7.0.0 added, and no file under `src/`
+changed — so a fork merging this has nothing to do beyond reinstalling. It is a minor rather than a
+patch for the reason 4.1.0 was: the pinned Biome version moved, and a fork's own code sits on it.
+
+**No migration, and no fork has code to change.**
+
+### Changed
+
+- **Biome `2.6.6` → `2.6.7`**, pinned exactly as before, so `bun run lint` runs this version and
+  not whatever a fork happens to have installed. `biome.json` reads its `$schema` from the
+  installed package, so there is no versioned URL to bump alongside it. A fork carrying its own
+  lint-clean code gets the new version's checks on the next `bun install`.
+- **`preact-render-to-string` `6.8.2` → `6.8.3`.** This is the one runtime dependency in the
+  window: it renders every page (`renderToString()` in `src/server/`). The suite renders through it
+  and is green on the new version; nothing in this tree needed changing for it.
+
 ## 7.0.0
 
 Started as "what can we remove?" and ended as a hardening pass. Two of the three runtime
