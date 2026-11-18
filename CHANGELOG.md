@@ -7,6 +7,34 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 7.1.1
+
+`DELETE /api/todos/:id` now requires a signed-in session. The `/todos` page only lets a signed-in
+user delete a todo (`guard: "user"`), but the API route had no check at all — so it let anyone do
+what the page forbids, while the README said the two mirror each other. An anonymous call now gets
+a JSON 401 with the `unauthenticated` code, the same envelope every other API error uses.
+
+**No migration, and no fork has code to change.** A fork whose own client calls that route without
+a session cookie will start seeing 401s, which is the behaviour the page already had.
+
+### Fixed
+
+- **The todo API let a guest delete what the page would not.** `requireApiUser` in
+  `controllers/api/request-guard.ts` returns the signed-in user or a 401, and `todos.ts` calls it
+  before the delete. It reads the session cookie directly rather than going through
+  `getSessionContext`, which mints a guest session for every anonymous caller so a page has
+  somewhere to keep its CSRF secret — an API call being rejected has no use for one, and minting it
+  would let each anonymous request write a row. There is no CSRF check, because the route is a
+  `DELETE` another origin's page cannot send without a CORS preflight this server never answers; a
+  guarded `POST` would need an `Origin` check as well.
+
+### Removed
+
+- **`src/client/pages/stack.ts`**, an `init()` with no body registered for `/stack`. The page needs
+  no client code; `forms.ts` remains the example of a per-page hook, and the `registerPage("stack",
+  …)` line in `main.ts` went with it. A fork that built its own `/stack` script on the empty hook
+  keeps its file and its registration, and a merge conflict in `main.ts` is the only symptom.
+
 ## 7.1.0
 
 A dependency window and nothing else. Both bumps are patch releases of something already here,
