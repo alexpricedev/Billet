@@ -332,9 +332,11 @@ conventions below are what a new endpoint should follow, and
 [`.claude/skills/adding-a-feature/references/api-endpoint.md`](.claude/skills/adding-a-feature/references/api-endpoint.md)
 is the checklist for adding one.
 
-> **These endpoints are unauthenticated**, like the `/todos` page they mirror — the demo lets
-> guests create and toggle todos. Anything exposing real data needs `requireAuth` from
-> `src/server/middleware/auth.ts` (or a token check for machine callers) before it ships.
+> **These endpoints follow the `/todos` page they mirror**: guests may list, create and update
+> todos, and only a signed-in user may delete one — `DELETE` answers `401` without a session.
+> That check is `requireApiUser` in `src/server/controllers/api/request-guard.ts`. Anything
+> exposing real data needs it (or a token check for machine callers) on every method before it
+> ships.
 
 ### Conventions
 
@@ -360,7 +362,7 @@ is the checklist for adding one.
 | `POST` | `/api/todos` | `201` + `{ data: Todo }`, with a `Location` header |
 | `GET` | `/api/todos/:id` | `{ data: Todo }` |
 | `PUT` | `/api/todos/:id` | `{ data: Todo }` — `title` required, `completed` optional boolean |
-| `DELETE` | `/api/todos/:id` | `204`, no body |
+| `DELETE` | `/api/todos/:id` | `204`, no body — signed-in session required, `401` without one |
 | `GET` | `/api/stats` | `{ data: VisitorStats }` |
 
 `GET /api/todos` accepts `?limit=` (1–100, default 25) and `?offset=` (default 0). Values

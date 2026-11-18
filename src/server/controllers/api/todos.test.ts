@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { clearRateLimitLog } from "../../middleware/rate-limit";
+import type { SessionContext } from "../../services/sessions";
 import type { Todo, TodoPage } from "../../services/todo";
 import { createMockTodo } from "../../test-utils/factories";
 import { createMockRequest, expectJsonError } from "../../test-utils/setup";
@@ -21,8 +22,37 @@ mock.module("../../services/todo", () => ({
   deleteTodo: mockDeleteTodo,
 }));
 
+// DELETE needs a signed-in session. The cookie is read for real; the lookup is
+// mocked, and answers as a signed-in user unless a test says otherwise.
+const signedIn: SessionContext = {
+  sessionId: "session-1",
+  sessionHash: "hash-1",
+  sessionType: "authenticated",
+  user: {
+    id: "user-1",
+    email: "alice@example.com",
+    role: "user",
+    created_at: new Date(),
+    email_verified_at: null,
+  },
+  isGuest: false,
+  isAuthenticated: true,
+  requiresSetCookie: false,
+};
+const mockGetSessionContextFromDB = mock(
+  async (): Promise<SessionContext | null> => signedIn,
+);
+
+mock.module("../../services/sessions", () => ({
+  getSessionIdFromRequest: (req: { cookies: Map<string, string> }) =>
+    req.cookies.get("session_id") ?? null,
+  getSessionContextFromDB: mockGetSessionContextFromDB,
+}));
+
 // Import after mocking
 import { todosApi } from "./todos";
+
+const SIGNED_IN = { Cookie: "session_id=session-1" };
 
 const BASE = "http://localhost:3000/api/todos";
 
@@ -37,6 +67,8 @@ describe("Todos API", () => {
     mockCreateTodo.mockClear();
     mockUpdateTodo.mockClear();
     mockDeleteTodo.mockClear();
+    mockGetSessionContextFromDB.mockClear();
+    mockGetSessionContextFromDB.mockResolvedValue(signedIn);
     // The rate-limit log is module state shared by every test in this file.
     clearRateLimitLog();
   });
@@ -352,7 +384,7 @@ describe("Todos API", () => {
       mockDeleteTodo.mockResolvedValue(true);
 
       const response = await todosApi.destroy(
-        createMockRequest(`${BASE}/1`, "DELETE"),
+        createMockRequest(`${BASE}/1`, "DELETE", undefined, SIGNED_IN),
       );
 
       expect(response.status).toBe(204);
@@ -364,7 +396,7 @@ describe("Todos API", () => {
       mockDeleteTodo.mockResolvedValue(false);
 
       const response = await todosApi.destroy(
-        createMockRequest(`${BASE}/999`, "DELETE"),
+        createMockRequest(`${BASE}/999`, "DELETE", undefined, SIGNED_IN),
       );
 
       await expectJsonError(response, 404, "not_found");
@@ -373,10 +405,48 @@ describe("Todos API", () => {
 
     test("rejects an invalid id without querying the database", async () => {
       const response = await todosApi.destroy(
-        createMockRequest(`${BASE}/invalid`, "DELETE"),
+        createMockRequest(`${BASE}/invalid`, "DELETE", undefined, SIGNED_IN),
       );
 
       await expectJsonError(response, 400, "invalid_id");
+      expect(mockDeleteTodo).not.toHaveBeenCalled();
+    });
+
+    test("returns a JSON 401 without a session, and deletes nothing", async () => {
+      const response = await todosApi.destroy(
+        createMockRequest(`${BASE}/1`, "DELETE"),
+      );
+
+      await expectJsonError(response, 401, "unauthenticated");
+      expect(mockGetSessionContextFromDB).not.toHaveBeenCalled();
+      expect(mockDeleteTodo).not.toHaveBeenCalled();
+    });
+
+    test("returns a JSON 401 for a guest session, and deletes nothing", async () => {
+      mockGetSessionContextFromDB.mockResolvedValue({
+        ...signedIn,
+        sessionType: "guest",
+        user: null,
+        isGuest: true,
+        isAuthenticated: false,
+      });
+
+      const response = await todosApi.destroy(
+        createMockRequest(`${BASE}/1`, "DELETE", undefined, SIGNED_IN),
+      );
+
+      await expectJsonError(response, 401, "unauthenticated");
+      expect(mockDeleteTodo).not.toHaveBeenCalled();
+    });
+
+    test("returns a JSON 401 for an unknown or expired session", async () => {
+      mockGetSessionContextFromDB.mockResolvedValue(null);
+
+      const response = await todosApi.destroy(
+        createMockRequest(`${BASE}/1`, "DELETE", undefined, SIGNED_IN),
+      );
+
+      await expectJsonError(response, 401, "unauthenticated");
       expect(mockDeleteTodo).not.toHaveBeenCalled();
     });
   });

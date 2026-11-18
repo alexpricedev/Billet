@@ -14,6 +14,7 @@ import {
   readJsonBody,
   readPagination,
   readStringField,
+  requireApiUser,
 } from "./request-guard";
 
 const notFound = (): Response =>
@@ -110,9 +111,13 @@ export const todosApi = {
     return Response.json({ data: todo });
   },
 
+  // Signed-in users only, like the delete button on the `/todos` page.
   async destroy(req: BunRequest): Promise<Response> {
     const limited = apiWriteLimit(req);
     if (limited) return limited;
+
+    const auth = await requireApiUser(req);
+    if (!auth.ok) return auth.response;
 
     const param = readIdParam(req);
     if (!param.ok) return param.response;
