@@ -7,6 +7,23 @@ after a merge is documented here under **Breaking changes**.
 Versions follow [semantic versioning](https://semver.org/): a major bump means a fork needs to
 change its own code after merging.
 
+## 7.1.2
+
+Documentation only: `DESIGN.md` gained an **Interaction patterns** section naming what this stack
+has for putting a task in front of someone — inline, disclosure, dialog, its own page — lightest
+first, and which of them core actually ships. Nothing under `src/` changed, so the running app is
+byte-for-byte what 7.1.1 served.
+
+**No migration, and no fork has code to change.** A fork that edited `DESIGN.md` itself may see a
+merge conflict next to the "Interaction states" heading, and nothing else.
+
+### Added
+
+- **An "Interaction patterns" section in `DESIGN.md`.** There is no dialog component in core; the
+  `billet-dialog` add-on is the accessible confirm for destructive actions and gates the form
+  rather than replacing it, so the form still posts without JavaScript. A confirm page's committing
+  button is `.btn-danger-solid`, and whatever the pattern, the task still works with no bundle.
+
 ## 7.1.1
 
 `DELETE /api/todos/:id` now requires a signed-in session. The `/todos` page only lets a signed-in
