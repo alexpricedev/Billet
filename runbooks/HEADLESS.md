@@ -105,12 +105,13 @@ this codebase and must be carried across, not reimplemented:
 
 ## 3. Phase one — the API auth layer
 
-`/api` currently has **no authentication at all**. `todosApi` is rate-limited and
-body-validated but entirely unauthenticated; it is a reference CRUD endpoint, not a
-protected surface. There is no `requireAuth`, no `getSessionContext` and no CSRF check
-anywhere under `src/server/controllers/api/`. Session auth exists and works — it has
-simply never been wired to the JSON layer. This phase is that wiring, and it is the bulk
-of the new code.
+`/api` is **almost entirely unauthenticated**. `todosApi` is rate-limited and
+body-validated, and only its `DELETE` checks for a signed-in session — through
+`requireApiUser` in `src/server/controllers/api/request-guard.ts`, which answers a JSON
+`401` and mints no guest session. It is a reference CRUD endpoint, not a protected
+surface: there is no `requireAuth`, no `getSessionContext` and no CSRF check anywhere
+under `src/server/controllers/api/`. This phase is wiring session auth to the rest of the
+JSON layer, and it is the bulk of the new code.
 
 `requireAuth` in `src/server/middleware/auth.ts:65` returns a 303 to `/login`, which is
 useless to a fetch. Write a sibling rather than changing it, in the discriminated-union

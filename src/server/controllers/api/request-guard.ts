@@ -1,5 +1,10 @@
 import type { BunRequest } from "bun";
 import { rateLimit } from "../../middleware/rate-limit";
+import type { User } from "../../services/auth";
+import {
+  getSessionContextFromDB,
+  getSessionIdFromRequest,
+} from "../../services/sessions";
 import { jsonError } from "../../utils/response";
 
 /**
@@ -98,6 +103,38 @@ export const readJsonBody = async (
   }
 
   return { ok: true, body: parsed as Record<string, unknown> };
+};
+
+export type UserResult =
+  | { ok: true; user: User }
+  | { ok: false; response: Response };
+
+/**
+ * The signed-in user behind a request, or a JSON 401 — the API's side of the
+ * `guard: "user"` a page's `formAction` takes, for writes a guest may not make.
+ *
+ * Reads the session cookie rather than calling `getSessionContext`, which
+ * mints a guest session for every anonymous caller so a page has somewhere to
+ * keep its CSRF secret. An API call rejected here has no use for one, and
+ * minting it would let each anonymous request write a row.
+ *
+ * No CSRF check: this guards DELETE, which another origin's page cannot send
+ * without a CORS preflight this server never answers. Guarding a POST would
+ * need an Origin check as well — a form on a sibling subdomain is same-site,
+ * so `SameSite=Lax` sends the cookie with it.
+ */
+export const requireApiUser = async (req: BunRequest): Promise<UserResult> => {
+  const sessionId = getSessionIdFromRequest(req);
+  const ctx = sessionId ? await getSessionContextFromDB(sessionId) : null;
+
+  if (!ctx?.isAuthenticated || !ctx.user) {
+    return {
+      ok: false,
+      response: jsonError(401, "unauthenticated", "Sign in to do this."),
+    };
+  }
+
+  return { ok: true, user: ctx.user };
 };
 
 export type IdResult =

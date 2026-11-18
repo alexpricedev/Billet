@@ -128,16 +128,13 @@ Remove the stack page and all its associated files:
 **Delete these files:**
 - `src/server/templates/stack.tsx`
 - `src/server/controllers/app/stack.tsx`
-- `src/client/pages/stack.ts`
 - `src/client/pages/stack.css`
-- `src/client/pages/stack.test.ts`
 
 **Remove references from:**
 - `src/server/controllers/app/index.ts` — remove the `stack` barrel export
 - `src/server/controllers/app/static.test.ts` — remove the stack test case
 - `src/server/routes/app.tsx` — remove the `/stack` route entry and its import
 - `src/server/components/nav.tsx` — remove the stack nav link
-- `src/client/main.ts` — remove the stack import and `registerPage` call
 - `src/client/style.css` — remove the `@import "./pages/stack.css"` line
 - `src/server/services/seo.ts` — remove `/stack` from `SITEMAP_PATHS`
 - `src/server/services/llms-txt.ts` — remove its `PAGES` entry
