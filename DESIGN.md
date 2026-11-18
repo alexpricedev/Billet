@@ -276,6 +276,24 @@ The select chevron is a data URI, and a data URI cannot read a custom property â
 `url()` is the token (`--select-chevron`) and each theme overrides it. Baking one theme's stroke
 colour into the `select` rule is the defect this replaced.
 
+## Interaction patterns
+
+What this stack has for putting a task in front of someone, lightest first. A plan picks the
+lightest one that keeps the context the user needs, and says why the one below wasn't enough. How a
+form talks to the server is CLAUDE.md's three tiers, not this section's.
+
+- **Inline:** a form on the page, a toggle or delete in the row (`TodoRow`). Most work
+  belongs here.
+- **Disclosure:** `<details>`, or `data-show` over markup the server already rendered (tier 3). It
+  has no component of its own.
+- **Dialog:** none in core. The `billet-dialog` add-on is an accessible confirm for destructive
+  actions that gates the form rather than replacing it, so the form still posts without
+  JavaScript. Any other dialog is a new component; its elevation is `--shadow-lg`.
+- **Its own page:** a route. Whatever the pattern, the task still works with no bundle.
+
+Confirm only what can't be undone: with `billet-dialog`, or on a confirm page whose committing
+button is `.btn-danger-solid`. The confirm names the thing being destroyed.
+
 ## Interaction states
 
 - Hover: a background step (`--surface-hover`) or a border step. **No movement** â€” nothing lifts,
