@@ -31,5 +31,5 @@ Both end the same way: add the co-located test (see the `writing-tests` skill) a
 
 New tables go in `src/server/database/migrations/` as `NNN_snake_case.ts`. Create one with
 `bun run migrate:create`. They apply automatically on server start and at the top of the test
-run — a failed migration means the server won't boot. Add any new table to `cleanupTestData` in
+run — a failed migration means the server won't boot. Each migration runs in its own transaction, so a failure leaves nothing behind; a statement Postgres refuses inside a transaction (`CREATE INDEX CONCURRENTLY`, `VACUUM`) can't go in a migration. Add any new table to `cleanupTestData` in
 `src/server/test-utils/helpers.ts` or tests will bleed into each other.
