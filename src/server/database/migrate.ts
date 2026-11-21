@@ -1,13 +1,25 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
+import type { SQL } from "bun";
 import { db } from "../services/database";
 import { log } from "../services/logger";
+import { guardPool } from "../utils/sql-guard";
 
 export type Migration = {
   id: string;
   name: string;
   applied_at: Date;
 };
+
+let migrationsDirOverride: string | null = null;
+
+export const setMigrationsDirForTest = (dir: string | null): void => {
+  migrationsDirOverride = dir;
+};
+
+const migrationsDirectory = (): string =>
+  migrationsDirOverride ??
+  join(process.cwd(), "src/server/database/migrations");
 
 /**
  * Ensure migrations table exists for tracking applied migrations
@@ -56,23 +68,26 @@ export const getAppliedMigrations = async (): Promise<Migration[]> => {
 export const recordMigration = async (
   id: string,
   name: string,
+  executor: SQL = db,
 ): Promise<void> => {
-  await db`INSERT INTO migrations (id, name) VALUES (${id}, ${name})`;
+  await executor`INSERT INTO migrations (id, name) VALUES (${id}, ${name})`;
 };
 
 /**
  * Remove migration record from migrations table
  */
-export const removeMigration = async (id: string): Promise<void> => {
-  await db`DELETE FROM migrations WHERE id = ${id}`;
+export const removeMigration = async (
+  id: string,
+  executor: SQL = db,
+): Promise<void> => {
+  await executor`DELETE FROM migrations WHERE id = ${id}`;
 };
 
 /**
  * Get list of migration files that haven't been applied yet
  */
 export const getPendingMigrations = async (): Promise<string[]> => {
-  const migrationsDir = join(process.cwd(), "src/server/database/migrations");
-  const migrationFiles = readdirSync(migrationsDir)
+  const migrationFiles = readdirSync(migrationsDirectory())
     .filter((file) => file.endsWith(".ts"))
     .sort();
 
@@ -89,22 +104,23 @@ export const getPendingMigrations = async (): Promise<string[]> => {
  * Run a single migration file and record it as applied
  */
 export const runMigration = async (filename: string): Promise<void> => {
-  const migrationPath = join(
-    process.cwd(),
-    "src/server/database/migrations",
-    filename,
-  );
+  const migrationPath = join(migrationsDirectory(), filename);
   const migration = await import(migrationPath);
 
   if (typeof migration.up !== "function") {
     throw new Error(`Migration ${filename} does not export an 'up' function`);
   }
 
-  await migration.up(db);
-
   const id = filename.replace(".ts", "");
   const name = filename.replace(/^\d+_/, "").replace(".ts", "");
-  await recordMigration(id, name);
+
+  // One transaction per migration: a failure rolls back everything `up` did
+  // and the `migrations` row, so a retry meets the real error, not leftovers.
+  await db.begin(async (tx) => {
+    const guarded = guardPool(tx);
+    await migration.up(guarded);
+    await recordMigration(id, name, guarded);
+  });
 
   log.info("migrations", `Applied: ${filename}`);
 };
@@ -136,21 +152,20 @@ export const runMigrations = async (): Promise<void> => {
  * Rollback a single migration and remove it from applied migrations
  */
 export const rollbackMigration = async (filename: string): Promise<void> => {
-  const migrationPath = join(
-    process.cwd(),
-    "src/server/database/migrations",
-    filename,
-  );
+  const migrationPath = join(migrationsDirectory(), filename);
   const migration = await import(migrationPath);
 
   if (typeof migration.down !== "function") {
     throw new Error(`Migration ${filename} does not export a 'down' function`);
   }
 
-  await migration.down(db);
-
   const id = filename.replace(".ts", "");
-  await removeMigration(id);
+
+  await db.begin(async (tx) => {
+    const guarded = guardPool(tx);
+    await migration.down(guarded);
+    await removeMigration(id, guarded);
+  });
 
   log.info("migrations", `Rolled back: ${filename}`);
 };

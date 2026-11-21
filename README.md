@@ -85,7 +85,7 @@ offering both at once would mean every account has two ways in, and the weaker o
 
 PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency.
 
-- **Auto-migrations on startup** — pending migrations run before the server accepts requests; if one fails, the server won't start
+- **Auto-migrations on startup** — pending migrations run before the server accepts requests, each in its own transaction; if one fails, nothing it did is left behind and the server won't start
 - **Migration CLI** for manual operations (`migrate:up`, `migrate:status`, `migrate:create`)
 - **Seed script** scaffold for development data (`bun run seed`)
 - **Dev sign-in links** — `DEV_LOGIN=true` prints an admin and a non-admin sign-in link at startup, so a new worktree doesn't mean signing in by hand; development only, refused in production — see `.env.example`
@@ -481,7 +481,7 @@ generate yourself (`bun run generate:pepper`).
 
 ### Database
 
-Billet uses PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency. Migrations run automatically on server startup — pending migrations are applied before the server accepts requests. If a migration fails, the server won't start (fail-safe).
+Billet uses PostgreSQL through Bun's built-in `Bun.SQL` — no ORM, no driver dependency. Migrations run automatically on server startup — pending migrations are applied before the server accepts requests. Each migration runs in its own transaction together with its `migrations` row, so if one fails the server won't start and nothing it did is left behind (fail-safe); migrations that applied before it stay applied. That means a statement Postgres refuses inside a transaction (`CREATE INDEX CONCURRENTLY`, `VACUUM`) can't go in a migration.
 
 A lightweight CLI is also available for manual operations:
 
