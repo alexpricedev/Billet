@@ -70,7 +70,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git commit -am "Bump Bun to $LATEST"
-          git push -u origin "$branch"
+          # A run that died between the push and `gh pr create` leaves this
+          # branch behind with no PR, and the next run for the same release is
+          # then rejected as non-fast-forward. The branch is this workflow's
+          # own, one commit on the head it just checked out, so replace it.
+          git push --force -u origin "$branch"
 
           gh pr create \
             --base main \

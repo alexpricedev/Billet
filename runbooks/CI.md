@@ -46,6 +46,21 @@ trigger `pull_request` workflows, so the same run dispatches `ci.yml` on the
 branch — which is why `ci.yml` carries a `workflow_dispatch` trigger. Review it
 like any other dependency PR: green CI, then merge.
 
+That PR is opened with the job token, which GitHub refuses to let create pull
+requests unless **Settings → Actions → General → Workflow permissions → "Allow
+GitHub Actions to create and approve pull requests"** is on. It is off on a new
+repository, and the workflow then fails at `gh pr create` after pushing its
+branch, leaving an orphan `bun/<version>` branch behind. Turn the setting on:
+
+```bash
+gh api -X PUT repos/{owner}/{repo}/actions/permissions/workflow --input - <<'JSON'
+{ "default_workflow_permissions": "read", "can_approve_pull_request_reviews": true }
+JSON
+```
+
+The next scheduled run reuses (force-pushes) that orphan branch, so it needs no
+manual cleanup.
+
 > **The `Tests` job env is deliberately generic** — `APP_NAME: CI Test`, with
 > `POSTGRES_DB` / `DATABASE_URL` on `ci-test` — so a fork inherits nothing it has
 > to rename. Tests read `APP_NAME` from the environment rather than asserting a
